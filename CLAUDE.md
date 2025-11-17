@@ -50,20 +50,53 @@ struct UserAccount {
 - ✅ TypeScript Generator: Interface + Borsh schema generation
 - ✅ E2E Testing: Actual compilation verification
 
-### Phase 2: CLI & Developer Tools 🎯 NEXT
+### Phase 2: CLI & Developer Tools ✅ COMPLETED (2025-01-17)
 
-Planned features:
-- `lumos generate` - Generate code from schemas
-- `lumos init` - Project initialization
-- `lumos validate` - Schema validation
-- File I/O and watch mode
+**All 50 tests passing after CLI implementation**
 
-### Phase 3: Advanced Features 📋 FUTURE
+- ✅ `lumos generate` - Generate Rust/TypeScript from schemas
+- ✅ `lumos validate` - Validate .lumos schema syntax
+- ✅ `lumos init` - Initialize new LUMOS project
+- ✅ `lumos check` - Health check and diagnostics
+- ✅ File I/O with proper error handling
+- ✅ Colorized terminal output (colored crate)
 
-- Enum support
+### Phase 3.1: Enum Support 🔄 IN PROGRESS
+
+**57 tests passing (100% success rate) after Week 2**
+
+**Week 1: AST & Parser ✅ COMPLETE**
+- ✅ Enum syntax design (`examples/enums/schema.lumos` with 8 patterns)
+- ✅ Complete design documentation (`docs/enum-design.md` 500+ lines)
+- ✅ AST support for 3 enum variant types (Unit, Tuple, Struct)
+- ✅ Parser implementation with full enum parsing
+- ✅ 5 new parser tests for enum functionality
+
+**Week 2: IR & Transform ✅ COMPLETE**
+- ✅ Refactored IR to enum-based TypeDefinition (Struct|Enum)
+- ✅ EnumDefinition and EnumVariantDefinition types
+- ✅ Complete AST→IR transform for all variant types
+- ✅ 3 new transform tests (unit/tuple/struct enums)
+- ✅ Updated all generators for new IR structure
+- ✅ All 57 tests passing
+
+**Week 3: Code Generation 📋 NEXT**
+- [ ] Rust enum generator implementation
+- [ ] TypeScript discriminated union generator
+- [ ] Enum-specific tests
+- [ ] E2E tests with enum compilation
+
+**Week 4: Documentation & Polish 📋 FUTURE**
+- [ ] Update documentation with enum examples
+- [ ] Real-world Solana instruction pattern testing
+- [ ] Performance optimization
+
+### Phase 3.2: Advanced Features 📋 FUTURE
+
 - VSCode extension
 - Validation constraints
 - Migration tooling
+- Package publishing (crates.io, npm)
 
 ---
 
@@ -110,46 +143,63 @@ IR (Intermediate Representation)
 ```
 lumos/
 ├── packages/
-│   └── core/                    # Core parser & generators (Rust)
+│   ├── core/                    # Core parser & generators (Rust)
+│   │   ├── src/
+│   │   │   ├── lib.rs           # Public API
+│   │   │   ├── parser.rs        # .lumos → AST parser (enum support ✅)
+│   │   │   ├── ast.rs           # AST definitions (Item enum: Struct|Enum ✅)
+│   │   │   ├── transform.rs     # AST → IR transformer (enum transform ✅)
+│   │   │   ├── ir.rs            # IR (TypeDefinition enum ✅)
+│   │   │   ├── schema.rs        # Legacy schema parser
+│   │   │   ├── error.rs         # Error types
+│   │   │   └── generators/
+│   │   │       ├── rust.rs      # Rust generator (enum gen pending)
+│   │   │       └── typescript.rs # TS generator (enum gen pending)
+│   │   └── tests/
+│   │       ├── integration_test.rs        # Parser integration (5 tests)
+│   │       ├── test_rust_generator.rs     # Rust gen tests (5 tests)
+│   │       ├── test_typescript_generator.rs # TS gen tests (6 tests)
+│   │       └── test_e2e.rs                # E2E compilation (8 tests)
+│   └── cli/                     # CLI implementation (Phase 2 ✅)
 │       ├── src/
-│       │   ├── lib.rs           # Public API
-│       │   ├── parser.rs        # .lumos → AST parser
-│       │   ├── ast.rs           # AST definitions
-│       │   ├── transform.rs     # AST → IR transformer
-│       │   ├── ir.rs            # Intermediate representation
-│       │   ├── schema.rs        # Legacy schema parser
-│       │   └── generators/
-│       │       ├── rust.rs      # Rust code generator (340 lines)
-│       │       └── typescript.rs # TS code generator (387 lines)
-│       └── tests/
-│           ├── integration_test.rs        # Parser integration (5 tests)
-│           ├── test_rust_generator.rs     # Rust gen tests (5 tests)
-│           ├── test_typescript_generator.rs # TS gen tests (6 tests)
-│           └── test_e2e.rs                # E2E compilation (8 tests)
+│       │   ├── main.rs          # CLI entry point
+│       │   └── commands/        # Command implementations
+│       │       ├── generate.rs  # Code generation
+│       │       ├── validate.rs  # Schema validation
+│       │       ├── init.rs      # Project initialization
+│       │       └── check.rs     # Health check
+│       └── tests/               # CLI integration tests
 ├── examples/
 │   ├── gaming/schema.lumos              # Gaming example
 │   ├── nft-marketplace/schema.lumos     # NFT marketplace
 │   ├── defi-staking/schema.lumos        # DeFi staking
 │   ├── dao-governance/schema.lumos      # DAO governance
-│   └── token-vesting/schema.lumos       # Token vesting
+│   ├── token-vesting/schema.lumos       # Token vesting
+│   └── enums/schema.lumos               # ✅ NEW: 8 enum patterns (200+ lines)
 ├── docs/
-│   └── execution-plan.md        # Development roadmap
-└── CLAUDE.md                    # This file
+│   ├── execution-plan.md        # Development roadmap
+│   └── enum-design.md           # ✅ NEW: Enum support design (500+ lines)
+└── CLAUDE.md                    # This file (updated 2025-11-17)
 ```
 
 ---
 
 ## Test Suite
 
-**Total:** 50/50 passing (100%)
+**Total:** 57/57 passing (100%)
 
 | Suite | Count | Purpose |
 |-------|-------|---------|
-| Unit Tests | 26 | Core functionality (parser, generators, transform) |
+| Unit Tests | 33 | Core functionality (parser, generators, transform, AST) |
 | Parser Integration | 5 | Real-world schema parsing |
 | Rust Generator Integration | 5 | Rust code generation |
 | TypeScript Generator Integration | 6 | TypeScript code generation |
 | E2E Compilation | 8 | Actual Rust compilation with cargo check |
+
+**New Tests (Phase 3.1 Week 1 & 2):**
+- 5 AST enum tests (unit/tuple/struct variants)
+- 3 Transform enum tests (full AST→IR pipeline)
+- Updated all generator tests for new IR structure
 
 **Run tests:** `cd packages/core && cargo test`
 
@@ -187,6 +237,37 @@ Complete bidirectional type mapping:
 | `Signature` | `String` | `string` | - | `borsh.string` |
 | `[T]` | `Vec<T>` | `T[]` | - | `borsh.vec(...)` |
 | `Option<T>` | `Option<T>` | `T \| undefined` | - | `borsh.option(...)` |
+
+### 4. Enum Support Architecture (Phase 3.1 Weeks 1-2)
+
+**Challenge:** Support 3 different enum variant types with proper Rust/TypeScript mapping.
+
+**Solution:**
+- **AST Layer:** `Item` enum wrapping both `StructDef` and `EnumDef`
+- **Parser:** Handles all 3 variant types:
+  - Unit variants: `Active`, `Paused` (state machines)
+  - Tuple variants: `PlayerJoined(PublicKey, u64)` (data-carrying)
+  - Struct variants: `Initialize { authority: PublicKey }` (Solana instructions)
+- **IR Layer:** Refactored to enum-based `TypeDefinition`:
+  ```rust
+  pub enum TypeDefinition {
+      Struct(StructDefinition),
+      Enum(EnumDefinition),
+  }
+
+  pub enum EnumVariantDefinition {
+      Unit { name: String },
+      Tuple { name: String, types: Vec<TypeInfo> },
+      Struct { name: String, fields: Vec<FieldDefinition> },
+  }
+  ```
+- **Transform:** Complete AST→IR pipeline for all variant types
+- **Type Mapping Strategy:**
+  - Rust: Native `enum` with derives
+  - TypeScript: Discriminated unions with `kind` field for type narrowing
+  - Borsh: Sequential discriminants (0, 1, 2...) matching Borsh defaults
+
+**Status:** AST ✅ | Parser ✅ | IR ✅ | Transform ✅ | Code Generation ⏳
 
 ---
 
@@ -260,6 +341,51 @@ struct PurchaseReceipt {
     transaction_signature: Signature,  // Maps to String
 }
 ```
+
+### 3. Enum Patterns (`examples/enums/schema.lumos`)
+**Features:** Comprehensive enum variant showcase (200+ lines, 8 patterns)
+
+```lumos
+// Unit enum (state machines)
+#[solana]
+enum GameState {
+    Active,
+    Paused,
+    Finished,
+    Cancelled,
+}
+
+// Tuple enum (data-carrying variants)
+#[solana]
+enum GameEvent {
+    PlayerJoined(PublicKey),
+    ScoreUpdated(PublicKey, u64),
+}
+
+// Struct enum (Solana instruction pattern)
+#[solana]
+enum GameInstruction {
+    Initialize {
+        authority: PublicKey,
+        max_players: u32,
+    },
+    UpdateScore {
+        player: PublicKey,
+        new_score: u64,
+    },
+}
+
+// Enums in structs
+#[solana]
+#[account]
+struct GameAccount {
+    authority: PublicKey,
+    state: GameState,  // Enum as field
+    current_round: u32,
+}
+```
+
+**See:** `docs/enum-design.md` for complete design specification (500+ lines)
 
 ---
 
@@ -367,41 +493,80 @@ tempfile = "3.8"      # E2E test infrastructure
 
 ## Future Considerations
 
-### Phase 2 (CLI):
-- File I/O for reading schemas and writing generated code
-- Watch mode for auto-regeneration
-- Configuration file support (`.lumosrc`)
+### Phase 3.1 Week 3-4 (IN PROGRESS):
+- ✅ Enum AST & Parser (Week 1 complete)
+- ✅ Enum IR & Transform (Week 2 complete)
+- ⏳ **Rust enum generator:** Native enum with derives (Week 3)
+- ⏳ **TypeScript discriminated unions:** Type-safe unions with `kind` field (Week 3)
+- ⏳ E2E tests with actual enum compilation (Week 3)
+- ⏳ Real-world Solana instruction pattern testing (Week 4)
+- ⏳ Performance optimization and polish (Week 4)
 
-### Phase 3 (Advanced):
-- **Enum support:** Generate Rust enums + TypeScript unions
-- **Custom derives:** User-specified derive macros
-- **Validation:** Schema validation constraints
-- **VSCode extension:** Syntax highlighting, IntelliSense
+### Phase 3.2+ (FUTURE):
+- **Custom derives:** User-specified derive macros beyond defaults
+- **Validation constraints:** Min/max values, regex patterns, custom validators
+- **VSCode extension:** Syntax highlighting, IntelliSense, schema validation
+- **Watch mode:** Auto-regeneration on file changes
+- **Configuration file:** `.lumosrc` for project-wide settings
+- **Package publishing:** crates.io (Rust) and npm (TypeScript)
 
-### Potential Challenges:
-- **Enum representation:** Rust enums ≠ TypeScript enums
-- **Generics:** May require significant IR changes
-- **Macros:** Complex to parse and generate
-- **Breaking changes:** Need migration tooling
+### Resolved Challenges:
+- ✅ **Enum representation:** Solved via discriminated unions in TypeScript
+- ✅ **IR flexibility:** Enum-based TypeDefinition supports extensibility
+- ✅ **Borsh compatibility:** Sequential discriminants match Borsh defaults
+
+### Remaining Challenges:
+- **Generics:** May require significant IR changes for type parameters
+- **Macros:** Complex to parse and generate custom proc macros
+- **Breaking changes:** Need migration tooling for schema evolution
 
 ---
 
 ## Metrics & Success Criteria
 
-### Phase 1 Success Criteria ✅
+### Phase 1 Success Criteria ✅ (2025-01-17)
 - [x] Parse all 5 example schemas
 - [x] Generate valid Rust code (verified via compilation)
 - [x] Generate valid TypeScript code (syntax validation)
-- [x] 100% test pass rate
+- [x] 100% test pass rate (50/50)
 - [x] Context-aware generation working
 - [x] E2E tests with actual compilation
 
-### Phase 2 Success Criteria (Planned)
-- [ ] CLI executable (`lumos` command)
-- [ ] File I/O working
-- [ ] Generate code to filesystem
-- [ ] Watch mode functional
-- [ ] Help documentation complete
+### Phase 2 Success Criteria ✅ (2025-01-17)
+- [x] CLI executable (`lumos` command)
+- [x] File I/O working
+- [x] Generate code to filesystem
+- [x] 4 commands implemented (generate, validate, init, check)
+- [x] Help documentation complete
+- [x] Colorized output
+
+### Phase 3.1 Success Criteria 🔄 (IN PROGRESS)
+
+**Week 1 - AST & Parser ✅**
+- [x] Enum syntax design with 8 comprehensive patterns
+- [x] AST support for 3 enum variant types
+- [x] Complete parser implementation
+- [x] 5 new parser tests passing
+- [x] Design documentation (500+ lines)
+
+**Week 2 - IR & Transform ✅**
+- [x] Enum-based TypeDefinition IR
+- [x] EnumDefinition and EnumVariantDefinition types
+- [x] Complete AST→IR transform for all variants
+- [x] 3 new transform tests passing
+- [x] All generators updated for new IR
+- [x] 57/57 tests passing (100%)
+
+**Week 3 - Code Generation ⏳ (NEXT)**
+- [ ] Rust enum generator with context-aware derives
+- [ ] TypeScript discriminated union generator
+- [ ] Enum-specific unit tests
+- [ ] E2E compilation tests with enums
+
+**Week 4 - Polish ⏳**
+- [ ] Real-world Solana instruction pattern validation
+- [ ] Performance optimization
+- [ ] Documentation updates
 
 ---
 
@@ -424,5 +589,5 @@ tempfile = "3.8"      # E2E test infrastructure
 
 ---
 
-**Last Updated:** 2025-01-17 (Phase 1 completion)
-**Next Update:** When Phase 2 CLI implementation begins
+**Last Updated:** 2025-11-17 (Phase 3.1 Week 2 - Enum IR & Transform complete)
+**Next Update:** When Phase 3.1 Week 3 (Enum Code Generation) completes
