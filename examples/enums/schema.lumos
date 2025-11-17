@@ -1,0 +1,209 @@
+// LUMOS Enum Support Examples
+// This file demonstrates all enum patterns that LUMOS should support
+
+// ============================================================================
+// 1. SIMPLE UNIT ENUMS (most common for state machines)
+// ============================================================================
+
+#[solana]
+enum GameState {
+    Inactive,
+    Active,
+    Paused,
+    Finished,
+}
+
+#[solana]
+enum PlayerStatus {
+    Offline,
+    Online,
+    Away,
+    InGame,
+}
+
+// ============================================================================
+// 2. ENUMS WITH TUPLE VARIANTS (data-carrying variants)
+// ============================================================================
+
+#[solana]
+enum GameEvent {
+    PlayerJoined(PublicKey),
+    PlayerLeft(PublicKey),
+    ScoreUpdated(PublicKey, u64),
+    ItemAcquired(PublicKey, u64, String),
+}
+
+// ============================================================================
+// 3. ENUMS WITH STRUCT VARIANTS (Solana Instruction Pattern)
+// ============================================================================
+
+#[solana]
+enum GameInstruction {
+    Initialize {
+        authority: PublicKey,
+        max_players: u8,
+        entry_fee: u64,
+    },
+
+    JoinGame {
+        player: PublicKey,
+        team_id: u8,
+    },
+
+    UpdateScore {
+        player: PublicKey,
+        score: u64,
+        timestamp: i64,
+    },
+
+    ClaimReward {
+        player: PublicKey,
+        amount: u64,
+    },
+
+    Terminate,
+}
+
+// ============================================================================
+// 4. MIXED VARIANT TYPES (combination of all types)
+// ============================================================================
+
+#[solana]
+enum MarketplaceAction {
+    // Unit variants
+    Pause,
+    Resume,
+
+    // Tuple variants
+    List(PublicKey, u64),
+    Delist(PublicKey),
+
+    // Struct variants
+    Purchase {
+        buyer: PublicKey,
+        nft_mint: PublicKey,
+        price: u64,
+        platform_fee: u64,
+    },
+
+    UpdateListing {
+        listing_id: u64,
+        new_price: u64,
+    },
+}
+
+// ============================================================================
+// 5. ERROR CODE ENUMS (common pattern)
+// ============================================================================
+
+#[solana]
+enum GameError {
+    InvalidPlayer,
+    GameFull,
+    InsufficientBalance,
+    GameNotActive,
+    UnauthorizedAction,
+    InvalidScore,
+}
+
+// ============================================================================
+// 6. ENUMS IN STRUCTS (enums as field types)
+// ============================================================================
+
+#[solana]
+#[account]
+struct GameAccount {
+    authority: PublicKey,
+    state: GameState,
+    current_players: u8,
+    max_players: u8,
+    created_at: i64,
+}
+
+#[solana]
+#[account]
+struct PlayerRecord {
+    wallet: PublicKey,
+    status: PlayerStatus,
+    score: u64,
+    last_action: i64,
+}
+
+// ============================================================================
+// 7. OPTION ENUM VARIANTS (enums with optional fields)
+// ============================================================================
+
+#[solana]
+enum Notification {
+    Message {
+        sender: PublicKey,
+        content: String,
+        timestamp: i64,
+    },
+
+    Alert {
+        level: u8,
+        message: String,
+        metadata: Option<String>,
+    },
+
+    SystemUpdate {
+        version: String,
+        optional_data: Option<[u8]>,
+    },
+}
+
+// ============================================================================
+// 8. COMPLEX REAL-WORLD EXAMPLE: DAO Proposal
+// ============================================================================
+
+#[solana]
+enum ProposalStatus {
+    Draft,
+    Active,
+    Succeeded,
+    Defeated,
+    Executed,
+    Cancelled,
+}
+
+#[solana]
+enum ProposalType {
+    TransferFunds {
+        recipient: PublicKey,
+        amount: u64,
+        token_mint: PublicKey,
+    },
+
+    UpdateConfig {
+        new_threshold: u64,
+        new_quorum: u64,
+    },
+
+    AddMember {
+        new_member: PublicKey,
+        voting_power: u64,
+    },
+
+    RemoveMember {
+        member: PublicKey,
+    },
+
+    Custom {
+        instruction_data: [u8],
+        program_id: PublicKey,
+    },
+}
+
+#[solana]
+#[account]
+struct Proposal {
+    id: u64,
+    proposer: PublicKey,
+    proposal_type: ProposalType,
+    status: ProposalStatus,
+    votes_for: u64,
+    votes_against: u64,
+    created_at: i64,
+    execution_time: Option<i64>,
+}
