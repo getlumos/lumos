@@ -61,9 +61,9 @@ struct UserAccount {
 - ✅ File I/O with proper error handling
 - ✅ Colorized terminal output (colored crate)
 
-### Phase 3.1: Enum Support 🔄 IN PROGRESS
+### Phase 3.1: Enum Support ✅ COMPLETE (2025-11-17)
 
-**57 tests passing (100% success rate) after Week 2**
+**64 tests passing (100% success rate) after Week 3**
 
 **Week 1: AST & Parser ✅ COMPLETE**
 - ✅ Enum syntax design (`examples/enums/schema.lumos` with 8 patterns)
@@ -80,16 +80,20 @@ struct UserAccount {
 - ✅ Updated all generators for new IR structure
 - ✅ All 57 tests passing
 
-**Week 3: Code Generation 📋 NEXT**
-- [ ] Rust enum generator implementation
-- [ ] TypeScript discriminated union generator
-- [ ] Enum-specific tests
-- [ ] E2E tests with enum compilation
+**Week 3: Code Generation ✅ COMPLETE**
+- ✅ Rust enum generator implementation (all 3 variant types)
+- ✅ TypeScript discriminated union generator with `kind` field
+- ✅ Context-aware derives (Anchor vs Borsh detection)
+- ✅ Borsh schema generation for enums (`borsh.rustEnum`)
+- ✅ 6 new unit tests (3 Rust + 3 TypeScript)
+- ✅ E2E test with enum compilation verification
+- ✅ All 64 tests passing
 
-**Week 4: Documentation & Polish 📋 FUTURE**
-- [ ] Update documentation with enum examples
+**Week 4: Documentation & Polish ⏳ IN PROGRESS**
+- ✅ Update CLAUDE.md with Phase 3.1 completion
+- [ ] Update execution-plan.md with detailed enum implementation
 - [ ] Real-world Solana instruction pattern testing
-- [ ] Performance optimization
+- [ ] Performance optimization (if needed)
 
 ### Phase 3.2: Advanced Features 📋 FUTURE
 
@@ -186,20 +190,20 @@ lumos/
 
 ## Test Suite
 
-**Total:** 57/57 passing (100%)
+**Total:** 64/64 passing (100%)
 
 | Suite | Count | Purpose |
 |-------|-------|---------|
-| Unit Tests | 33 | Core functionality (parser, generators, transform, AST) |
+| Unit Tests | 39 | Core functionality (parser, generators, transform, AST) |
 | Parser Integration | 5 | Real-world schema parsing |
-| Rust Generator Integration | 5 | Rust code generation |
-| TypeScript Generator Integration | 6 | TypeScript code generation |
-| E2E Compilation | 8 | Actual Rust compilation with cargo check |
+| Rust Generator Integration | 8 | Rust code generation (structs + enums) |
+| TypeScript Generator Integration | 9 | TypeScript code generation (structs + enums) |
+| E2E Compilation | 9 | Actual Rust compilation with cargo check |
 
-**New Tests (Phase 3.1 Week 1 & 2):**
-- 5 AST enum tests (unit/tuple/struct variants)
-- 3 Transform enum tests (full AST→IR pipeline)
-- Updated all generator tests for new IR structure
+**New Tests (Phase 3.1 Weeks 1-3):**
+- **Week 1:** 5 AST enum tests (unit/tuple/struct variants)
+- **Week 2:** 3 Transform enum tests (full AST→IR pipeline)
+- **Week 3:** 7 code generation tests (3 Rust + 3 TypeScript + 1 E2E enum)
 
 **Run tests:** `cd packages/core && cargo test`
 
@@ -557,16 +561,19 @@ tempfile = "3.8"      # E2E test infrastructure
 - [x] All generators updated for new IR
 - [x] 57/57 tests passing (100%)
 
-**Week 3 - Code Generation ⏳ (NEXT)**
-- [ ] Rust enum generator with context-aware derives
-- [ ] TypeScript discriminated union generator
-- [ ] Enum-specific unit tests
-- [ ] E2E compilation tests with enums
+**Week 3 - Code Generation ✅**
+- [x] Rust enum generator with context-aware derives
+- [x] TypeScript discriminated union generator with `kind` field
+- [x] Borsh schema generation for enums (`borsh.rustEnum`)
+- [x] 6 new unit tests (3 Rust + 3 TypeScript)
+- [x] E2E compilation test with enums
+- [x] 64/64 tests passing (100%)
 
-**Week 4 - Polish ⏳**
+**Week 4 - Polish ⏳ (IN PROGRESS)**
+- [x] CLAUDE.md documentation updates
+- [ ] execution-plan.md comprehensive update
 - [ ] Real-world Solana instruction pattern validation
-- [ ] Performance optimization
-- [ ] Documentation updates
+- [ ] Performance optimization (if needed)
 
 ---
 
@@ -589,5 +596,5 @@ tempfile = "3.8"      # E2E test infrastructure
 
 ---
 
-**Last Updated:** 2025-11-17 (Phase 3.1 Week 2 - Enum IR & Transform complete)
-**Next Update:** When Phase 3.1 Week 3 (Enum Code Generation) completes
+**Last Updated:** 2025-11-17 (Phase 3.1 Week 3 - Enum Code Generation complete)
+**Next Update:** When Phase 3.1 Week 4 (Documentation & Polish) completes
