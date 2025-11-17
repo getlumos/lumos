@@ -1,0 +1,20 @@
+[package]
+name = "lumos-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Command-line interface for LUMOS"
+
+[[bin]]
+name = "lumos"
+path = "src/main.rs"
+
+[dependencies]
+lumos-core = { path = "../core" }
+clap.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true

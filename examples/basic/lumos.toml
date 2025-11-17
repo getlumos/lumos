@@ -1,0 +1,20 @@
+# Basic LUMOS Example
+
+name = "UserAccount"
+solana = true
+
+[[fields]]
+name = "id"
+type = "u64"
+
+[[fields]]
+name = "wallet"
+type = "PublicKey"
+
+[[fields]]
+name = "balance"
+type = "u64"
+
+[[fields]]
+name = "created_at"
+type = "i64"
