@@ -5,34 +5,46 @@
 //!
 //! Parses `.lumos` files using `syn` and builds an AST.
 
-use crate::ast::{Attribute, AttributeValue, FieldDef, LumosFile, StructDef, TypeSpec};
+use crate::ast::{
+    Attribute, AttributeValue, EnumDef, EnumVariant, FieldDef, Item as AstItem, LumosFile,
+    StructDef, TypeSpec,
+};
 use crate::error::{LumosError, Result};
 use syn::{Item, Meta, Type};
 
 /// Parse a `.lumos` file into an AST
 pub fn parse_lumos_file(input: &str) -> Result<LumosFile> {
-    let mut structs = Vec::new();
+    let mut items = Vec::new();
 
     // Parse the file as Rust code using syn
     let file = syn::parse_file(input).map_err(|e| {
         LumosError::SchemaParse(format!("Failed to parse .lumos file: {}", e))
     })?;
 
-    // Extract struct definitions
+    // Extract struct and enum definitions
     for item in file.items {
-        if let Item::Struct(item_struct) = item {
-            let struct_def = parse_struct(item_struct)?;
-            structs.push(struct_def);
+        match item {
+            Item::Struct(item_struct) => {
+                let struct_def = parse_struct(item_struct)?;
+                items.push(AstItem::Struct(struct_def));
+            }
+            Item::Enum(item_enum) => {
+                let enum_def = parse_enum(item_enum)?;
+                items.push(AstItem::Enum(enum_def));
+            }
+            _ => {
+                // Ignore other items (functions, impls, etc.)
+            }
         }
     }
 
-    if structs.is_empty() {
+    if items.is_empty() {
         return Err(LumosError::SchemaParse(
-            "No struct definitions found in .lumos file".to_string(),
+            "No type definitions found in .lumos file".to_string(),
         ));
     }
 
-    Ok(LumosFile { structs })
+    Ok(LumosFile { items })
 }
 
 /// Parse a struct definition
@@ -67,6 +79,71 @@ fn parse_struct(item: syn::ItemStruct) -> Result<StructDef> {
         fields,
         span,
     })
+}
+
+/// Parse an enum definition
+fn parse_enum(item: syn::ItemEnum) -> Result<EnumDef> {
+    let name = item.ident.to_string();
+    let span = Some(item.ident.span());
+
+    // Extract attributes
+    let attributes = parse_attributes(&item.attrs)?;
+
+    // Extract variants
+    let mut variants = Vec::new();
+    for variant in item.variants {
+        let variant_def = parse_enum_variant(variant)?;
+        variants.push(variant_def);
+    }
+
+    if variants.is_empty() {
+        return Err(LumosError::SchemaParse(format!(
+            "Enum '{}' must have at least one variant",
+            name
+        )));
+    }
+
+    Ok(EnumDef {
+        name,
+        attributes,
+        variants,
+        span,
+    })
+}
+
+/// Parse an enum variant
+fn parse_enum_variant(variant: syn::Variant) -> Result<EnumVariant> {
+    let name = variant.ident.to_string();
+    let span = Some(variant.ident.span());
+
+    match variant.fields {
+        // Unit variant: `Active`
+        syn::Fields::Unit => Ok(EnumVariant::Unit { name, span }),
+
+        // Tuple variant: `PlayerJoined(PublicKey, u64)`
+        syn::Fields::Unnamed(fields_unnamed) => {
+            let mut types = Vec::new();
+            for field in fields_unnamed.unnamed {
+                let (type_spec, _optional) = parse_type(&field.ty)?;
+                types.push(type_spec);
+            }
+            Ok(EnumVariant::Tuple { name, types, span })
+        }
+
+        // Struct variant: `Initialize { authority: PublicKey }`
+        syn::Fields::Named(fields_named) => {
+            let mut fields = Vec::new();
+            for field in fields_named.named {
+                let field_def = parse_field(field)?;
+                fields.push(field_def);
+            }
+            Ok(EnumVariant::Struct {
+                name,
+                fields,
+                span,
+            })
+        }
+    }
 }
 
 /// Parse a field definition
@@ -235,11 +312,17 @@ mod tests {
         assert!(result.is_ok());
 
         let file = result.unwrap();
-        assert_eq!(file.structs.len(), 1);
-        assert_eq!(file.structs[0].name, "User");
-        assert_eq!(file.structs[0].fields.len(), 2);
-        assert_eq!(file.structs[0].fields[0].name, "id");
-        assert_eq!(file.structs[0].fields[1].name, "name");
+        assert_eq!(file.items.len(), 1);
+
+        match &file.items[0] {
+            AstItem::Struct(struct_def) => {
+                assert_eq!(struct_def.name, "User");
+                assert_eq!(struct_def.fields.len(), 2);
+                assert_eq!(struct_def.fields[0].name, "id");
+                assert_eq!(struct_def.fields[1].name, "name");
+            }
+            _ => panic!("Expected struct item"),
+        }
     }
 
     #[test]
@@ -260,12 +343,15 @@ mod tests {
         assert!(result.is_ok());
 
         let file = result.unwrap();
-        let struct_def = &file.structs[0];
-
-        assert!(struct_def.has_attribute("solana"));
-        assert!(struct_def.has_attribute("account"));
-        assert_eq!(struct_def.fields[0].name, "wallet");
-        assert!(struct_def.fields[0].has_attribute("key"));
+        match &file.items[0] {
+            AstItem::Struct(struct_def) => {
+                assert!(struct_def.has_attribute("solana"));
+                assert!(struct_def.has_attribute("account"));
+                assert_eq!(struct_def.fields[0].name, "wallet");
+                assert!(struct_def.fields[0].has_attribute("key"));
+            }
+            _ => panic!("Expected struct item"),
+        }
     }
 
     #[test]
@@ -280,8 +366,13 @@ mod tests {
         assert!(result.is_ok());
 
         let file = result.unwrap();
-        let field = &file.structs[0].fields[0];
-        assert!(field.optional);
+        match &file.items[0] {
+            AstItem::Struct(struct_def) => {
+                let field = &struct_def.fields[0];
+                assert!(field.optional);
+            }
+            _ => panic!("Expected struct item"),
+        }
     }
 
     #[test]
@@ -296,7 +387,12 @@ mod tests {
         assert!(result.is_ok());
 
         let file = result.unwrap();
-        let field = &file.structs[0].fields[0];
-        assert!(field.type_spec.is_array());
+        match &file.items[0] {
+            AstItem::Struct(struct_def) => {
+                let field = &struct_def.fields[0];
+                assert!(field.type_spec.is_array());
+            }
+            _ => panic!("Expected struct item"),
+        }
     }
 }

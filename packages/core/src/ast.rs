@@ -9,11 +9,21 @@
 
 use serde::{Deserialize, Serialize};
 
-/// A complete LUMOS file (can contain multiple structs)
+/// A complete LUMOS file (can contain multiple items)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LumosFile {
-    /// All struct definitions in this file
-    pub structs: Vec<StructDef>,
+    /// All items (structs and enums) in this file
+    pub items: Vec<Item>,
+}
+
+/// An item in a LUMOS file (struct or enum)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum Item {
+    /// Struct definition
+    Struct(StructDef),
+
+    /// Enum definition
+    Enum(EnumDef),
 }
 
 /// A struct definition
@@ -31,6 +41,50 @@ pub struct StructDef {
     /// Span information for error reporting
     #[serde(skip)]
     pub span: Option<proc_macro2::Span>,
+}
+
+/// An enum definition
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EnumDef {
+    /// Enum name (e.g., "GameState")
+    pub name: String,
+
+    /// Attributes applied to the enum (e.g., @solana)
+    pub attributes: Vec<Attribute>,
+
+    /// Variants in this enum
+    pub variants: Vec<EnumVariant>,
+
+    /// Span information for error reporting
+    #[serde(skip)]
+    pub span: Option<proc_macro2::Span>,
+}
+
+/// An enum variant
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum EnumVariant {
+    /// Unit variant (e.g., `Active`)
+    Unit {
+        name: String,
+        #[serde(skip)]
+        span: Option<proc_macro2::Span>,
+    },
+
+    /// Tuple variant (e.g., `PlayerJoined(PublicKey)`)
+    Tuple {
+        name: String,
+        types: Vec<TypeSpec>,
+        #[serde(skip)]
+        span: Option<proc_macro2::Span>,
+    },
+
+    /// Struct variant (e.g., `Initialize { authority: PublicKey }`)
+    Struct {
+        name: String,
+        fields: Vec<FieldDef>,
+        #[serde(skip)]
+        span: Option<proc_macro2::Span>,
+    },
 }
 
 /// A field definition within a struct
@@ -102,6 +156,43 @@ impl StructDef {
     /// Get attribute by name
     pub fn get_attribute(&self, name: &str) -> Option<&Attribute> {
         self.attributes.iter().find(|attr| attr.name == name)
+    }
+}
+
+impl EnumDef {
+    /// Check if enum has a specific attribute
+    pub fn has_attribute(&self, name: &str) -> bool {
+        self.attributes.iter().any(|attr| attr.name == name)
+    }
+
+    /// Get attribute by name
+    pub fn get_attribute(&self, name: &str) -> Option<&Attribute> {
+        self.attributes.iter().find(|attr| attr.name == name)
+    }
+
+    /// Check if this enum has only unit variants
+    pub fn is_unit_only(&self) -> bool {
+        self.variants
+            .iter()
+            .all(|v| matches!(v, EnumVariant::Unit { .. }))
+    }
+
+    /// Check if this enum has struct variants
+    pub fn has_struct_variants(&self) -> bool {
+        self.variants
+            .iter()
+            .any(|v| matches!(v, EnumVariant::Struct { .. }))
+    }
+}
+
+impl EnumVariant {
+    /// Get the variant name
+    pub fn name(&self) -> &str {
+        match self {
+            EnumVariant::Unit { name, .. } => name,
+            EnumVariant::Tuple { name, .. } => name,
+            EnumVariant::Struct { name, .. } => name,
+        }
     }
 }
 
@@ -205,5 +296,101 @@ mod tests {
 
         let type_array = TypeSpec::Array(Box::new(TypeSpec::Primitive("PublicKey".to_string())));
         assert_eq!(type_array.to_string(), "[PublicKey]");
+    }
+
+    #[test]
+    fn test_enum_has_attribute() {
+        let enum_def = EnumDef {
+            name: "GameState".to_string(),
+            attributes: vec![Attribute {
+                name: "solana".to_string(),
+                value: None,
+                span: None,
+            }],
+            variants: vec![],
+            span: None,
+        };
+
+        assert!(enum_def.has_attribute("solana"));
+        assert!(!enum_def.has_attribute("account"));
+    }
+
+    #[test]
+    fn test_enum_is_unit_only() {
+        let unit_enum = EnumDef {
+            name: "GameState".to_string(),
+            attributes: vec![],
+            variants: vec![
+                EnumVariant::Unit {
+                    name: "Active".to_string(),
+                    span: None,
+                },
+                EnumVariant::Unit {
+                    name: "Inactive".to_string(),
+                    span: None,
+                },
+            ],
+            span: None,
+        };
+
+        assert!(unit_enum.is_unit_only());
+
+        let mixed_enum = EnumDef {
+            name: "GameEvent".to_string(),
+            attributes: vec![],
+            variants: vec![
+                EnumVariant::Unit {
+                    name: "Start".to_string(),
+                    span: None,
+                },
+                EnumVariant::Tuple {
+                    name: "PlayerJoined".to_string(),
+                    types: vec![TypeSpec::Primitive("PublicKey".to_string())],
+                    span: None,
+                },
+            ],
+            span: None,
+        };
+
+        assert!(!mixed_enum.is_unit_only());
+    }
+
+    #[test]
+    fn test_enum_variant_name() {
+        let unit = EnumVariant::Unit {
+            name: "Active".to_string(),
+            span: None,
+        };
+        assert_eq!(unit.name(), "Active");
+
+        let tuple = EnumVariant::Tuple {
+            name: "PlayerJoined".to_string(),
+            types: vec![],
+            span: None,
+        };
+        assert_eq!(tuple.name(), "PlayerJoined");
+
+        let struct_variant = EnumVariant::Struct {
+            name: "Initialize".to_string(),
+            fields: vec![],
+            span: None,
+        };
+        assert_eq!(struct_variant.name(), "Initialize");
+    }
+
+    #[test]
+    fn test_item_enum() {
+        let enum_def = EnumDef {
+            name: "Status".to_string(),
+            attributes: vec![],
+            variants: vec![],
+            span: None,
+        };
+
+        let item = Item::Enum(enum_def.clone());
+        match item {
+            Item::Enum(e) => assert_eq!(e.name, "Status"),
+            _ => panic!("Expected enum item"),
+        }
     }
 }

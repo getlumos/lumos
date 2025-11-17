@@ -6,7 +6,9 @@
 //! This module transforms the Abstract Syntax Tree (AST) produced by the parser
 //! into the Intermediate Representation (IR) used by code generators.
 
-use crate::ast::{FieldDef as AstField, LumosFile, StructDef as AstStruct, TypeSpec as AstType};
+use crate::ast::{
+    FieldDef as AstField, Item as AstItem, LumosFile, StructDef as AstStruct, TypeSpec as AstType,
+};
 use crate::error::Result;
 use crate::ir::{FieldDefinition, Metadata, TypeDefinition, TypeInfo};
 
@@ -14,9 +16,17 @@ use crate::ir::{FieldDefinition, Metadata, TypeDefinition, TypeInfo};
 pub fn transform_to_ir(file: LumosFile) -> Result<Vec<TypeDefinition>> {
     let mut type_defs = Vec::new();
 
-    for struct_def in file.structs {
-        let type_def = transform_struct(struct_def)?;
-        type_defs.push(type_def);
+    for item in file.items {
+        match item {
+            AstItem::Struct(struct_def) => {
+                let type_def = transform_struct(struct_def)?;
+                type_defs.push(type_def);
+            }
+            AstItem::Enum(_enum_def) => {
+                // TODO: Implement enum transformation in next step
+                // For now, skip enums to keep existing tests passing
+            }
+        }
     }
 
     Ok(type_defs)
