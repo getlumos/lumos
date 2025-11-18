@@ -1,0 +1,86 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "LUMOS",
+  "scopeName": "source.lumos",
+  "fileTypes": [".lumos"],
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#attributes" },
+    { "include": "#keywords" },
+    { "include": "#types" },
+    { "include": "#storage-types" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.lumos",
+          "begin": "//",
+          "end": "$"
+        },
+        {
+          "name": "comment.block.lumos",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
+    },
+    "attributes": {
+      "patterns": [
+        {
+          "name": "meta.attribute.lumos",
+          "begin": "#\\[",
+          "end": "\\]",
+          "beginCaptures": {
+            "0": { "name": "punctuation.definition.attribute.lumos" }
+          },
+          "endCaptures": {
+            "0": { "name": "punctuation.definition.attribute.lumos" }
+          },
+          "patterns": [
+            {
+              "name": "entity.name.attribute.lumos",
+              "match": "\\b(solana|account|derive)\\b"
+            }
+          ]
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.declaration.lumos",
+          "match": "\\b(struct|enum)\\b"
+        },
+        {
+          "name": "keyword.control.lumos",
+          "match": "\\b(pub|use|mod|impl|trait|type|const|static)\\b"
+        }
+      ]
+    },
+    "types": {
+      "patterns": [
+        {
+          "name": "support.type.primitive.lumos",
+          "match": "\\b(u8|u16|u32|u64|u128|i8|i16|i32|i64|i128|f32|f64|bool|char|String)\\b"
+        },
+        {
+          "name": "support.type.solana.lumos",
+          "match": "\\b(PublicKey|Pubkey|Signature|AccountInfo|AccountMeta)\\b"
+        },
+        {
+          "name": "support.type.compound.lumos",
+          "match": "\\b(Vec|Option)\\b"
+        }
+      ]
+    },
+    "storage-types": {
+      "patterns": [
+        {
+          "name": "storage.type.lumos",
+          "match": "\\b[A-Z][A-Za-z0-9_]*\\b"
+        }
+      ]
+    }
+  }
+}

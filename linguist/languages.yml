@@ -1,0 +1,14 @@
+# Language definition for LUMOS
+# To be added to github-linguist/linguist repository
+
+LUMOS:
+  type: programming
+  color: "#8B5CF6"  # Purple color representing type-safety and cross-language bridging
+  aliases:
+  - lumos
+  extensions:
+  - ".lumos"
+  tm_scope: source.lumos
+  ace_mode: text
+  language_id: 1000000  # Unique ID (will be assigned by Linguist maintainers)
+  interpreters: []

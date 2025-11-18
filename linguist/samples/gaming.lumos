@@ -1,0 +1,90 @@
+// On-Chain Gaming - Complete Schema
+// Demonstrates: Player state, items, leaderboards
+
+#[solana]
+#[account]
+struct PlayerAccount {
+    #[key]
+    wallet: PublicKey,
+    #[max(20)]
+    username: String,
+
+    // Stats
+    level: u16,
+    experience: u64,
+    health: u16,
+    mana: u16,
+
+    // Currency
+    gold: u64,
+    gems: u32,
+
+    // Inventory
+    equipped_items: [PublicKey],
+    inventory_items: [PublicKey],
+
+    // Progress
+    quests_completed: u32,
+    achievements: [u32],
+
+    // Timestamps
+    created_at: i64,
+    last_login: i64,
+    total_playtime: i64,
+}
+
+#[solana]
+#[account]
+struct GameItem {
+    #[key]
+    id: u64,
+    owner: PublicKey,
+
+    // Item details
+    #[max(50)]
+    name: String,
+    item_type: u8,  // 0=weapon, 1=armor, 2=consumable, etc.
+    rarity: u8,     // 0=common, 1=rare, 2=epic, 3=legendary
+
+    // Stats
+    power: u16,
+    defense: u16,
+    speed: u16,
+
+    // State
+    is_equipped: bool,
+    is_tradeable: bool,
+    durability: u16,
+
+    acquired_at: i64,
+}
+
+#[solana]
+#[account]
+struct Leaderboard {
+    #[key]
+    season: u32,
+
+    // Top players (stored as tuples conceptually)
+    top_players: [PublicKey],
+    top_scores: [u64],
+
+    season_start: i64,
+    season_end: i64,
+
+    is_active: bool,
+}
+
+#[solana]
+struct MatchResult {
+    player: PublicKey,
+    opponent: Option<PublicKey>,
+
+    score: u64,
+    rewards_earned: u64,
+    experience_gained: u32,
+
+    match_duration: i64,
+    timestamp: i64,
+    is_victory: bool,
+}

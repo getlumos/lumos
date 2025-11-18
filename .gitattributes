@@ -1,0 +1,14 @@
+# LUMOS Language Recognition
+# Mark .lumos files as a programming language
+*.lumos linguist-language=Rust linguist-detectable=true
+
+# Exclude generated code from language statistics
+packages/*/generated/** linguist-generated=true
+**/generated/** linguist-generated=true
+
+# Mark example outputs as documentation (not part of primary codebase stats)
+examples/**/*.rs linguist-documentation=true
+examples/**/*.ts linguist-documentation=true
+
+# Future: Once LUMOS is added to GitHub Linguist, change to:
+# *.lumos linguist-language=LUMOS linguist-detectable=true
