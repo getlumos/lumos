@@ -13,6 +13,9 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/RECTOR-LABS/lumos"
 homepage = "https://github.com/RECTOR-LABS/lumos"
 authors = ["RECTOR <rz1989s@gmail.com>"]
+keywords = ["solana", "blockchain", "codegen", "borsh", "anchor"]
+categories = ["development-tools", "parser-implementations", "command-line-utilities"]
+readme = "README.md"
 
 [workspace.dependencies]
 # Parsing
