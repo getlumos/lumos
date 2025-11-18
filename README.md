@@ -15,13 +15,17 @@
 
 *One schema to rule them all • TypeScript ↔ Rust synchronization • Borsh serialization • Anchor integration • Zero type drift • Production-ready code generation*
 
+[![CI](https://img.shields.io/github/actions/workflow/status/RECTOR-LABS/lumos/ci.yml?branch=main&label=CI&logo=github)](https://github.com/RECTOR-LABS/lumos/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE-MIT)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE-APACHE)
 [![Rust](https://img.shields.io/badge/Rust-1.70+-orange.svg)](https://www.rust-lang.org)
 [![Made for Solana](https://img.shields.io/badge/Made%20for-Solana-9945FF.svg)](https://solana.com)
 [![Phase 1 Complete](https://img.shields.io/badge/Phase%201-Complete-success.svg)](#-roadmap)
 [![Phase 2 Complete](https://img.shields.io/badge/Phase%202-Complete-success.svg)](#-roadmap)
-[![Tests Passing](https://img.shields.io/badge/Tests-50%2F50%20passing-brightgreen.svg)](#-test-suite)
+[![Phase 3.1 Complete](https://img.shields.io/badge/Phase%203.1-Complete-success.svg)](#-roadmap)
+[![Phase 3.2 Complete](https://img.shields.io/badge/Phase%203.2-Complete-success.svg)](#-roadmap)
+[![Tests Passing](https://img.shields.io/badge/Tests-64%2F64%20passing-brightgreen.svg)](#-test-suite)
+[![VSCode Extension](https://img.shields.io/badge/VSCode-Extension%20Ready-blue.svg)](vscode-lumos/)
 
 </div>
 
@@ -806,14 +810,119 @@ Core CLI functionality to make LUMOS usable in real projects:
 
 ---
 
-### Phase 3: Advanced Features 📋 **FUTURE** (Months 7-12)
+### Phase 3.1: Enum Support ✅ **COMPLETED**
+
+**Status:** 🎉 **100% Complete (2025-11-17)**
+
+Full support for Rust-style enums with three variant types:
+
+- ✅ **Unit Variants** - Simple state machines (`Active`, `Paused`, `Finished`)
+- ✅ **Tuple Variants** - Data-carrying variants (`PlayerJoined(PublicKey, u64)`)
+- ✅ **Struct Variants** - Named fields (`Initialize { authority: PublicKey }`)
+
+**Implementation:**
+
+- ✅ **AST & Parser** (Week 1)
+  - Complete enum syntax design with 8 comprehensive patterns
+  - AST support for all 3 enum variant types
+  - Full parser implementation
+  - 5 new parser tests passing
+  - 500+ lines design documentation
+
+- ✅ **IR & Transform** (Week 2)
+  - Enum-based TypeDefinition IR architecture
+  - EnumDefinition and EnumVariantDefinition types
+  - Complete AST→IR transform for all variants
+  - 3 new transform tests passing
+  - All generators updated for new IR structure
+
+- ✅ **Code Generation** (Week 3)
+  - Rust native enum generator with context-aware derives
+  - TypeScript discriminated unions with `kind` field
+  - Borsh schema support for enums
+  - Enum-specific unit tests
+  - E2E compilation tests with enums
+
+- ✅ **Documentation & Polish** (Week 4)
+  - Real-world Solana instruction pattern validation
+  - Performance optimization
+  - Complete documentation updates
+  - Example schemas with enum patterns
+
+**Metrics:**
+- ✅ **64/64 tests passing** (100% success rate)
+- ✅ All 3 enum variant types supported
+- ✅ E2E compilation tests pass
+- ✅ Context-aware derives working
+- ✅ TypeScript discriminated unions with type safety
+
+**Example:**
+
+```lumos
+#[solana]
+enum GameInstruction {
+    Initialize {
+        authority: PublicKey,
+        max_players: u32,
+    },
+    UpdateScore {
+        player: PublicKey,
+        new_score: u64,
+    },
+}
+```
+
+---
+
+### Phase 3.2: VSCode Extension ✅ **COMPLETED**
+
+**Status:** 🎉 **100% Complete (2025-11-18)**
+
+Professional VSCode extension for enhanced `.lumos` development experience:
+
+- ✅ **Syntax Highlighting**
+  - TextMate grammar with 26 rules
+  - Support for attributes, keywords, types, strings, numbers, comments
+  - Solana-specific type highlighting (`PublicKey`, `Signature`)
+  - Context-aware highlighting for `#[solana]`, `#[account]`, enums
+
+- ✅ **Code Snippets** (13 snippets)
+  - `struct` - Basic struct template
+  - `account` - Solana account struct
+  - `enum-unit` - Unit variant enum
+  - `enum-tuple` - Tuple variant enum
+  - `enum-struct` - Struct variant enum
+  - `enum-mixed` - Mixed variant enum
+  - Field type snippets (`pubkey`, `u64`, `string`, `vec`, `option`)
+
+- ✅ **Commands**
+  - `LUMOS: Generate Code` - Generate Rust + TypeScript from current file
+  - `LUMOS: Validate Schema` - Validate current schema syntax
+
+- ✅ **Auto-Generation**
+  - Generate code on save (configurable)
+  - Setting: `lumos.autoGenerateOnSave`
+
+- ✅ **Professional Branding**
+  - "Radiant Precision" icon design (inspired by Frieren's magic circles)
+  - Purple and gold color scheme
+  - Geometric patterns symbolizing code generation
+
+**Metrics:**
+- ✅ Extension package: 17.77 KB
+- ✅ 26 syntax highlighting rules
+- ✅ 13 productivity snippets
+- ✅ 2 commands + auto-generation
+- ✅ Professional icon and branding
+- ✅ Ready for VSCode marketplace publishing
+
+**Location:** `vscode-lumos/` directory
+
+---
+
+### Phase 3.3: Advanced Features 📋 **FUTURE** (Months 7-12)
 
 Powerful features for complex use cases:
-
-- [ ] **Enum Support**
-  - Rust enum → TypeScript union types
-  - Discriminant handling
-  - Match exhaustiveness
 
 - [ ] **PDA (Program Derived Address) Helpers**
   - `#[pda]` attribute support
@@ -830,12 +939,6 @@ Powerful features for complex use cases:
   - Range constraints (`min`, `max`)
   - Custom validation functions
 
-- [ ] **VSCode Extension**
-  - Syntax highlighting for `.lumos` files
-  - IntelliSense and autocomplete
-  - Error checking in editor
-  - Code actions and quick fixes
-
 - [ ] **Migration Tools**
   - Version compatibility checker
   - Schema diff tool
@@ -843,10 +946,9 @@ Powerful features for complex use cases:
   - Migration script generator
 
 **Success Criteria:**
-- [ ] Enum support in 10+ test cases
-- [ ] VSCode extension published to marketplace
 - [ ] PDA generation tested with Anchor
 - [ ] Migration tools handle v1 → v2 schemas
+- [ ] Validation constraints in 10+ test cases
 
 ---
 
