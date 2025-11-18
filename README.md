@@ -25,7 +25,7 @@
 [![Phase 3.1 Complete](https://img.shields.io/badge/Phase%203.1-Complete-success.svg)](#-roadmap)
 [![Phase 3.2 Complete](https://img.shields.io/badge/Phase%203.2-Complete-success.svg)](#-roadmap)
 [![Tests Passing](https://img.shields.io/badge/Tests-64%2F64%20passing-brightgreen.svg)](#-test-suite)
-[![VSCode Extension](https://img.shields.io/badge/VSCode-Extension%20Ready-blue.svg)](vscode-lumos/)
+[![VSCode Extension](https://img.shields.io/badge/VSCode-Extension%20Ready-blue.svg)](https://github.com/getlumos/vscode-lumos)
 
 </div>
 
@@ -916,7 +916,7 @@ Professional VSCode extension for enhanced `.lumos` development experience:
 - ✅ Professional icon and branding
 - ✅ Ready for VSCode marketplace publishing
 
-**Location:** `vscode-lumos/` directory
+**Repository:** [getlumos/vscode-lumos](https://github.com/getlumos/vscode-lumos)
 
 ---
 
