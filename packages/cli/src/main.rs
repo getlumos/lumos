@@ -37,6 +37,18 @@ enum Commands {
         /// Watch for changes and regenerate automatically
         #[arg(short, long)]
         watch: bool,
+
+        /// Preview changes without writing files
+        #[arg(short = 'n', long)]
+        dry_run: bool,
+
+        /// Create backup before overwriting existing files
+        #[arg(short = 'b', long)]
+        backup: bool,
+
+        /// Show diff and ask for confirmation before writing
+        #[arg(short = 'd', long)]
+        show_diff: bool,
     },
 
     /// Validate schema syntax without generating code
@@ -70,11 +82,14 @@ fn main() -> Result<()> {
             schema,
             output,
             watch,
+            dry_run,
+            backup,
+            show_diff,
         } => {
             if watch {
                 run_watch_mode(&schema, output.as_deref())
             } else {
-                run_generate(&schema, output.as_deref())
+                run_generate(&schema, output.as_deref(), dry_run, backup, show_diff)
             }
         }
         Commands::Validate { schema } => run_validate(&schema),
@@ -84,17 +99,32 @@ fn main() -> Result<()> {
 }
 
 /// Generate Rust and TypeScript code from schema
-fn run_generate(schema_path: &Path, output_dir: Option<&Path>) -> Result<()> {
+fn run_generate(
+    schema_path: &Path,
+    output_dir: Option<&Path>,
+    dry_run: bool,
+    backup: bool,
+    show_diff: bool,
+) -> Result<()> {
     let output_dir = output_dir.unwrap_or_else(|| Path::new("."));
 
+    // Dry-run mode header
+    if dry_run {
+        println!("{}", "🔍 Dry-run mode (no files will be written)\n".cyan().bold());
+    }
+
     // Read schema file
-    println!("{:>12} {}", "Reading".cyan().bold(), schema_path.display());
+    if !dry_run {
+        println!("{:>12} {}", "Reading".cyan().bold(), schema_path.display());
+    }
 
     let content = fs::read_to_string(schema_path)
         .with_context(|| format!("Failed to read schema file: {}", schema_path.display()))?;
 
     // Parse schema
-    println!("{:>12} schema", "Parsing".cyan().bold());
+    if !dry_run {
+        println!("{:>12} schema", "Parsing".cyan().bold());
+    }
 
     let ast = parse_lumos_file(&content)
         .with_context(|| format!("Failed to parse schema: {}", schema_path.display()))?;
@@ -110,44 +140,284 @@ fn run_generate(schema_path: &Path, output_dir: Option<&Path>) -> Result<()> {
         return Ok(());
     }
 
-    // Generate Rust code
-    println!("{:>12} Rust code", "Generating".green().bold());
+    // Generate code
+    if !dry_run {
+        println!("{:>12} code", "Generating".green().bold());
+    }
 
     let rust_code = rust::generate_module(&ir);
-    let rust_output = output_dir.join("generated.rs");
-
-    fs::write(&rust_output, rust_code)
-        .with_context(|| format!("Failed to write Rust output: {}", rust_output.display()))?;
-
-    println!(
-        "{:>12} {}",
-        "Wrote".green().bold(),
-        rust_output.display().to_string().bold()
-    );
-
-    // Generate TypeScript code
-    println!("{:>12} TypeScript code", "Generating".green().bold());
-
     let ts_code = typescript::generate_module(&ir);
+
+    let rust_output = output_dir.join("generated.rs");
     let ts_output = output_dir.join("generated.ts");
 
-    fs::write(&ts_output, ts_code)
-        .with_context(|| format!("Failed to write TypeScript output: {}", ts_output.display()))?;
+    // Dry-run mode: preview only
+    if dry_run {
+        preview_file_changes(&rust_output, &rust_code, "Rust")?;
+        preview_file_changes(&ts_output, &ts_code, "TypeScript")?;
 
-    println!(
-        "{:>12} {}",
-        "Wrote".green().bold(),
-        ts_output.display().to_string().bold()
-    );
+        println!("\n{}", "No files written (dry-run mode).".yellow());
+        println!("Run without --dry-run to apply changes.");
+        return Ok(());
+    }
+
+    // Backup mode: create backups
+    if backup {
+        println!("{:>12} files...", "Backing up".cyan().bold());
+        create_backup_if_exists(&rust_output)?;
+        create_backup_if_exists(&ts_output)?;
+    }
+
+    // Write Rust file
+    let rust_written = write_with_diff_check(
+        &rust_output,
+        &rust_code,
+        show_diff,
+        "Rust",
+    )?;
+
+    if rust_written {
+        println!(
+            "{:>12} {}",
+            "Wrote".green().bold(),
+            rust_output.display().to_string().bold()
+        );
+    } else if show_diff {
+        println!(
+            "{:>12} {}",
+            "Skipped".yellow().bold(),
+            rust_output.display().to_string().dimmed()
+        );
+    }
+
+    // Write TypeScript file
+    let ts_written = write_with_diff_check(
+        &ts_output,
+        &ts_code,
+        show_diff,
+        "TypeScript",
+    )?;
+
+    if ts_written {
+        println!(
+            "{:>12} {}",
+            "Wrote".green().bold(),
+            ts_output.display().to_string().bold()
+        );
+    } else if show_diff {
+        println!(
+            "{:>12} {}",
+            "Skipped".yellow().bold(),
+            ts_output.display().to_string().dimmed()
+        );
+    }
 
     // Success summary
+    if rust_written || ts_written {
+        println!(
+            "\n{:>12} generated {} type definitions",
+            "Finished".green().bold(),
+            ir.len()
+        );
+    }
+
+    // Backup restoration hint
+    if backup && (rust_written || ts_written) {
+        println!("\n{}", "Backups created. Restore with:".dimmed());
+        if rust_written && rust_output.with_extension("rs.backup").exists() {
+            println!("  mv {} {}",
+                rust_output.with_extension("rs.backup").display().to_string().dimmed(),
+                rust_output.display().to_string().dimmed()
+            );
+        }
+        if ts_written && ts_output.with_extension("ts.backup").exists() {
+            println!("  mv {} {}",
+                ts_output.with_extension("ts.backup").display().to_string().dimmed(),
+                ts_output.display().to_string().dimmed()
+            );
+        }
+    }
+
+    Ok(())
+}
+
+/// Preview file changes in dry-run mode
+fn preview_file_changes(path: &Path, new_content: &str, label: &str) -> Result<()> {
+    let new_lines = new_content.lines().count();
+    let new_size = new_content.len();
+
+    println!("Would generate: {} ({})",
+        path.display().to_string().bold(),
+        label.cyan()
+    );
+    println!("  Size: {} lines ({:.1} KB)", new_lines, new_size as f64 / 1024.0);
+
+    if path.exists() {
+        let old_content = fs::read_to_string(path)?;
+        let old_lines = old_content.lines().count();
+
+        if new_content == old_content {
+            println!("  {}", "No changes (identical to existing)".dimmed());
+        } else {
+            let added = new_lines.saturating_sub(old_lines);
+            let removed = old_lines.saturating_sub(new_lines);
+
+            if added > 0 {
+                println!("  {} {} lines", "+".green(), added);
+            }
+            if removed > 0 {
+                println!("  {} {} lines", "-".red(), removed);
+            }
+            if added == 0 && removed == 0 {
+                println!("  {} content modified", "~".yellow());
+            }
+        }
+    } else {
+        println!("  {}", "New file (doesn't exist yet)".green());
+    }
+
+    println!();
+    Ok(())
+}
+
+/// Create backup of file if it exists
+fn create_backup_if_exists(path: &Path) -> Result<()> {
+    if !path.exists() {
+        return Ok(());
+    }
+
+    let backup_path = path.with_extension(
+        format!("{}.backup", path.extension().and_then(|s| s.to_str()).unwrap_or(""))
+    );
+
+    fs::copy(path, &backup_path)
+        .with_context(|| format!("Failed to create backup: {}", backup_path.display()))?;
+
     println!(
-        "{:>12} generated {} type definitions",
-        "Finished".green().bold(),
-        ir.len()
+        "  {} → {}",
+        path.display().to_string().dimmed(),
+        backup_path.display().to_string().cyan()
     );
 
     Ok(())
+}
+
+/// Write file with optional diff check and confirmation
+fn write_with_diff_check(
+    path: &Path,
+    content: &str,
+    show_diff: bool,
+    label: &str,
+) -> Result<bool> {
+    // If show_diff and file exists, show diff and ask for confirmation
+    if show_diff && path.exists() {
+        let old_content = fs::read_to_string(path)?;
+
+        // If identical, skip
+        if content == old_content {
+            println!("{}: {} {}",
+                "Unchanged".dimmed(),
+                path.display().to_string().dimmed(),
+                format!("({})", label).dimmed()
+            );
+            return Ok(false);
+        }
+
+        // Show diff
+        show_diff_and_ask_confirmation(path, &old_content, content, label)?;
+
+        // User declined
+        return Ok(false);
+    }
+
+    // Write file
+    fs::write(path, content)
+        .with_context(|| format!("Failed to write {}: {}", label, path.display()))?;
+
+    Ok(true)
+}
+
+/// Show diff and ask for user confirmation
+fn show_diff_and_ask_confirmation(
+    path: &Path,
+    old_content: &str,
+    new_content: &str,
+    label: &str,
+) -> Result<()> {
+    use std::io::{self, Write};
+
+    println!("\n{}", "─".repeat(60).dimmed());
+    println!("DIFF: {} ({})", path.display().to_string().bold(), label.cyan());
+    println!("{}", "─".repeat(60).dimmed());
+    println!();
+
+    // Simple line-by-line diff
+    let old_lines: Vec<&str> = old_content.lines().collect();
+    let new_lines: Vec<&str> = new_content.lines().collect();
+
+    let mut added = 0;
+    let mut removed = 0;
+    let max_lines = old_lines.len().max(new_lines.len());
+
+    // Show first 20 lines of diff
+    let preview_limit = 20;
+    for i in 0..max_lines.min(preview_limit) {
+        let old_line = old_lines.get(i);
+        let new_line = new_lines.get(i);
+
+        match (old_line, new_line) {
+            (Some(old), Some(new)) if old != new => {
+                println!("{} {}", "-".red(), old);
+                println!("{} {}", "+".green(), new);
+                added += 1;
+                removed += 1;
+            }
+            (Some(old), None) => {
+                println!("{} {}", "-".red(), old);
+                removed += 1;
+            }
+            (None, Some(new)) => {
+                println!("{} {}", "+".green(), new);
+                added += 1;
+            }
+            (Some(line), Some(_)) => {
+                println!("  {}", line.dimmed());
+            }
+            _ => {}
+        }
+    }
+
+    if max_lines > preview_limit {
+        println!("\n{}", format!("... ({} more lines)", max_lines - preview_limit).dimmed());
+    }
+
+    println!();
+    println!("Summary:");
+    if added > 0 {
+        println!("  Lines added: {}", added.to_string().green());
+    }
+    if removed > 0 {
+        println!("  Lines removed: {}", removed.to_string().red());
+    }
+    println!();
+
+    // Ask for confirmation
+    print!("Apply changes to {}? [y/N] ", path.display());
+    io::stdout().flush()?;
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+
+    let response = input.trim().to_lowercase();
+    if response == "y" || response == "yes" {
+        fs::write(path, new_content)
+            .with_context(|| format!("Failed to write {}", path.display()))?;
+        println!("{:>12} {}", "Applied".green().bold(), path.display());
+        Ok(())
+    } else {
+        println!("{:>12} {}", "Skipped".yellow().bold(), path.display());
+        Ok(())
+    }
 }
 
 /// Validate schema syntax without generating code
@@ -376,8 +646,8 @@ fn run_watch_mode(schema_path: &Path, output_dir: Option<&Path>) -> Result<()> {
     println!("Press Ctrl+C to stop");
     println!();
 
-    // Initial generation
-    if let Err(e) = run_generate(&schema_path, output_dir) {
+    // Initial generation (no safety flags in watch mode)
+    if let Err(e) = run_generate(&schema_path, output_dir, false, false, false) {
         eprintln!("{}: {}", "error".red().bold(), e);
     }
 
@@ -405,7 +675,7 @@ fn run_watch_mode(schema_path: &Path, output_dir: Option<&Path>) -> Result<()> {
                 println!();
                 println!("{:>12} change detected", "Detected".yellow().bold());
 
-                if let Err(e) = run_generate(&schema_path, output_dir_buf.as_deref()) {
+                if let Err(e) = run_generate(&schema_path, output_dir_buf.as_deref(), false, false, false) {
                     eprintln!("{}: {}", "error".red().bold(), e);
                 }
 

@@ -3,7 +3,35 @@
 
 //! LUMOS Parser
 //!
-//! Parses `.lumos` files using `syn` and builds an AST.
+//! Parses `.lumos` files using `syn` and builds an Abstract Syntax Tree (AST).
+//!
+//! ## Overview
+//!
+//! The parser leverages the `syn` crate to parse Rust-style syntax and extract
+//! struct and enum definitions with their attributes. It handles:
+//!
+//! - Struct definitions with `#[account]`, `#[solana]` attributes
+//! - Enum definitions (unit, tuple, and struct variants)
+//! - Field types (primitives, arrays, options, user-defined)
+//! - Attribute parsing (`#[max(n)]`, `#[key]`, etc.)
+//!
+//! ## Example
+//!
+//! ```rust
+//! use lumos_core::parser::parse_lumos_file;
+//!
+//! let source = r#"
+//!     #[solana]
+//!     struct Account {
+//!         owner: PublicKey,
+//!         balance: u64,
+//!     }
+//! "#;
+//!
+//! let ast = parse_lumos_file(source)?;
+//! assert_eq!(ast.items.len(), 1);
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! ```
 
 use crate::ast::{
     Attribute, AttributeValue, EnumDef, EnumVariant, FieldDef, Item as AstItem, LumosFile,
@@ -12,7 +40,60 @@ use crate::ast::{
 use crate::error::{LumosError, Result};
 use syn::{Item, Meta, Type};
 
-/// Parse a `.lumos` file into an AST
+/// Parse a `.lumos` file into an Abstract Syntax Tree.
+///
+/// This is the main entry point for parsing LUMOS schemas. It accepts source code
+/// as a string and returns a [`LumosFile`] containing all parsed type definitions.
+///
+/// # Arguments
+///
+/// * `input` - Source code of a `.lumos` file (Rust-style syntax)
+///
+/// # Returns
+///
+/// * `Ok(LumosFile)` - Successfully parsed AST with all structs and enums
+/// * `Err(LumosError)` - Syntax error or no type definitions found
+///
+/// # Supported Syntax
+///
+/// - **Structs**: `struct Name { field: Type, ... }`
+/// - **Enums**: `enum Name { Variant, Variant(Type), Variant { field: Type } }`
+/// - **Attributes**: `#[solana]`, `#[account]`, `#[max(n)]`, `#[key]`
+/// - **Types**: Primitives (`u64`, `String`), Solana types (`PublicKey`), arrays `[T]`, `Option<T>`
+///
+/// # Example
+///
+/// ```rust
+/// use lumos_core::parser::parse_lumos_file;
+///
+/// let source = r#"
+///     #[solana]
+///     #[account]
+///     struct UserAccount {
+///         wallet: PublicKey,
+///         balance: u64,
+///         items: [PublicKey],
+///     }
+///
+///     #[solana]
+///     enum GameState {
+///         Active,
+///         Paused,
+///         Finished,
+///     }
+/// "#;
+///
+/// let ast = parse_lumos_file(source)?;
+/// assert_eq!(ast.items.len(), 2); // 1 struct + 1 enum
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
+///
+/// # Errors
+///
+/// Returns [`LumosError::SchemaParse`] if:
+/// - Syntax is invalid (not valid Rust-style code)
+/// - No struct or enum definitions found
+/// - Unsupported type syntax encountered
 pub fn parse_lumos_file(input: &str) -> Result<LumosFile> {
     let mut items = Vec::new();
 

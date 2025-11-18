@@ -1,6 +1,6 @@
 # Getting Started with LUMOS
 
-> **Note:** LUMOS is currently in early development (Phase 1). This guide describes the planned functionality.
+> **Status:** Phase 3.1 (Enum Support) - Production Ready
 
 ## Installation
 
@@ -20,57 +20,86 @@ cd my-solana-project
 This creates:
 ```
 my-solana-project/
-├── lumos.toml          # Your schema definitions
-└── generated/          # Generated code will appear here
+├── schema.lumos        # Your schema definitions
+└── .gitignore          # Ignores generated files
 ```
 
 ### 2. Define your schema
 
-Edit `lumos.toml`:
+Edit `schema.lumos`:
 
-```toml
-[schema]
-name = "UserAccount"
-solana = true
+```lumos
+#[solana]
+#[account]
+struct UserAccount {
+    wallet: PublicKey,
+    balance: u64,
+    level: u16,
+}
 
-[[schema.fields]]
-name = "id"
-type = "u64"
-
-[[schema.fields]]
-name = "wallet"
-type = "PublicKey"
-
-[[schema.fields]]
-name = "balance"
-type = "u64"
+#[solana]
+enum UserStatus {
+    Active,
+    Inactive,
+    Suspended,
+}
 ```
 
 ### 3. Generate code
 
 ```bash
-lumos build
+lumos generate schema.lumos
 ```
 
 This generates:
 
-**Rust** (`generated/rust/lib.rs`):
+**Rust** (`generated.rs`):
 ```rust
-#[derive(BorshSerialize, BorshDeserialize)]
+use anchor_lang::prelude::*;
+use solana_program::pubkey::Pubkey;
+
+#[account]
 pub struct UserAccount {
-    pub id: u64,
     pub wallet: Pubkey,
     pub balance: u64,
+    pub level: u16,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
+pub enum UserStatus {
+    Active,
+    Inactive,
+    Suspended,
 }
 ```
 
-**TypeScript** (`generated/typescript/types.ts`):
+**TypeScript** (`generated.ts`):
 ```typescript
+import * as borsh from '@coral-xyz/borsh';
+import { PublicKey } from '@solana/web3.js';
+
 export interface UserAccount {
-  id: number;
   wallet: PublicKey;
   balance: number;
+  level: number;
 }
+
+export const UserAccountSchema = borsh.struct([
+  borsh.publicKey('wallet'),
+  borsh.u64('balance'),
+  borsh.u16('level'),
+]);
+
+export type UserStatus =
+  | { kind: 'Active' }
+  | { kind: 'Inactive' }
+  | { kind: 'Suspended' };
+
+export const UserStatusSchema = borsh.rustEnum([
+  borsh.unit('Active'),
+  borsh.unit('Inactive'),
+  borsh.unit('Suspended'),
+]);
 ```
 
 ### 4. Use in your project

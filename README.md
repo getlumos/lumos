@@ -15,7 +15,7 @@
 
 *One schema to rule them all • TypeScript ↔ Rust synchronization • Borsh serialization • Anchor integration • Zero type drift • Production-ready code generation*
 
-[![CI](https://img.shields.io/github/actions/workflow/status/RECTOR-LABS/lumos/ci.yml?branch=main&label=CI&logo=github)](https://github.com/RECTOR-LABS/lumos/actions)
+[![CI](https://img.shields.io/github/actions/workflow/status/getlumos/lumos/ci.yml?branch=main&label=CI&logo=github)](https://github.com/getlumos/lumos/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE-MIT)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE-APACHE)
 [![Rust](https://img.shields.io/badge/Rust-1.70+-orange.svg)](https://www.rust-lang.org)
@@ -306,7 +306,7 @@ IR-based design makes adding new target languages straightforward. Future suppor
 
 ```bash
 # Clone the repository
-git clone https://github.com/RECTOR-LABS/lumos.git
+git clone https://github.com/getlumos/lumos.git
 cd lumos
 
 # Build the CLI
@@ -1111,7 +1111,7 @@ LUMOS is in active early development and we welcome contributions from the commu
 
 1. **Fork the Repository**
    ```bash
-   git fork https://github.com/RECTOR-LABS/lumos.git
+   git fork https://github.com/getlumos/lumos.git
    ```
 
 2. **Create a Feature Branch**
@@ -1141,7 +1141,7 @@ LUMOS is in active early development and we welcome contributions from the commu
 
 ```bash
 # Clone the repository
-git clone https://github.com/RECTOR-LABS/lumos.git
+git clone https://github.com/getlumos/lumos.git
 cd lumos
 
 # Build the project
@@ -1202,11 +1202,11 @@ You may choose either license when using LUMOS in your projects.
 ### Created By
 
 **RECTOR** ([@rz1989s](https://github.com/rz1989s))
-Senior Developer & Founder of [RECTOR-LABS](https://github.com/RECTOR-LABS)
+Senior Developer & Founder of [getlumos](https://github.com/getlumos)
 
 ### Organization
 
-Built with dedication at **RECTOR-LABS** - Empowering developers with innovative tools.
+Built with dedication at **getlumos** - Empowering developers with innovative tools.
 
 ### Acknowledgments
 
@@ -1255,6 +1255,6 @@ The **Solana developer community** - developers building the future of decentral
 
 ⭐ **Star this repo** if you find LUMOS useful!
 
-[Report Bug](https://github.com/RECTOR-LABS/lumos/issues) • [Request Feature](https://github.com/RECTOR-LABS/lumos/issues) • [Discussions](https://github.com/RECTOR-LABS/lumos/discussions)
+[Report Bug](https://github.com/getlumos/lumos/issues) • [Request Feature](https://github.com/getlumos/lumos/issues) • [Discussions](https://github.com/getlumos/lumos/discussions)
 
 </div>

@@ -113,7 +113,7 @@ pub enum TypeSpec {
     /// Primitive type (e.g., u64, string, bool)
     Primitive(String),
 
-    /// Array type (e.g., [PublicKey])
+    /// Array type (e.g., `Vec<PublicKey>` in Rust)
     Array(Box<TypeSpec>),
 
     /// User-defined type (e.g., Address, CustomStruct)

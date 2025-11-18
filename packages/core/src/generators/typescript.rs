@@ -1,9 +1,82 @@
 // Licensed under either of Apache License, Version 2.0 or MIT license at your option.
 // Copyright 2025 RECTOR-LABS
 
-//! TypeScript code generator
+//! TypeScript Code Generator
 //!
-//! Generates TypeScript interfaces and Borsh schemas from IR for client-side integration.
+//! Generates TypeScript interfaces and Borsh schemas from IR for client-side Solana
+//! integration with guaranteed serialization compatibility.
+//!
+//! ## Overview
+//!
+//! This generator produces type-safe TypeScript code for Solana dApp frontends with:
+//!
+//! - **TypeScript Interfaces** - Type-safe data structures for IDE support
+//! - **Borsh Schemas** - Serialization/deserialization compatible with Rust on-chain code
+//! - **Discriminated Unions** - Type-safe enums with `kind` field for narrowing
+//! - **Solana Web3.js Integration** - Automatic imports for `PublicKey`, `Keypair`
+//!
+//! ## Discriminated Union Pattern (Enums)
+//!
+//! Rust enums are mapped to TypeScript discriminated unions with a `kind` field:
+//!
+//! ```rust,ignore
+//! // LUMOS schema
+//! enum GameState {
+//!     Active,
+//!     Paused,
+//!     Finished,
+//! }
+//! ```
+//!
+//! ```typescript
+//! // Generated TypeScript
+//! export type GameState =
+//!   | { kind: 'Active' }
+//!   | { kind: 'Paused' }
+//!   | { kind: 'Finished' };
+//! ```
+//!
+//! ## Type Mapping
+//!
+//! IR types are mapped to TypeScript types:
+//!
+//! | IR Type | TypeScript | Borsh Schema | Notes |
+//! |---------|------------|--------------|-------|
+//! | `u8`, `u16`, `u32`, `u64` | `number` | `borsh.u64`, etc. | Safe for values < 2^53 |
+//! | `u128`, `i128` | `bigint` | `borsh.u128`, `borsh.i128` | Native BigInt support |
+//! | `String` | `string` | `borsh.string` | UTF-8 strings |
+//! | `bool` | `boolean` | `borsh.bool` | - |
+//! | `PublicKey` | `PublicKey` | `borsh.publicKey` | From `@solana/web3.js` |
+//! | `[T]` | `T[]` | `borsh.vec(...)` | Dynamic arrays |
+//! | `Option<T>` | `T \| undefined` | `borsh.option(...)` | Optional fields |
+//!
+//! ## Example
+//!
+//! ```rust
+//! use lumos_core::{parser, transform, generators::typescript};
+//!
+//! let source = r#"
+//!     #[solana]
+//!     #[account]
+//!     struct UserAccount {
+//!         wallet: PublicKey,
+//!         balance: u64,
+//!         items: [PublicKey],
+//!     }
+//! "#;
+//!
+//! let ast = parser::parse_lumos_file(source)?;
+//! let ir = transform::transform_to_ir(ast)?;
+//! let ts_code = typescript::generate_module(&ir);
+//!
+//! // Generated TypeScript includes interface + Borsh schema
+//! assert!(ts_code.contains("export interface UserAccount"));
+//! assert!(ts_code.contains("export const UserAccountSchema = borsh.struct"));
+//! assert!(ts_code.contains("borsh.publicKey('wallet')"));
+//! assert!(ts_code.contains("borsh.u64('balance')"));
+//! assert!(ts_code.contains("borsh.vec(borsh.publicKey)('items')"));
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! ```
 
 use crate::ir::{
     EnumDefinition, EnumVariantDefinition, StructDefinition, TypeDefinition, TypeInfo,
@@ -76,7 +149,112 @@ fn generate_enum(enum_def: &EnumDefinition) -> String {
     output
 }
 
-/// Generate TypeScript code for multiple type definitions
+/// Generate TypeScript code for a complete module with multiple type definitions.
+///
+/// This is the primary function for generating TypeScript code from IR. It handles
+/// import management, interface generation, and Borsh schema creation for all types.
+///
+/// # Arguments
+///
+/// * `type_defs` - Slice of IR type definitions (structs and enums)
+///
+/// # Returns
+///
+/// Complete TypeScript source code as a `String`, ready to write to a `.ts` file.
+/// Includes:
+/// - Auto-generated file header
+/// - Optimized imports (`@solana/web3.js`, `@coral-xyz/borsh`)
+/// - TypeScript interfaces for structs
+/// - Discriminated union types for enums
+/// - Borsh schemas for Solana types (serialization/deserialization)
+///
+/// # Import Management
+///
+/// The function analyzes all types to determine required imports:
+///
+/// - `import { PublicKey } from '@solana/web3.js'` - When `PublicKey` or `Pubkey` types detected
+/// - `import * as borsh from '@coral-xyz/borsh'` - For Solana types (with `#[solana]` attribute)
+///
+/// # Enum Generation Strategy
+///
+/// Enums are converted to TypeScript discriminated unions with a `kind` field for type narrowing:
+///
+/// - **Unit variants**: `{ kind: 'VariantName' }`
+/// - **Tuple variants**: `{ kind: 'VariantName'; field0: Type; field1: Type }`
+/// - **Struct variants**: `{ kind: 'VariantName'; fieldName: Type }`
+///
+/// This enables TypeScript's type narrowing for safe pattern matching.
+///
+/// # Example
+///
+/// ```rust
+/// use lumos_core::{parser, transform, generators::typescript};
+///
+/// let source = r#"
+///     #[solana]
+///     #[account]
+///     struct UserAccount {
+///         wallet: PublicKey,
+///         balance: u64,
+///     }
+///
+///     #[solana]
+///     enum GameState {
+///         Active,
+///         Paused,
+///         Finished,
+///     }
+/// "#;
+///
+/// let ast = parser::parse_lumos_file(source)?;
+/// let ir = transform::transform_to_ir(ast)?;
+/// let ts_code = typescript::generate_module(&ir);
+///
+/// // Includes necessary imports
+/// assert!(ts_code.contains("import { PublicKey } from '@solana/web3.js'"));
+/// assert!(ts_code.contains("import * as borsh from '@coral-xyz/borsh'"));
+///
+/// // Struct interface + Borsh schema
+/// assert!(ts_code.contains("export interface UserAccount"));
+/// assert!(ts_code.contains("export const UserAccountSchema = borsh.struct"));
+///
+/// // Enum discriminated union + Borsh schema
+/// assert!(ts_code.contains("export type GameState ="));
+/// assert!(ts_code.contains("{ kind: 'Active' }"));
+/// assert!(ts_code.contains("export const GameStateSchema = borsh.rustEnum"));
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
+///
+/// # Generated Code Structure
+///
+/// ```typescript
+/// // Auto-generated by LUMOS
+/// // DO NOT EDIT - Changes will be overwritten
+///
+/// import { PublicKey } from '@solana/web3.js';
+/// import * as borsh from '@coral-xyz/borsh';
+///
+/// export interface UserAccount {
+///   wallet: PublicKey;
+///   balance: number;
+/// }
+///
+/// export const UserAccountSchema = borsh.struct([
+///   borsh.publicKey('wallet'),
+///   borsh.u64('balance'),
+/// ]);
+///
+/// export type GameState =
+///   | { kind: 'Active' }
+///   | { kind: 'Paused' }
+///   | { kind: 'Finished' };
+///
+/// export const GameStateSchema = borsh.rustEnum([
+///   borsh.unit('Active'),
+///   borsh.unit('Paused'),
+///   borsh.unit('Finished'),
+/// ]);
+/// ```
 pub fn generate_module(type_defs: &[TypeDefinition]) -> String {
     let mut output = String::new();
 

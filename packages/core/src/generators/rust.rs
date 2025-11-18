@@ -1,9 +1,63 @@
 // Licensed under either of Apache License, Version 2.0 or MIT license at your option.
 // Copyright 2025 RECTOR-LABS
 
-//! Rust code generator
+//! Rust Code Generator
 //!
-//! Generates production-ready Rust code from IR for use in Solana programs.
+//! Generates production-ready Rust code from IR for Solana programs with intelligent
+//! Anchor and Borsh integration.
+//!
+//! ## Overview
+//!
+//! This generator produces idiomatic Rust code suitable for Solana blockchain development,
+//! with context-aware support for:
+//!
+//! - **Anchor Framework** - Automatically uses `anchor_lang::prelude::*` when needed
+//! - **Borsh Serialization** - Pure Borsh derives for non-Anchor structs
+//! - **Smart Imports** - Detects required dependencies (Pubkey, Anchor, Borsh)
+//! - **Context-Aware Derives** - No conflicting derives for `#[account]` structs
+//!
+//! ## Context-Aware Generation
+//!
+//! The generator intelligently adapts based on type attributes:
+//!
+//! | Type | Imports | Derives | Notes |
+//! |------|---------|---------|-------|
+//! | `#[account]` struct | `anchor_lang::prelude::*` | None | Anchor provides derives |
+//! | Non-account in Anchor module | `anchor_lang::prelude::*` | `AnchorSerialize, AnchorDeserialize` | Module-level Anchor usage |
+//! | Pure Borsh struct | `borsh::{BorshSerialize, BorshDeserialize}` | `BorshSerialize, BorshDeserialize` | Standalone Borsh |
+//!
+//! ## Type Mapping
+//!
+//! IR types are mapped to Rust types:
+//!
+//! - `PublicKey` → `Pubkey` (Solana program type)
+//! - `Signature` → `String` (base58 representation)
+//! - Arrays → `Vec<T>`
+//! - `Option<T>` → `Option<T>`
+//!
+//! ## Example
+//!
+//! ```rust
+//! use lumos_core::{parser, transform, generators::rust};
+//!
+//! let source = r#"
+//!     #[solana]
+//!     #[account]
+//!     struct UserAccount {
+//!         wallet: PublicKey,
+//!         balance: u64,
+//!     }
+//! "#;
+//!
+//! let ast = parser::parse_lumos_file(source)?;
+//! let ir = transform::transform_to_ir(ast)?;
+//! let rust_code = rust::generate_module(&ir);
+//!
+//! // Generated code uses Anchor imports, no derives (Anchor provides them)
+//! assert!(rust_code.contains("use anchor_lang::prelude::*"));
+//! assert!(rust_code.contains("#[account]"));
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! ```
 
 use crate::ir::{
     EnumDefinition, EnumVariantDefinition, StructDefinition, TypeDefinition, TypeInfo,
@@ -131,7 +185,98 @@ fn generate_enum(enum_def: &EnumDefinition) -> String {
     output
 }
 
-/// Generate Rust code for multiple type definitions
+/// Generate Rust code for a complete module with multiple type definitions.
+///
+/// This is the primary function for generating Rust code from IR. It handles
+/// module-level import management, context-aware derive generation, and proper
+/// formatting of all type definitions.
+///
+/// # Arguments
+///
+/// * `type_defs` - Slice of IR type definitions (structs and enums)
+///
+/// # Returns
+///
+/// Complete Rust source code as a `String`, ready to write to a `.rs` file.
+/// Includes:
+/// - Auto-generated file header
+/// - Optimized imports (Anchor, Borsh, Solana types)
+/// - All struct and enum definitions with proper derives
+///
+/// # Context-Aware Import Management
+///
+/// The function analyzes ALL types in the module to determine the optimal import strategy:
+///
+/// - If **any** type uses `#[account]` → use `anchor_lang::prelude::*` for entire module
+/// - Otherwise → collect individual Borsh imports
+/// - Automatically adds `solana_program::pubkey::Pubkey` when PublicKey types are detected
+///
+/// This prevents import conflicts in mixed modules (Anchor + non-Anchor structs).
+///
+/// # Context-Aware Derives
+///
+/// Derives are generated based on module context:
+///
+/// - `#[account]` structs: NO derives (Anchor macro provides them)
+/// - Non-account structs in Anchor module: `AnchorSerialize, AnchorDeserialize, Debug, Clone`
+/// - Pure Borsh structs: `BorshSerialize, BorshDeserialize, Debug, Clone`
+///
+/// # Example
+///
+/// ```rust
+/// use lumos_core::{parser, transform, generators::rust};
+///
+/// let source = r#"
+///     #[solana]
+///     #[account]
+///     struct UserAccount {
+///         wallet: PublicKey,
+///         balance: u64,
+///     }
+///
+///     #[solana]
+///     struct UserStats {
+///         wins: u32,
+///         losses: u32,
+///     }
+/// "#;
+///
+/// let ast = parser::parse_lumos_file(source)?;
+/// let ir = transform::transform_to_ir(ast)?;
+/// let rust_code = rust::generate_module(&ir);
+///
+/// // Module uses Anchor imports (because UserAccount has #[account])
+/// assert!(rust_code.contains("use anchor_lang::prelude::*"));
+/// assert!(rust_code.contains("use solana_program::pubkey::Pubkey"));
+///
+/// // UserAccount: no derives (Anchor provides them)
+/// // UserStats: AnchorSerialize/AnchorDeserialize (in Anchor module)
+/// assert!(rust_code.contains("#[account]"));
+/// assert!(rust_code.contains("#[derive(AnchorSerialize, AnchorDeserialize"));
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
+///
+/// # Generated Code Structure
+///
+/// ```rust,ignore
+/// // Auto-generated by LUMOS
+/// // DO NOT EDIT - Changes will be overwritten
+///
+/// use anchor_lang::prelude::*;
+/// use solana_program::pubkey::Pubkey;
+///
+/// #[account]
+/// pub struct UserAccount {
+///     pub wallet: Pubkey,
+///     pub balance: u64,
+/// }
+///
+/// #[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
+/// pub struct UserStats {
+///     pub wins: u32,
+///     pub losses: u32,
+/// }
+/// ```
 pub fn generate_module(type_defs: &[TypeDefinition]) -> String {
     let mut output = String::new();
 

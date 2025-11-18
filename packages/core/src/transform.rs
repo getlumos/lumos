@@ -1,10 +1,67 @@
 // Licensed under either of Apache License, Version 2.0 or MIT license at your option.
 // Copyright 2025 RECTOR-LABS
 
-//! Transform AST into IR
+//! AST to IR Transformation
 //!
 //! This module transforms the Abstract Syntax Tree (AST) produced by the parser
 //! into the Intermediate Representation (IR) used by code generators.
+//!
+//! ## Overview
+//!
+//! The transformation layer serves as a bridge between parsing and code generation,
+//! converting language-specific AST nodes into language-agnostic IR. This separation
+//! enables:
+//!
+//! - **Language independence** - IR can target multiple output languages
+//! - **Type normalization** - TypeScript aliases (`number`, `string`) map to Rust types
+//! - **Metadata extraction** - Attributes like `#[solana]`, `#[account]` are preserved
+//! - **Validation** - Type information is validated during transformation
+//!
+//! ## Transformation Pipeline
+//!
+//! ```text
+//! AST (syn-based) → Transform → IR (language-agnostic)
+//!     ├─ StructDef  → StructDefinition
+//!     ├─ EnumDef    → EnumDefinition
+//!     ├─ FieldDef   → FieldDefinition
+//!     └─ TypeSpec   → TypeInfo
+//! ```
+//!
+//! ## Type Mapping
+//!
+//! The transform layer normalizes type aliases:
+//!
+//! - `number` → `u64`
+//! - `string` → `String`
+//! - `boolean` → `bool`
+//! - Solana types (`PublicKey`, `Signature`) are preserved for generator mapping
+//!
+//! ## Example
+//!
+//! ```rust
+//! use lumos_core::{parser, transform};
+//!
+//! let source = r#"
+//!     #[solana]
+//!     #[account]
+//!     struct UserAccount {
+//!         wallet: PublicKey,
+//!         balance: u64,
+//!     }
+//!
+//!     #[solana]
+//!     enum GameState {
+//!         Active,
+//!         Paused,
+//!     }
+//! "#;
+//!
+//! let ast = parser::parse_lumos_file(source)?;
+//! let ir = transform::transform_to_ir(ast)?;
+//!
+//! assert_eq!(ir.len(), 2); // 1 struct + 1 enum
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! ```
 
 use crate::ast::{
     EnumDef as AstEnum, EnumVariant as AstEnumVariant, FieldDef as AstField, Item as AstItem,
@@ -16,7 +73,54 @@ use crate::ir::{
     TypeDefinition, TypeInfo,
 };
 
-/// Transform a parsed LUMOS file (AST) into IR
+/// Transform a parsed LUMOS file (AST) into Intermediate Representation (IR).
+///
+/// This is the main entry point for AST → IR transformation. It processes all
+/// type definitions (structs and enums) in the parsed file and converts them to
+/// language-agnostic IR suitable for code generation.
+///
+/// # Arguments
+///
+/// * `file` - Parsed LUMOS file containing AST items (structs and enums)
+///
+/// # Returns
+///
+/// * `Ok(Vec<TypeDefinition>)` - Successfully transformed IR type definitions
+/// * `Err(LumosError)` - Transformation error (e.g., invalid type)
+///
+/// # Type Normalization
+///
+/// The transformation performs type alias normalization:
+/// - TypeScript-friendly aliases (`number`, `string`, `boolean`) are mapped to Rust types
+/// - Solana types (`PublicKey`, `Signature`) are preserved for generator-specific mapping
+/// - Optional types (`Option<T>`) are detected and wrapped in `TypeInfo::Option`
+///
+/// # Example
+///
+/// ```rust
+/// use lumos_core::{parser, transform};
+///
+/// let source = r#"
+///     #[solana]
+///     struct Account {
+///         owner: PublicKey,
+///         balance: number,  // TypeScript alias
+///         active: boolean,  // TypeScript alias
+///     }
+/// "#;
+///
+/// let ast = parser::parse_lumos_file(source)?;
+/// let ir = transform::transform_to_ir(ast)?;
+///
+/// // Type aliases are normalized to Rust types in IR
+/// // number → u64, boolean → bool
+/// assert_eq!(ir.len(), 1);
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
+///
+/// # Errors
+///
+/// Returns [`crate::error::LumosError`] if transformation fails (rare, most validation happens in parser).
 pub fn transform_to_ir(file: LumosFile) -> Result<Vec<TypeDefinition>> {
     let mut type_defs = Vec::new();
 
