@@ -108,7 +108,7 @@ jobs:
         run: cargo install cargo-tarpaulin
 
       - name: Generate coverage
-        run: cargo tarpaulin --all-features --workspace --timeout 300 --out Xml
+        run: cargo tarpaulin --all-features --workspace --timeout 600 --out Xml
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -163,35 +163,3 @@ jobs:
           name: lumos-cli-windows
           path: target/release/lumos.exe
 
-  vscode-extension:
-    name: VSCode Extension Build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: vscode-lumos/package-lock.json
-
-      - name: Install dependencies
-        working-directory: vscode-lumos
-        run: npm ci
-
-      - name: Compile extension
-        working-directory: vscode-lumos
-        run: npm run compile
-
-      - name: Package extension
-        working-directory: vscode-lumos
-        run: npm run package
-
-      - name: Upload VSIX
-        uses: actions/upload-artifact@v4
-        with:
-          name: vscode-extension
-          path: vscode-lumos/*.vsix

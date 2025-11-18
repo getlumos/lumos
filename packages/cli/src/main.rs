@@ -110,7 +110,10 @@ fn run_generate(
 
     // Dry-run mode header
     if dry_run {
-        println!("{}", "🔍 Dry-run mode (no files will be written)\n".cyan().bold());
+        println!(
+            "{}",
+            "🔍 Dry-run mode (no files will be written)\n".cyan().bold()
+        );
     }
 
     // Read schema file
@@ -169,12 +172,7 @@ fn run_generate(
     }
 
     // Write Rust file
-    let rust_written = write_with_diff_check(
-        &rust_output,
-        &rust_code,
-        show_diff,
-        "Rust",
-    )?;
+    let rust_written = write_with_diff_check(&rust_output, &rust_code, show_diff, "Rust")?;
 
     if rust_written {
         println!(
@@ -191,12 +189,7 @@ fn run_generate(
     }
 
     // Write TypeScript file
-    let ts_written = write_with_diff_check(
-        &ts_output,
-        &ts_code,
-        show_diff,
-        "TypeScript",
-    )?;
+    let ts_written = write_with_diff_check(&ts_output, &ts_code, show_diff, "TypeScript")?;
 
     if ts_written {
         println!(
@@ -225,14 +218,24 @@ fn run_generate(
     if backup && (rust_written || ts_written) {
         println!("\n{}", "Backups created. Restore with:".dimmed());
         if rust_written && rust_output.with_extension("rs.backup").exists() {
-            println!("  mv {} {}",
-                rust_output.with_extension("rs.backup").display().to_string().dimmed(),
+            println!(
+                "  mv {} {}",
+                rust_output
+                    .with_extension("rs.backup")
+                    .display()
+                    .to_string()
+                    .dimmed(),
                 rust_output.display().to_string().dimmed()
             );
         }
         if ts_written && ts_output.with_extension("ts.backup").exists() {
-            println!("  mv {} {}",
-                ts_output.with_extension("ts.backup").display().to_string().dimmed(),
+            println!(
+                "  mv {} {}",
+                ts_output
+                    .with_extension("ts.backup")
+                    .display()
+                    .to_string()
+                    .dimmed(),
                 ts_output.display().to_string().dimmed()
             );
         }
@@ -246,11 +249,16 @@ fn preview_file_changes(path: &Path, new_content: &str, label: &str) -> Result<(
     let new_lines = new_content.lines().count();
     let new_size = new_content.len();
 
-    println!("Would generate: {} ({})",
+    println!(
+        "Would generate: {} ({})",
         path.display().to_string().bold(),
         label.cyan()
     );
-    println!("  Size: {} lines ({:.1} KB)", new_lines, new_size as f64 / 1024.0);
+    println!(
+        "  Size: {} lines ({:.1} KB)",
+        new_lines,
+        new_size as f64 / 1024.0
+    );
 
     if path.exists() {
         let old_content = fs::read_to_string(path)?;
@@ -286,9 +294,10 @@ fn create_backup_if_exists(path: &Path) -> Result<()> {
         return Ok(());
     }
 
-    let backup_path = path.with_extension(
-        format!("{}.backup", path.extension().and_then(|s| s.to_str()).unwrap_or(""))
-    );
+    let backup_path = path.with_extension(format!(
+        "{}.backup",
+        path.extension().and_then(|s| s.to_str()).unwrap_or("")
+    ));
 
     fs::copy(path, &backup_path)
         .with_context(|| format!("Failed to create backup: {}", backup_path.display()))?;
@@ -303,19 +312,15 @@ fn create_backup_if_exists(path: &Path) -> Result<()> {
 }
 
 /// Write file with optional diff check and confirmation
-fn write_with_diff_check(
-    path: &Path,
-    content: &str,
-    show_diff: bool,
-    label: &str,
-) -> Result<bool> {
+fn write_with_diff_check(path: &Path, content: &str, show_diff: bool, label: &str) -> Result<bool> {
     // If show_diff and file exists, show diff and ask for confirmation
     if show_diff && path.exists() {
         let old_content = fs::read_to_string(path)?;
 
         // If identical, skip
         if content == old_content {
-            println!("{}: {} {}",
+            println!(
+                "{}: {} {}",
                 "Unchanged".dimmed(),
                 path.display().to_string().dimmed(),
                 format!("({})", label).dimmed()
@@ -347,7 +352,11 @@ fn show_diff_and_ask_confirmation(
     use std::io::{self, Write};
 
     println!("\n{}", "─".repeat(60).dimmed());
-    println!("DIFF: {} ({})", path.display().to_string().bold(), label.cyan());
+    println!(
+        "DIFF: {} ({})",
+        path.display().to_string().bold(),
+        label.cyan()
+    );
     println!("{}", "─".repeat(60).dimmed());
     println!();
 
@@ -388,7 +397,10 @@ fn show_diff_and_ask_confirmation(
     }
 
     if max_lines > preview_limit {
-        println!("\n{}", format!("... ({} more lines)", max_lines - preview_limit).dimmed());
+        println!(
+            "\n{}",
+            format!("... ({} more lines)", max_lines - preview_limit).dimmed()
+        );
     }
 
     println!();
@@ -675,7 +687,9 @@ fn run_watch_mode(schema_path: &Path, output_dir: Option<&Path>) -> Result<()> {
                 println!();
                 println!("{:>12} change detected", "Detected".yellow().bold());
 
-                if let Err(e) = run_generate(&schema_path, output_dir_buf.as_deref(), false, false, false) {
+                if let Err(e) =
+                    run_generate(&schema_path, output_dir_buf.as_deref(), false, false, false)
+                {
                     eprintln!("{}: {}", "error".red().bold(), e);
                 }
 
