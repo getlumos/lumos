@@ -157,8 +157,27 @@ enum GameState {
 - [x] CI/CD pipeline working
 - [x] Organization migrated (getlumos)
 - [x] Homepage updated (lumos-lang.com)
-- [ ] Published to crates.io
+- [x] Published to crates.io (lumos-core v0.1.0, lumos-cli v0.1.0)
 - [ ] VSCode extension published
+
+---
+
+## Installation
+
+```bash
+# Install CLI
+cargo install lumos-cli
+
+# Verify installation
+lumos --version
+
+# Or use as library
+cargo add lumos-core
+```
+
+**crates.io URLs:**
+- https://crates.io/crates/lumos-core
+- https://crates.io/crates/lumos-cli
 
 ---
 
@@ -170,4 +189,4 @@ enum GameState {
 ---
 
 **Last Updated:** 2025-11-18
-**Status:** Ready for crates.io publishing
+**Status:** Published on crates.io ✅

@@ -15,6 +15,8 @@
 
 *One schema to rule them all • TypeScript ↔ Rust synchronization • Borsh serialization • Anchor integration • Zero type drift • Production-ready code generation*
 
+[![Crates.io](https://img.shields.io/crates/v/lumos-core?label=lumos-core)](https://crates.io/crates/lumos-core)
+[![Crates.io](https://img.shields.io/crates/v/lumos-cli?label=lumos-cli)](https://crates.io/crates/lumos-cli)
 [![CI](https://img.shields.io/github/actions/workflow/status/getlumos/lumos/ci.yml?branch=main&label=CI&logo=github)](https://github.com/getlumos/lumos/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE-MIT)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE-APACHE)
@@ -302,6 +304,24 @@ IR-based design makes adding new target languages straightforward. Future suppor
 - Rust 1.70 or higher
 - Cargo package manager
 
+### Install from crates.io (Recommended)
+
+```bash
+# Install the CLI
+cargo install lumos-cli
+
+# Verify installation
+lumos --version
+# lumos-cli 0.1.0
+
+# Or add as library dependency
+cargo add lumos-core
+```
+
+**Published Packages:**
+- 📦 [lumos-core](https://crates.io/crates/lumos-core) - Core library (parser, generators, IR)
+- 🔧 [lumos-cli](https://crates.io/crates/lumos-cli) - Command-line interface
+
 ### Install from Source
 
 ```bash
@@ -313,30 +333,16 @@ cd lumos
 cargo build --release
 
 # The binary will be available at: target/release/lumos
-# Add to PATH or run directly
 ./target/release/lumos --help
-
-# Verify installation
-cargo run --bin lumos -- --version
 ```
 
 ### Run Tests
 
 ```bash
 cd packages/core
-cargo test
+cargo test --all-features --workspace
 
-# All 50 tests should pass ✅
-```
-
-### Coming Soon
-
-```bash
-# Install via cargo (when released)
-cargo install lumos-cli
-
-# Verify installation
-lumos --version
+# All 64 tests should pass ✅
 ```
 
 ---
@@ -1245,9 +1251,9 @@ The **Solana developer community** - developers building the future of decentral
 
 <div align="center">
 
-**Status:** 🚧 Early Development - Not production-ready
-**Version:** 0.1.0-alpha
-**Target Release:** Q2 2025
+**Status:** ✅ Published on crates.io - Production Ready
+**Version:** 0.1.0
+**Released:** November 18, 2025
 
 ---
 
