@@ -747,6 +747,8 @@ export const ExampleBorshSchema = borsh.struct([
 
 ## 🚀 Roadmap
 
+> 📍 **Looking for our future plans?** See the detailed [ROADMAP.md](ROADMAP.md) for Phase 4+, including VSCode extension polish, community examples, and ecosystem expansion.
+
 ### Phase 1: Core TypeScript ↔ Rust Codegen ✅ **COMPLETED**
 
 **Status:** 🎉 **100% Complete (2025-01-17)**
