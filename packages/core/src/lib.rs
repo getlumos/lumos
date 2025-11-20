@@ -86,6 +86,10 @@ pub mod generators {
 /// Error types for LUMOS core
 pub mod error;
 
+/// WASM bindings for browser playground
+#[cfg(feature = "wasm")]
+pub mod wasm;
+
 #[cfg(test)]
 mod tests {
     #[test]

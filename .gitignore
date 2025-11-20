@@ -35,3 +35,4 @@ coverage/
 # Environment
 .env
 .env.local
+packages/core/pkg/

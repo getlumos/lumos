@@ -17,6 +17,17 @@ quote.workspace = true
 proc-macro2.workspace = true
 anyhow.workspace = true
 thiserror.workspace = true
+wasm-bindgen = { version = "0.2", optional = true }
+
+[features]
+default = []
+wasm = ["wasm-bindgen"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
 
 [dev-dependencies]
 tempfile = "3.8"
