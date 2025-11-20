@@ -2,34 +2,22 @@
 
 **Vision**: Become the standard schema language for type-safe Solana development
 
-**Last Updated**: November 19, 2025
+**Last Updated**: November 20, 2025
 
 ---
 
 ## Current Status
 
-**Phase 3.3 Complete** - LUMOS is published on crates.io and production-ready!
+**Phase 4.1 Complete** - VSCode extension published and docs.lumos-lang.org live!
 
-- 64/64 tests passing
-- Published to crates.io (lumos-core v0.1.0, lumos-cli v0.1.0)
-- Zero warnings, zero vulnerabilities
-- Full documentation and CI/CD pipeline
+- VSCode extension v0.5.0 published to marketplace
+- Documentation site deployed with SSL
+- All core features shipped and stable
+- Ready for Phase 4.2: Community Examples
 
 ---
 
 ## Phase 4: Ecosystem Growth (Q1 2026)
-
-### 4.1 VSCode Extension Polish
-
-**Goal**: Seamless developer experience in VSCode
-
-- [ ] Publish extension to VS Marketplace
-- [ ] Add error diagnostics with red squiggles
-- [ ] Implement auto-completion for Solana types (PublicKey, Signature, etc.)
-- [ ] Add format-on-save support
-- [ ] Create quick fix suggestions for common errors
-
-**Success Metric**: 100+ extension installs, 4+ star rating
 
 ### 4.2 Community Examples
 
@@ -138,6 +126,17 @@
 
 ## Completed Phases
 
+### Phase 4.1: VSCode Extension Polish ✅ (Completed Nov 2025)
+
+- [x] Published extension to VS Marketplace (v0.1.0 - v0.5.0)
+- [x] Added error diagnostics with red squiggles
+- [x] Implemented auto-completion for Solana types (PublicKey, Signature, etc.)
+- [x] Added format-on-save support
+- [x] Created quick fix suggestions for common errors
+- [x] Deployed documentation site at docs.lumos-lang.org with SSL
+
+**Result**: Full-featured VSCode extension with professional DX
+
 ### Phase 3.3: Production Polish ✅ (Completed Nov 2025)
 
 - [x] All 64 tests passing
@@ -187,4 +186,4 @@ See an opportunity to help? Check our [Contributing Guide](CONTRIBUTING.md) or:
 
 **This roadmap is a living document** - priorities may shift based on community feedback and ecosystem needs.
 
-**Last Updated**: November 19, 2025
+**Last Updated**: November 20, 2025
