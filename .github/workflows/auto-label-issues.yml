@@ -1,0 +1,146 @@
+name: Auto-label Issues
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Auto-label based on Component Area
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const body = issue.body || '';
+
+            // Component Area mapping to labels (matches .github/scripts/setup-labels.sh)
+            const componentMap = {
+              'Core Compiler (Parser/Generator/IR)': 'area:core',
+              'CLI Tool (lumos-cli)': 'area:cli',
+              'VSCode Extension (syntax/commands/snippets)': 'area:vscode',
+              'Documentation (lumos-lang.org)': 'area:docs',
+              'Examples (awesome-lumos)': 'area:examples',
+              'Build/CI/Infrastructure': 'area:ci',
+              'Ecosystem/Tooling': 'area:ecosystem'
+            };
+
+            // Find selected component area in issue body
+            const componentRegex = /### Component Area\s*\n\s*(.+)/;
+            const match = body.match(componentRegex);
+
+            if (!match) {
+              console.log('No component area found in issue body');
+              return;
+            }
+
+            const selectedComponent = match[1].trim();
+            const targetLabel = componentMap[selectedComponent];
+
+            if (!targetLabel) {
+              console.log(`No label mapping for: ${selectedComponent}`);
+              return;
+            }
+
+            // Get current labels
+            const currentLabels = issue.labels.map(l => l.name);
+
+            // Remove old area:* labels if switching components
+            const areaLabelsToRemove = currentLabels.filter(l =>
+              l.startsWith('area:') && l !== targetLabel
+            );
+
+            // Remove old area labels
+            for (const label of areaLabelsToRemove) {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                name: label
+              });
+              console.log(`Removed label: ${label}`);
+            }
+
+            // Add new area label if not already present
+            if (!currentLabels.includes(targetLabel)) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: [targetLabel]
+              });
+              console.log(`Added label: ${targetLabel}`);
+            } else {
+              console.log(`Label ${targetLabel} already present`);
+            }
+
+            // Auto-add priority labels based on priority dropdown (for feature requests)
+            const priorityRegex = /### Priority \(Your Opinion\)\s*\n\s*(.+)/;
+            const priorityMatch = body.match(priorityRegex);
+
+            if (priorityMatch) {
+              const priority = priorityMatch[1].trim();
+              const priorityMap = {
+                'Critical (blocking my work)': 'priority:critical',
+                'High (would significantly improve my workflow)': 'priority:high',
+                'Medium (nice to have)': 'priority:medium',
+                'Low (minor improvement)': 'priority:low'
+              };
+
+              const priorityLabel = priorityMap[priority];
+              if (priorityLabel) {
+                // Remove old priority labels
+                const oldPriorityLabels = currentLabels.filter(l =>
+                  l.startsWith('priority:') && l !== priorityLabel
+                );
+
+                for (const label of oldPriorityLabels) {
+                  await github.rest.issues.removeLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issue.number,
+                    name: label
+                  });
+                }
+
+                // Add priority label
+                if (!currentLabels.includes(priorityLabel)) {
+                  await github.rest.issues.addLabels({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issue.number,
+                    labels: [priorityLabel]
+                  });
+                  console.log(`Added priority label: ${priorityLabel}`);
+                }
+              }
+            }
+
+            // Auto-add type labels for VSCode extension issues
+            const vscodeTypeRegex = /### Issue Type\s*\n\s*(.+)/;
+            const vscodeTypeMatch = body.match(vscodeTypeRegex);
+
+            if (vscodeTypeMatch && currentLabels.includes('area:vscode')) {
+              const issueType = vscodeTypeMatch[1].trim();
+              const vscodeTypeMap = {
+                'Bug (something broken)': 'type:bug',
+                'Feature Request (new functionality)': 'type:feature',
+                'Enhancement (improve existing)': 'type:enhancement',
+                'Documentation': 'type:documentation'
+              };
+
+              const typeLabel = vscodeTypeMap[issueType];
+              if (typeLabel && !currentLabels.includes(typeLabel)) {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  labels: [typeLabel]
+                });
+                console.log(`Added VSCode type label: ${typeLabel}`);
+              }
+            }
