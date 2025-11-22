@@ -7,8 +7,7 @@
 //! to seed the fuzzer with known-good inputs.
 
 use crate::ir::{
-    EnumDefinition, EnumVariantDefinition, StructDefinition, TypeDefinition,
-    TypeInfo,
+    EnumDefinition, EnumVariantDefinition, StructDefinition, TypeDefinition, TypeInfo,
 };
 
 /// Corpus file entry
@@ -323,7 +322,7 @@ impl<'a> CorpusGenerator<'a> {
             name: format!(
                 "{}_{}_variant",
                 to_snake_case(&enum_def.name),
-                to_snake_case(&variant.name())
+                to_snake_case(variant.name())
             ),
             type_name: enum_def.name.clone(),
             data,
@@ -468,7 +467,7 @@ mod tests {
                 name: "value".to_string(),
                 type_info: TypeInfo::Primitive("u32".to_string()),
                 optional: false,
-            deprecated: None,
+                deprecated: None,
             }],
             metadata: Metadata::default(),
         })];
@@ -477,10 +476,7 @@ mod tests {
         let corpus = generator.generate_all();
 
         assert!(!corpus.is_empty());
-        let minimal = corpus
-            .iter()
-            .find(|c| c.name.contains("minimal"))
-            .unwrap();
+        let minimal = corpus.iter().find(|c| c.name.contains("minimal")).unwrap();
 
         // u32 minimal value: 4 bytes of zeros
         assert_eq!(minimal.data, vec![0, 0, 0, 0]);
@@ -494,7 +490,7 @@ mod tests {
                 name: "value".to_string(),
                 type_info: TypeInfo::Primitive("u8".to_string()),
                 optional: false,
-            deprecated: None,
+                deprecated: None,
             }],
             metadata: Metadata {
                 solana: true,
@@ -505,10 +501,7 @@ mod tests {
         let generator = CorpusGenerator::new(&type_defs);
         let corpus = generator.generate_all();
 
-        let minimal = corpus
-            .iter()
-            .find(|c| c.name.contains("minimal"))
-            .unwrap();
+        let minimal = corpus.iter().find(|c| c.name.contains("minimal")).unwrap();
 
         // Should have 8-byte discriminator + 1 byte for u8 field
         assert_eq!(minimal.data.len(), 9);
@@ -523,7 +516,7 @@ mod tests {
                 name: "maybe_value".to_string(),
                 type_info: TypeInfo::Option(Box::new(TypeInfo::Primitive("u32".to_string()))),
                 optional: true,
-            deprecated: None,
+                deprecated: None,
             }],
             metadata: Metadata::default(),
         })];
@@ -556,7 +549,7 @@ mod tests {
                 name: "items".to_string(),
                 type_info: TypeInfo::Array(Box::new(TypeInfo::Primitive("u8".to_string()))),
                 optional: false,
-            deprecated: None,
+                deprecated: None,
             }],
             metadata: Metadata::default(),
         })];
@@ -586,7 +579,7 @@ mod tests {
             name: "SimpleEnum".to_string(),
             variants: vec![
                 EnumVariantDefinition::Unit {
-                    name: "Variant1".to_string()
+                    name: "Variant1".to_string(),
                 },
                 EnumVariantDefinition::Tuple {
                     name: "Variant2".to_string(),

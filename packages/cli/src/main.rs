@@ -951,12 +951,7 @@ fn output_text(sizes: &[lumos_core::size_calculator::AccountSize]) -> Result<()>
             SizeInfo::Variable { min, .. } => format!("{}+ bytes (variable)", min),
         };
 
-        println!(
-            "{} {}: {}",
-            status,
-            account.name.bold(),
-            size_str.cyan()
-        );
+        println!("{} {}: {}", status, account.name.bold(), size_str.cyan());
 
         // Field breakdown
         for field in &account.field_breakdown {
@@ -975,12 +970,11 @@ fn output_text(sizes: &[lumos_core::size_calculator::AccountSize]) -> Result<()>
         }
 
         // Total and rent
+        println!("  {} Total: {}", "└─".dimmed(), size_str.bold());
         println!(
-            "  {} Total: {}",
-            "└─".dimmed(),
-            size_str.bold()
+            "     Rent: {} SOL",
+            format!("{:.8}", account.rent_sol).cyan()
         );
-        println!("     Rent: {} SOL", format!("{:.8}", account.rent_sol).cyan());
 
         // Warnings
         for warning in &account.warnings {
@@ -1084,9 +1078,12 @@ fn run_security_analyze(schema_path: &Path, format: &str, strict: bool) -> Resul
     }
 
     // Exit with error if any critical findings
-    let has_critical = findings
-        .iter()
-        .any(|f| matches!(f.severity, lumos_core::security_analyzer::Severity::Critical));
+    let has_critical = findings.iter().any(|f| {
+        matches!(
+            f.severity,
+            lumos_core::security_analyzer::Severity::Critical
+        )
+    });
 
     if has_critical {
         std::process::exit(1);
@@ -1180,10 +1177,7 @@ fn output_security_text(
     println!();
     println!("{}", "Recommendations:".bold());
     if !critical.is_empty() {
-        println!(
-            "  {} Fix all critical issues before deployment",
-            "🚨".red()
-        );
+        println!("  {} Fix all critical issues before deployment", "🚨".red());
     }
     if !warnings.is_empty() {
         println!("  ⚠️  Review and address warnings");
@@ -1333,7 +1327,10 @@ fn generate_audit_markdown(
         "**Generated from:** `{}`\n",
         schema_path.display()
     ));
-    content.push_str(&format!("**Date:** {}\n\n", chrono::Local::now().format("%Y-%m-%d")));
+    content.push_str(&format!(
+        "**Date:** {}\n\n",
+        chrono::Local::now().format("%Y-%m-%d")
+    ));
     content.push_str(&format!("**Total Checks:** {}\n\n", checklist.len()));
 
     content.push_str("---\n\n");
@@ -1341,7 +1338,9 @@ fn generate_audit_markdown(
     content.push_str("- [ ] = Not checked yet\n");
     content.push_str("- [x] = Verified and compliant\n");
     content.push_str("- Priority: 🔴 CRITICAL | 🟡 HIGH | 🟢 MEDIUM | ⚪ LOW\n\n");
-    content.push_str("**Review each item during your security audit and check the box when verified.**\n\n");
+    content.push_str(
+        "**Review each item during your security audit and check the box when verified.**\n\n",
+    );
 
     content.push_str("---\n\n");
 
@@ -1449,10 +1448,7 @@ fn run_fuzz_generate(
 ) -> Result<()> {
     let output_dir = output_dir.unwrap_or_else(|| Path::new("fuzz"));
 
-    println!(
-        "{:>12} fuzz targets...",
-        "Generating".cyan().bold()
-    );
+    println!("{:>12} fuzz targets...", "Generating".cyan().bold());
 
     // Read and parse schema
     let source = fs::read_to_string(schema_path)
@@ -1507,11 +1503,7 @@ fn run_fuzz_generate(
     fs::write(&readme_path, readme)
         .with_context(|| format!("Failed to write {}", readme_path.display()))?;
 
-    println!(
-        "{:>12} {}",
-        "Created".green().bold(),
-        readme_path.display()
-    );
+    println!("{:>12} {}", "Created".green().bold(), readme_path.display());
 
     // Generate fuzz targets
     for target in &targets {
@@ -1535,8 +1527,19 @@ fn run_fuzz_generate(
     );
 
     println!("\n{}", "Next steps:".cyan().bold());
-    println!("  1. Install cargo-fuzz: {}", "cargo install cargo-fuzz".yellow());
-    println!("  2. Run fuzzing: {}", format!("cd {} && cargo fuzz run {}", fuzz_dir.display(), targets[0].name).yellow());
+    println!(
+        "  1. Install cargo-fuzz: {}",
+        "cargo install cargo-fuzz".yellow()
+    );
+    println!(
+        "  2. Run fuzzing: {}",
+        format!(
+            "cd {} && cargo fuzz run {}",
+            fuzz_dir.display(),
+            targets[0].name
+        )
+        .yellow()
+    );
 
     Ok(())
 }
@@ -1623,10 +1626,7 @@ fn run_fuzz_corpus(
 ) -> Result<()> {
     let output_dir = output_dir.unwrap_or_else(|| Path::new("fuzz/corpus"));
 
-    println!(
-        "{:>12} corpus files...",
-        "Generating".cyan().bold()
-    );
+    println!("{:>12} corpus files...", "Generating".cyan().bold());
 
     // Read and parse schema
     let source = fs::read_to_string(schema_path)
@@ -1660,7 +1660,10 @@ fn run_fuzz_corpus(
         let target_corpus_dir = output_dir.join(&target_name);
 
         fs::create_dir_all(&target_corpus_dir).with_context(|| {
-            format!("Failed to create directory: {}", target_corpus_dir.display())
+            format!(
+                "Failed to create directory: {}",
+                target_corpus_dir.display()
+            )
         })?;
 
         let file_path = target_corpus_dir.join(&file.name);
@@ -1690,10 +1693,7 @@ fn run_fuzz_corpus(
 fn run_diff(schema1_path: &Path, schema2_path: &Path, format: &str) -> Result<()> {
     use std::collections::{HashMap, HashSet};
 
-    println!(
-        "{:>12} schemas...",
-        "Comparing".cyan().bold()
-    );
+    println!("{:>12} schemas...", "Comparing".cyan().bold());
     println!("  Schema 1: {}", schema1_path.display());
     println!("  Schema 2: {}", schema2_path.display());
     println!();
@@ -1717,13 +1717,11 @@ fn run_diff(schema1_path: &Path, schema2_path: &Path, format: &str) -> Result<()
     let ir2 = transform_to_ir(ast2)?;
 
     // Build maps for efficient lookup
-    let map1: HashMap<&str, &lumos_core::ir::TypeDefinition> = ir1.iter()
-        .map(|t| (t.name(), t))
-        .collect();
+    let map1: HashMap<&str, &lumos_core::ir::TypeDefinition> =
+        ir1.iter().map(|t| (t.name(), t)).collect();
 
-    let map2: HashMap<&str, &lumos_core::ir::TypeDefinition> = ir2.iter()
-        .map(|t| (t.name(), t))
-        .collect();
+    let map2: HashMap<&str, &lumos_core::ir::TypeDefinition> =
+        ir2.iter().map(|t| (t.name(), t)).collect();
 
     let names1: HashSet<&str> = map1.keys().copied().collect();
     let names2: HashSet<&str> = map2.keys().copied().collect();
@@ -1806,13 +1804,11 @@ fn compare_structs(
 ) {
     use std::collections::{HashMap, HashSet};
 
-    let fields1: HashMap<&str, &lumos_core::ir::FieldDefinition> = s1.fields.iter()
-        .map(|f| (f.name.as_str(), f))
-        .collect();
+    let fields1: HashMap<&str, &lumos_core::ir::FieldDefinition> =
+        s1.fields.iter().map(|f| (f.name.as_str(), f)).collect();
 
-    let fields2: HashMap<&str, &lumos_core::ir::FieldDefinition> = s2.fields.iter()
-        .map(|f| (f.name.as_str(), f))
-        .collect();
+    let fields2: HashMap<&str, &lumos_core::ir::FieldDefinition> =
+        s2.fields.iter().map(|f| (f.name.as_str(), f)).collect();
 
     let names1: HashSet<&str> = fields1.keys().copied().collect();
     let names2: HashSet<&str> = fields2.keys().copied().collect();
@@ -1820,13 +1816,21 @@ fn compare_structs(
     // Added fields
     for field in names2.difference(&names1) {
         let f = fields2[field];
-        changes.push(format!("+ Added field: {} ({})", field, format_type(&f.type_info)));
+        changes.push(format!(
+            "+ Added field: {} ({})",
+            field,
+            format_type(&f.type_info)
+        ));
     }
 
     // Removed fields
     for field in names1.difference(&names2) {
         let f = fields1[field];
-        changes.push(format!("- Removed field: {} ({})", field, format_type(&f.type_info)));
+        changes.push(format!(
+            "- Removed field: {} ({})",
+            field,
+            format_type(&f.type_info)
+        ));
     }
 
     // Modified fields
@@ -1848,8 +1852,7 @@ fn compare_structs(
     if s1.metadata.solana != s2.metadata.solana {
         changes.push(format!(
             "~ Solana attribute changed: {} → {}",
-            s1.metadata.solana,
-            s2.metadata.solana
+            s1.metadata.solana, s2.metadata.solana
         ));
     }
 
@@ -1867,13 +1870,11 @@ fn compare_enums(
 ) {
     use std::collections::{HashMap, HashSet};
 
-    let variants1: HashMap<&str, &lumos_core::ir::EnumVariantDefinition> = e1.variants.iter()
-        .map(|v| (v.name(), v))
-        .collect();
+    let variants1: HashMap<&str, &lumos_core::ir::EnumVariantDefinition> =
+        e1.variants.iter().map(|v| (v.name(), v)).collect();
 
-    let variants2: HashMap<&str, &lumos_core::ir::EnumVariantDefinition> = e2.variants.iter()
-        .map(|v| (v.name(), v))
-        .collect();
+    let variants2: HashMap<&str, &lumos_core::ir::EnumVariantDefinition> =
+        e2.variants.iter().map(|v| (v.name(), v)).collect();
 
     let names1: HashSet<&str> = variants1.keys().copied().collect();
     let names2: HashSet<&str> = variants2.keys().copied().collect();
@@ -1902,8 +1903,7 @@ fn compare_enums(
     if e1.metadata.solana != e2.metadata.solana {
         changes.push(format!(
             "~ Solana attribute changed: {} → {}",
-            e1.metadata.solana,
-            e2.metadata.solana
+            e1.metadata.solana, e2.metadata.solana
         ));
     }
 }
@@ -1920,13 +1920,22 @@ fn variants_equal(
         (
             EnumVariantDefinition::Tuple { types: t1, .. },
             EnumVariantDefinition::Tuple { types: t2, .. },
-        ) => t1.len() == t2.len() && t1.iter().zip(t2.iter()).all(|(a, b)| format_type(a) == format_type(b)),
+        ) => {
+            t1.len() == t2.len()
+                && t1
+                    .iter()
+                    .zip(t2.iter())
+                    .all(|(a, b)| format_type(a) == format_type(b))
+        }
         (
             EnumVariantDefinition::Struct { fields: f1, .. },
             EnumVariantDefinition::Struct { fields: f2, .. },
-        ) => f1.len() == f2.len() && f1.iter().zip(f2.iter()).all(|(a, b)| {
-            a.name == b.name && format_type(&a.type_info) == format_type(&b.type_info)
-        }),
+        ) => {
+            f1.len() == f2.len()
+                && f1.iter().zip(f2.iter()).all(|(a, b)| {
+                    a.name == b.name && format_type(&a.type_info) == format_type(&b.type_info)
+                })
+        }
         _ => false,
     }
 }
@@ -1995,8 +2004,22 @@ fn output_diff_json(
 ) -> Result<()> {
     // Simple JSON output
     println!("{{");
-    println!("  \"added\": [{}],", added.iter().map(|s| format!("\"{}\"", s)).collect::<Vec<_>>().join(", "));
-    println!("  \"removed\": [{}],", removed.iter().map(|s| format!("\"{}\"", s)).collect::<Vec<_>>().join(", "));
+    println!(
+        "  \"added\": [{}],",
+        added
+            .iter()
+            .map(|s| format!("\"{}\"", s))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+    println!(
+        "  \"removed\": [{}],",
+        removed
+            .iter()
+            .map(|s| format!("\"{}\"", s))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
     println!("  \"modified\": [");
     for (i, (name, changes)) in modifications.iter().enumerate() {
         println!("    {{");
@@ -2004,7 +2027,7 @@ fn output_diff_json(
         println!("      \"changes\": [");
         for (j, change) in changes.iter().enumerate() {
             let comma = if j < changes.len() - 1 { "," } else { "" };
-            println!("        \"{}\"{}",change.replace('"', "\\\""), comma);
+            println!("        \"{}\"{}", change.replace('"', "\\\""), comma);
         }
         println!("      ]");
         let comma = if i < modifications.len() - 1 { "," } else { "" };

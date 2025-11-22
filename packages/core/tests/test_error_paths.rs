@@ -405,7 +405,7 @@ mod generator_errors {
                         name: "value".to_string(),
                         type_info: TypeInfo::Primitive("String".to_string()),
                         optional: false,
-                    deprecated: None,
+                        deprecated: None,
                     }],
                 },
             ],

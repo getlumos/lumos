@@ -122,7 +122,7 @@ impl<'a> FuzzGenerator<'a> {
                 ));
                 code.push_str(&format!("        let _ = instance.{};\n", field_name));
             }
-            code.push_str("\n");
+            code.push('\n');
         }
 
         // Account-specific checks
@@ -246,7 +246,7 @@ impl<'a> FuzzGenerator<'a> {
         toml.push_str("libfuzzer-sys = \"0.4\"\n");
         toml.push_str("borsh = { version = \"1.5\", features = [\"derive\"] }\n");
         toml.push_str("anchor-lang = \"0.30\"\n");
-        toml.push_str(&format!("generated = {{ path = \"..\" }}\n\n"));
+        toml.push_str("generated = { path = \"..\" }\n\n");
 
         toml.push_str("# Prevent this from interfering with workspaces\n");
         toml.push_str("[workspace]\n");
@@ -292,7 +292,8 @@ impl<'a> FuzzGenerator<'a> {
         readme.push_str("Fuzzing corpus files are stored in `corpus/` directory.\n");
         readme.push_str("These provide seed inputs for the fuzzer.\n\n");
         readme.push_str("## Artifacts\n\n");
-        readme.push_str("Crash artifacts are saved to `artifacts/` directory when failures occur.\n");
+        readme
+            .push_str("Crash artifacts are saved to `artifacts/` directory when failures occur.\n");
 
         readme
     }
@@ -350,13 +351,13 @@ mod tests {
                     name: "wallet".to_string(),
                     type_info: TypeInfo::Primitive("PublicKey".to_string()),
                     optional: false,
-                deprecated: None,
+                    deprecated: None,
                 },
                 FieldDefinition {
                     name: "balance".to_string(),
                     type_info: TypeInfo::Primitive("u64".to_string()),
                     optional: false,
-                deprecated: None,
+                    deprecated: None,
                 },
             ],
             metadata: Metadata {

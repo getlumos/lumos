@@ -129,7 +129,10 @@ impl<'a> SecurityAnalyzer<'a> {
         let mut findings = Vec::new();
 
         // Check if this is an Anchor account
-        let is_account = struct_def.metadata.attributes.contains(&"account".to_string());
+        let is_account = struct_def
+            .metadata
+            .attributes
+            .contains(&"account".to_string());
 
         // Check for missing discriminator
         if struct_def.metadata.solana && !is_account {
@@ -168,19 +171,20 @@ impl<'a> SecurityAnalyzer<'a> {
             }
 
             // Check for owner validation
-            if field.name == "owner" && matches!(field.type_info, TypeInfo::Primitive(ref t) if t == "PublicKey" || t == "Pubkey") {
-                if self.strict_mode {
-                    findings.push(SecurityFinding {
-                        severity: Severity::Warning,
-                        vulnerability: VulnerabilityType::MissingOwnerValidation,
-                        location: Location {
-                            type_name: struct_def.name.clone(),
-                            field_name: Some(field.name.clone()),
-                        },
-                        message: "Owner field requires validation to prevent unauthorized access".to_string(),
-                        suggestion: "Validate that msg.sender or transaction signer matches the owner field before state mutations".to_string(),
-                    });
-                }
+            if field.name == "owner"
+                && matches!(field.type_info, TypeInfo::Primitive(ref t) if t == "PublicKey" || t == "Pubkey")
+                && self.strict_mode
+            {
+                findings.push(SecurityFinding {
+                    severity: Severity::Warning,
+                    vulnerability: VulnerabilityType::MissingOwnerValidation,
+                    location: Location {
+                        type_name: struct_def.name.clone(),
+                        field_name: Some(field.name.clone()),
+                    },
+                    message: "Owner field requires validation to prevent unauthorized access".to_string(),
+                    suggestion: "Validate that msg.sender or transaction signer matches the owner field before state mutations".to_string(),
+                });
             }
 
             // Check for arithmetic-prone fields
@@ -201,39 +205,35 @@ impl<'a> SecurityAnalyzer<'a> {
             }
 
             // Check for integer overflow in large numeric types
-            if self.is_large_integer(&field.type_info) {
-                if self.strict_mode {
-                    findings.push(SecurityFinding {
-                        severity: Severity::Info,
-                        vulnerability: VulnerabilityType::IntegerOverflow,
-                        location: Location {
-                            type_name: struct_def.name.clone(),
-                            field_name: Some(field.name.clone()),
-                        },
-                        message: format!(
-                            "Large integer field '{}' - consider overflow protection",
-                            field.name
-                        ),
-                        suggestion: "Ensure arithmetic operations on this field use checked math or saturating operations".to_string(),
-                    });
-                }
+            if self.is_large_integer(&field.type_info) && self.strict_mode {
+                findings.push(SecurityFinding {
+                    severity: Severity::Info,
+                    vulnerability: VulnerabilityType::IntegerOverflow,
+                    location: Location {
+                        type_name: struct_def.name.clone(),
+                        field_name: Some(field.name.clone()),
+                    },
+                    message: format!(
+                        "Large integer field '{}' - consider overflow protection",
+                        field.name
+                    ),
+                    suggestion: "Ensure arithmetic operations on this field use checked math or saturating operations".to_string(),
+                });
             }
         }
 
         // Check for re-initialization risks
-        if is_account && !self.has_initialized_flag(struct_def) {
-            if self.strict_mode {
-                findings.push(SecurityFinding {
-                    severity: Severity::Warning,
-                    vulnerability: VulnerabilityType::ReInitialization,
-                    location: Location {
-                        type_name: struct_def.name.clone(),
-                        field_name: None,
-                    },
-                    message: "Account lacks explicit initialization flag - vulnerable to re-initialization attacks".to_string(),
-                    suggestion: "Add an 'is_initialized' boolean field or use Anchor's init constraint to prevent re-initialization".to_string(),
-                });
-            }
+        if is_account && !self.has_initialized_flag(struct_def) && self.strict_mode {
+            findings.push(SecurityFinding {
+                severity: Severity::Warning,
+                vulnerability: VulnerabilityType::ReInitialization,
+                location: Location {
+                    type_name: struct_def.name.clone(),
+                    field_name: None,
+                },
+                message: "Account lacks explicit initialization flag - vulnerable to re-initialization attacks".to_string(),
+                suggestion: "Add an 'is_initialized' boolean field or use Anchor's init constraint to prevent re-initialization".to_string(),
+            });
         }
 
         findings
@@ -253,28 +253,23 @@ impl<'a> SecurityAnalyzer<'a> {
         ];
 
         let lower = field_name.to_lowercase();
-        authority_keywords.iter().any(|keyword| lower.contains(keyword))
+        authority_keywords
+            .iter()
+            .any(|keyword| lower.contains(keyword))
     }
 
     /// Check if a field is used for arithmetic operations
     fn is_arithmetic_field(&self, field_name: &str, type_info: &TypeInfo) -> bool {
         // Common field names that involve arithmetic
         let arithmetic_keywords = [
-            "balance",
-            "amount",
-            "supply",
-            "total",
-            "count",
-            "price",
-            "value",
-            "reward",
-            "stake",
-            "fee",
-            "lamport",
+            "balance", "amount", "supply", "total", "count", "price", "value", "reward", "stake",
+            "fee", "lamport",
         ];
 
         let lower = field_name.to_lowercase();
-        let is_arithmetic_name = arithmetic_keywords.iter().any(|keyword| lower.contains(keyword));
+        let is_arithmetic_name = arithmetic_keywords
+            .iter()
+            .any(|keyword| lower.contains(keyword));
 
         // Must be a numeric type
         let is_numeric = matches!(type_info, TypeInfo::Primitive(ref t) if
@@ -296,8 +291,8 @@ impl<'a> SecurityAnalyzer<'a> {
     fn has_initialized_flag(&self, struct_def: &StructDefinition) -> bool {
         struct_def.fields.iter().any(|f| {
             let lower = f.name.to_lowercase();
-            (lower.contains("initialized") || lower.contains("init")) &&
-            matches!(f.type_info, TypeInfo::Primitive(ref t) if t == "bool")
+            (lower.contains("initialized") || lower.contains("init"))
+                && matches!(f.type_info, TypeInfo::Primitive(ref t) if t == "bool")
         })
     }
 }
@@ -351,7 +346,7 @@ mod tests {
                 name: "authority".to_string(),
                 type_info: TypeInfo::Primitive("PublicKey".to_string()),
                 optional: false,
-            deprecated: None,
+                deprecated: None,
             }],
             metadata: Metadata::default(),
         })];
@@ -359,10 +354,10 @@ mod tests {
         let analyzer = SecurityAnalyzer::new(&type_defs);
         let findings = analyzer.analyze();
 
-        assert!(findings.iter().any(|f|
-            matches!(f.vulnerability, VulnerabilityType::MissingSigner) &&
-            matches!(f.severity, Severity::Critical)
-        ));
+        assert!(findings.iter().any(|f| matches!(
+            f.vulnerability,
+            VulnerabilityType::MissingSigner
+        ) && matches!(f.severity, Severity::Critical)));
     }
 
     #[test]
@@ -373,7 +368,7 @@ mod tests {
                 name: "balance".to_string(),
                 type_info: TypeInfo::Primitive("u64".to_string()),
                 optional: false,
-            deprecated: None,
+                deprecated: None,
             }],
             metadata: Metadata::default(),
         })];
@@ -381,9 +376,9 @@ mod tests {
         let analyzer = SecurityAnalyzer::new(&type_defs);
         let findings = analyzer.analyze();
 
-        assert!(findings.iter().any(|f|
-            matches!(f.vulnerability, VulnerabilityType::UncheckedArithmetic)
-        ));
+        assert!(findings
+            .iter()
+            .any(|f| matches!(f.vulnerability, VulnerabilityType::UncheckedArithmetic)));
     }
 
     #[test]
@@ -400,9 +395,9 @@ mod tests {
         let analyzer = SecurityAnalyzer::new(&type_defs);
         let findings = analyzer.analyze();
 
-        assert!(findings.iter().any(|f|
-            matches!(f.vulnerability, VulnerabilityType::NoDiscriminator)
-        ));
+        assert!(findings
+            .iter()
+            .any(|f| matches!(f.vulnerability, VulnerabilityType::NoDiscriminator)));
     }
 
     #[test]
@@ -413,7 +408,7 @@ mod tests {
                 name: "owner".to_string(),
                 type_info: TypeInfo::Primitive("PublicKey".to_string()),
                 optional: false,
-            deprecated: None,
+                deprecated: None,
             }],
             metadata: Metadata {
                 solana: true,
@@ -441,13 +436,13 @@ mod tests {
                     name: "id".to_string(),
                     type_info: TypeInfo::Primitive("u32".to_string()),
                     optional: false,
-                deprecated: None,
+                    deprecated: None,
                 },
                 FieldDefinition {
                     name: "name".to_string(),
                     type_info: TypeInfo::Primitive("String".to_string()),
                     optional: false,
-                deprecated: None,
+                    deprecated: None,
                 },
             ],
             metadata: Metadata {
@@ -460,6 +455,8 @@ mod tests {
         let findings = analyzer.analyze();
 
         // Should have no critical findings
-        assert!(!findings.iter().any(|f| matches!(f.severity, Severity::Critical)));
+        assert!(!findings
+            .iter()
+            .any(|f| matches!(f.severity, Severity::Critical)));
     }
 }

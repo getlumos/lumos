@@ -78,9 +78,9 @@ impl<'a> SizeCalculator<'a> {
     pub fn calculate_all(&mut self) -> Vec<AccountSize> {
         self.type_defs
             .iter()
-            .filter_map(|type_def| match type_def {
-                TypeDefinition::Struct(s) => Some(self.calculate_struct_size(s)),
-                TypeDefinition::Enum(e) => Some(self.calculate_enum_size(e)),
+            .map(|type_def| match type_def {
+                TypeDefinition::Struct(s) => self.calculate_struct_size(s),
+                TypeDefinition::Enum(e) => self.calculate_enum_size(e),
             })
             .collect()
     }
@@ -94,7 +94,10 @@ impl<'a> SizeCalculator<'a> {
         let mut warnings = Vec::new();
 
         // Add discriminator for Anchor accounts
-        let is_account = struct_def.metadata.attributes.contains(&"account".to_string());
+        let is_account = struct_def
+            .metadata
+            .attributes
+            .contains(&"account".to_string());
         if is_account {
             field_breakdown.push(FieldSize {
                 name: "discriminator".to_string(),
@@ -137,7 +140,7 @@ impl<'a> SizeCalculator<'a> {
 
         // Generate warnings
         const MAX_ACCOUNT_SIZE: usize = 10 * 1024 * 1024; // 10MB Solana limit
-        const WARNING_THRESHOLD: usize = 1 * 1024 * 1024; // Warn at 1MB
+        const WARNING_THRESHOLD: usize = 1024 * 1024; // Warn at 1MB
 
         if total_size > MAX_ACCOUNT_SIZE {
             warnings.push(format!(
@@ -291,7 +294,10 @@ impl<'a> SizeCalculator<'a> {
                 // Vec<T> = 4 bytes (length) + variable data
                 SizeInfo::Variable {
                     min: 4,
-                    reason: format!("Vec length prefix + elements ({})", self.describe_type(inner)),
+                    reason: format!(
+                        "Vec length prefix + elements ({})",
+                        self.describe_type(inner)
+                    ),
                 }
             }
             TypeInfo::Option(inner) => {
@@ -337,6 +343,7 @@ impl<'a> SizeCalculator<'a> {
     }
 
     /// Describe a type for display
+    #[allow(clippy::only_used_in_recursion)]
     fn describe_type(&self, type_info: &TypeInfo) -> String {
         match type_info {
             TypeInfo::Primitive(name) => match name.as_str() {
@@ -395,13 +402,13 @@ mod tests {
                     name: "wallet".to_string(),
                     type_info: TypeInfo::Primitive("PublicKey".to_string()),
                     optional: false,
-                deprecated: None,
+                    deprecated: None,
                 },
                 FieldDefinition {
                     name: "score".to_string(),
                     type_info: TypeInfo::Primitive("u64".to_string()),
                     optional: false,
-                deprecated: None,
+                    deprecated: None,
                 },
             ],
             metadata: Metadata::default(),
@@ -423,7 +430,7 @@ mod tests {
                 name: "score".to_string(),
                 type_info: TypeInfo::Primitive("u64".to_string()),
                 optional: false,
-            deprecated: None,
+                deprecated: None,
             }],
             metadata: Metadata {
                 solana: true,
@@ -447,7 +454,7 @@ mod tests {
                 name: "maybe_value".to_string(),
                 type_info: TypeInfo::Option(Box::new(TypeInfo::Primitive("u64".to_string()))),
                 optional: true,
-            deprecated: None,
+                deprecated: None,
             }],
             metadata: Metadata::default(),
         })];
