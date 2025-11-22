@@ -19,6 +19,7 @@
 
 [![Crates.io](https://img.shields.io/crates/v/lumos-core?label=lumos-core)](https://crates.io/crates/lumos-core)
 [![Crates.io](https://img.shields.io/crates/v/lumos-cli?label=lumos-cli)](https://crates.io/crates/lumos-cli)
+[![Crates.io](https://img.shields.io/crates/v/lumos-lsp?label=lumos-lsp)](https://crates.io/crates/lumos-lsp)
 [![GitHub Action](https://img.shields.io/badge/Marketplace-LUMOS%20Generate-purple.svg?logo=github)](https://github.com/marketplace/actions/lumos-generate)
 [![CI](https://img.shields.io/github/actions/workflow/status/getlumos/lumos/ci.yml?branch=main&label=CI&logo=github)](https://github.com/getlumos/lumos/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE-MIT)
@@ -477,6 +478,29 @@ Automate schema validation and code generation in your CI/CD pipeline with the [
 - ✅ Post PR comments with diff summaries
 
 [View full documentation →](https://github.com/getlumos/lumos-action#readme)
+
+### 8. IDE Support
+
+Get a powerful development experience with the LUMOS Language Server (LSP):
+
+```bash
+cargo install lumos-lsp
+```
+
+**Features:**
+- 🔴 Real-time diagnostics (syntax errors, undefined types)
+- ⚡ Auto-completion (Solana types, primitives, attributes)
+- 📖 Hover information (type definitions, documentation)
+- 🎨 Code formatting (coming soon)
+
+**Supported Editors:**
+- **VS Code**: Install [LUMOS extension](https://github.com/getlumos/vscode-lumos) (auto-configures LSP)
+- **Neovim**: Use `nvim-lspconfig` with `lumos-lsp` binary
+- **Emacs**: Configure `lsp-mode` with `lumos-lsp`
+- **Sublime Text**: Install LSP package + configure `lumos-lsp`
+- **IntelliJ/Rust Rover**: Coming soon
+
+[View LSP documentation →](packages/lsp/README.md)
 
 ---
 
@@ -1261,7 +1285,8 @@ The **Solana developer community** - developers building the future of decentral
 ### Official Documentation
 
 - **LUMOS Docs** - Coming soon
-- **Vision & Positioning** - [docs/VISION.md](docs/VISION.md) - Long-term direction and market positioning
+- **Vision (Vertical)** - [docs/VISION.md](docs/VISION.md) - ENDGAME: Workflow language for Solana
+- **Future (Horizontal)** - [docs/FUTURE.md](docs/FUTURE.md) - Beyond: Multichain, DevOps, automation
 - **Roadmap** - [ROADMAP.md](ROADMAP.md) - Development phases and timeline
 - **Migration Guide** - [docs/MIGRATION.md](docs/MIGRATION.md) - Version upgrade instructions
 - **Execution Plan** - [docs/execution-plan.md](docs/execution-plan.md)

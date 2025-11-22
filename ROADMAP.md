@@ -2,7 +2,7 @@
 
 **Vision**: Transform Solana development with the first type-safe workflow language - from schemas to complete automation
 
-**For detailed vision and positioning**: See [docs/VISION.md](docs/VISION.md)
+**For detailed vision**: See [docs/VISION.md](docs/VISION.md) (vertical expansion) and [docs/FUTURE.md](docs/FUTURE.md) (horizontal expansion)
 
 **Last Updated**: November 22, 2025
 
@@ -86,6 +86,39 @@ Transform from schema DSL → full programming language for type-safe Solana wor
 - [ ] Add generic struct/enum definitions to LUMOS [#54]
 
 **Success Metric**: Support 95% of Anchor program patterns
+
+### 5.4 Multi-Language Code Generation
+
+**Goal**: Generate schemas in Python, Go, and Ruby alongside Rust and TypeScript
+
+**Issues to create:**
+- [ ] Design multi-language code generation architecture [#67]
+- [ ] Implement Python schema generator with Borsh serialization [#68]
+- [ ] Implement Go schema generator with Borsh serialization [#69]
+- [ ] Implement Ruby schema generator with Borsh serialization [#70]
+- [ ] Add language-specific type mapping documentation [#71]
+- [ ] Create cross-language schema compatibility tests [#72]
+- [ ] Add `--lang` flag to `lumos generate` command [#73]
+
+**Success Metric**: One `.lumos` file generates type-safe schemas in 5 languages (Rust, TypeScript, Python, Go, Ruby)
+
+**Example:**
+```bash
+# Generate for all languages
+lumos generate schema.lumos --lang rust,typescript,python,go,ruby
+
+# Output:
+# - schema.rs (Rust with Borsh)
+# - schema.ts (TypeScript with Borsh)
+# - schema.py (Python dataclass with Borsh)
+# - schema.go (Go struct with Borsh)
+# - schema.rb (Ruby class with Borsh)
+```
+
+**Benefits:**
+- Polyglot codebases with guaranteed serialization compatibility
+- Backend in Rust/Go, frontend in TypeScript, scripts in Python/Ruby
+- Single source of truth for data structures across entire stack
 
 ---
 
@@ -299,6 +332,9 @@ let user: UserAccount = {
 - [ ] Implement LUMOS → Solana CLI command lowering
 - [ ] Implement LUMOS → Anchor CLI command lowering
 - [ ] Implement LUMOS → bash script generation
+- [ ] Implement LUMOS → Python script generation (solana-py integration)
+- [ ] Implement LUMOS → Go script generation (solana-go-sdk integration)
+- [ ] Implement LUMOS → Ruby script generation (solana.rb integration)
 - [ ] Implement LUMOS → TOML config generation
 - [ ] Implement LUMOS → YAML config generation
 - [ ] Add LUMOS → GitHub Actions workflow generation

@@ -2,6 +2,7 @@
 members = [
     "packages/core",
     "packages/cli",
+    "packages/lsp",
 ]
 resolver = "2"
 

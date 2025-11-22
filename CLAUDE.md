@@ -198,8 +198,8 @@ npm run docs:build   # Build for production
    - Backward compatibility validation (#42)
 
 2. **Phase 5.2 - IDE Integration** (Q2 2026)
-   - Language Server Protocol implementation (#45) - HIGH PRIORITY
-   - Multi-editor support (IntelliJ, Neovim, Emacs, Sublime)
+   - Language Server Protocol implementation (#45) - COMPLETE ✅
+   - Multi-editor support (VS Code, Neovim, Emacs, Sublime)
 
 3. **Phase 6.2 - Tooling Ecosystem**
    - npm package for JavaScript/TypeScript projects (#62) - HIGH PRIORITY
@@ -211,7 +211,8 @@ npm run docs:build   # Build for production
 - Consistent CI/CD patterns
 
 **Recent Changes Affecting Multiple Repos:**
-- v1.0.0 GitHub Action published to marketplace (#72) - NEW ✨
+- v0.2.0 Language Server Protocol implementation (#45) - NEW ✨
+- v1.0.0 GitHub Action published to marketplace (#72)
 - Hybrid CLAUDE.md architecture deployed (21.6% token reduction) (#36)
 - v0.1.1 security improvements (affects all repos using CLI)
 - VSCode extension v0.5.0 with quick fixes (vscode-lumos)
@@ -229,7 +230,7 @@ npm run docs:build   # Build for production
 
 Write data structures once in `.lumos` syntax → Generate production-ready Rust + TypeScript with guaranteed Borsh serialization compatibility.
 
-**Status:** v0.1.2 (unreleased) | 129/129 tests passing | 0 warnings | 0 vulnerabilities
+**Status:** v0.2.0 (unreleased) | 142/142 tests passing | 0 warnings | 0 vulnerabilities
 
 ---
 
@@ -266,6 +267,7 @@ Write data structures once in `.lumos` syntax → Generate production-ready Rust
 | Deprecation warnings | ✅ | #[deprecated] attribute for schema evolution (v0.1.2) |
 | Security analysis | ✅ | Static analysis for vulnerabilities (v0.1.2) |
 | Fuzzing support | ✅ | Generate fuzzing harnesses for code (v0.1.2) |
+| Language Server (LSP) | ✅ | Diagnostics, completion, hover for all editors (v0.2.0) |
 
 ---
 
@@ -286,11 +288,17 @@ cargo build --release --all-features --workspace
 
 # Generate from schema
 cargo run --bin lumos -- generate examples/gaming/schema.lumos
+
+# Run LSP server (for editor integration)
+cargo run --bin lumos-lsp
+
+# Test LSP package
+cargo test --package lumos-lsp
 ```
 
 ---
 
-## Test Suite (129 tests)
+## Test Suite (142 tests)
 
 | Suite | Count | Location |
 |-------|-------|----------|
@@ -299,6 +307,7 @@ cargo run --bin lumos -- generate examples/gaming/schema.lumos
 | Error path tests | 30 | `packages/core/tests/test_error_paths.rs` |
 | Rust generator | 5 | `packages/core/tests/test_rust_generator.rs` |
 | TypeScript generator | 6 | `packages/core/tests/test_typescript_generator.rs` |
+| LSP tests | 13 | `packages/lsp/src/server/**/*.rs` (diagnostics, completion, hover) |
 | E2E compilation | 0 | Disabled (takes ~60s per test) |
 | Doc tests | 9 | Documentation examples (3 ignored) |
 
@@ -427,7 +436,7 @@ enum GameState {
 
 ## Publishing Checklist
 
-- [x] All tests passing (129/129)
+- [x] All tests passing (142/142)
 - [x] Zero clippy warnings
 - [x] Zero rustfmt violations
 - [x] Security audit clean (0 vulnerabilities)
@@ -438,7 +447,8 @@ enum GameState {
 - [x] Homepage updated (lumos-lang.org)
 - [x] Published to crates.io (lumos-core v0.1.0, lumos-cli v0.1.0)
 - [x] VSCode extension published (v0.5.0)
-- [ ] Publish v0.1.2 with fuzzing & security improvements
+- [ ] Publish v0.2.0 with LSP implementation
+- [ ] Publish lumos-lsp v0.1.0 to crates.io
 
 ---
 
