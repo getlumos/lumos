@@ -176,6 +176,114 @@ fn deploy_multichain_dApp() {
 
 ---
 
+### 10.5 Multi-Chain Data Structures
+
+**Goal:** Single `.lumos` definition generates type-safe schemas for ALL blockchains
+
+**The Problem Each Chain Has Different Serialization:**
+
+| Chain | Serialization Format | Account Model | Example Type |
+|-------|---------------------|---------------|--------------|
+| Solana | Borsh | Account-based | `Pubkey` |
+| Ethereum | ABI Encoding | Contract storage | `address` |
+| Aptos | BCS (Binary Canonical) | Resource-based | `address` |
+| Sui | BCS | Object-based | `address` |
+| Cosmos | Protobuf | Module-based | `sdk.AccAddress` |
+
+**LUMOS Universal Schema:**
+
+\`\`\`lumos
+// Single definition works everywhere
+#[multichain(solana, ethereum, aptos, sui)]
+struct TokenBalance {
+  owner: Address,      // Universal address type
+  amount: u64,
+  last_updated: i64
+}
+\`\`\`
+
+**Generates Chain-Specific Code:**
+
+**For Solana (Borsh):**
+\`\`\`rust
+#[account]
+pub struct TokenBalance {
+    pub owner: Pubkey,        // Solana-specific
+    pub amount: u64,
+    pub last_updated: i64,
+}
+// Serialization: Borsh
+\`\`\`
+
+**For Ethereum (ABI):**
+\`\`\`solidity
+struct TokenBalance {
+    address owner;            // EVM-specific
+    uint64 amount;
+    int64 lastUpdated;
+}
+// Serialization: ABI encoding
+\`\`\`
+
+**For Aptos/Sui (BCS):**
+\`\`\`move
+struct TokenBalance has key {
+    owner: address,           // Move-specific
+    amount: u64,
+    last_updated: i64,
+}
+// Serialization: BCS
+\`\`\`
+
+**For Cosmos (Protobuf):**
+\`\`\`protobuf
+message TokenBalance {
+  string owner = 1;           // Cosmos-specific
+  uint64 amount = 2;
+  int64 last_updated = 3;
+}
+// Serialization: Protobuf
+\`\`\`
+
+**Type Mapping:**
+
+| LUMOS Type | Solana | Ethereum | Aptos/Sui | Cosmos |
+|------------|--------|----------|-----------|--------|
+| `Address` | `Pubkey` | `address` | `address` | `string` |
+| `u64` | `u64` | `uint64` | `u64` | `uint64` |
+| `String` | `String` | `string` | `vector<u8>` | `string` |
+| `Vec<T>` | `Vec<T>` | `T[]` | `vector<T>` | `repeated T` |
+| `Option<T>` | `Option<T>` | `T` (nullable) | `Option<T>` | `optional T` |
+
+**Benefits:**
+- ✅ Write data structure ONCE
+- ✅ Deploy on MULTIPLE chains
+- ✅ Guaranteed cross-chain compatibility
+- ✅ Bridge builders' dream (unified schemas)
+- ✅ Type-safe cross-chain dApps
+
+**Example Use Case: Cross-Chain NFT:**
+
+\`\`\`lumos
+#[multichain(solana, ethereum, polygon)]
+struct NFTMetadata {
+  token_id: u64,
+  owner: Address,
+  name: String,
+  image_url: String,
+  attributes: Map<String, String>
+}
+\`\`\`
+
+**Generates:**
+- Solana program (Borsh) - for minting on Solana
+- Ethereum contract (ABI) - for minting on Ethereum
+- Polygon contract (ABI) - for minting on Polygon
+- TypeScript client - works with all three chains
+- Bridge contract - moves NFTs between chains
+
+---
+
 ## Phase 11: DevOps Automation
 
 **Goal:** Replace Terraform/Ansible/Docker Compose with type-safe LUMOS workflows
@@ -647,6 +755,315 @@ fn test_api_endpoints() {
   log("All API tests passed!")
 }
 \`\`\`
+
+---
+
+## Phase 13: Web2 Data Structures (2028+)
+
+**Goal:** Extend LUMOS beyond blockchain to become universal data structure language for Web2
+
+**Timeline:** 2028+
+
+**Why Web2?** Same problem, bigger market:
+- Full-stack apps: Frontend ↔ Backend ↔ Database schema fragmentation
+- Microservices: Service contracts manually synced
+- API definitions: REST/GraphQL/gRPC schemas duplicated
+- Market size: 27M Web2 developers vs 500K Web3 developers (54x larger)
+
+---
+
+### 13.1 REST API & GraphQL Schema Generation
+
+**Goal:** Generate API contracts and types from single `.lumos` definition
+
+**REST API Example:**
+\`\`\`lumos
+#[rest_api]
+struct UserAPI {
+  // GET /users/:id
+  #[endpoint(method = "GET", path = "/users/:id")]
+  get_user: fn(id: String) -> User,
+
+  // POST /users
+  #[endpoint(method = "POST", path = "/users")]
+  create_user: fn(body: CreateUserRequest) -> User,
+
+  // PUT /users/:id
+  #[endpoint(method = "PUT", path = "/users/:id")]
+  update_user: fn(id: String, body: UpdateUserRequest) -> User
+}
+
+struct User {
+  id: String,
+  email: String,
+  created_at: Timestamp,
+  preferences: UserPreferences
+}
+\`\`\`
+
+**Generates:**
+- `user_api.ts` - TypeScript client with type-safe fetch
+- `user_api.py` - Python FastAPI routes with Pydantic
+- `user_api.go` - Go HTTP handlers with structs
+- `user_api.yaml` - OpenAPI 3.0 specification
+- `user_api.md` - API documentation
+
+---
+
+**GraphQL Example:**
+\`\`\`lumos
+#[graphql]
+struct BlogSchema {
+  #[query]
+  posts: fn(limit: i32, offset: i32) -> Vec<Post>,
+
+  #[query]
+  post: fn(id: String) -> Option<Post>,
+
+  #[mutation]
+  createPost: fn(input: CreatePostInput) -> Post,
+
+  #[mutation]
+  deletePost: fn(id: String) -> bool
+}
+
+struct Post {
+  id: String,
+  title: String,
+  content: String,
+  author: User,
+  tags: Vec<String>,
+  published_at: Timestamp
+}
+\`\`\`
+
+**Generates:**
+- `schema.graphql` - GraphQL schema definition
+- `resolvers.ts` - TypeScript Apollo Server resolvers
+- `resolvers.py` - Python Strawberry/Ariadne resolvers
+- `resolvers.go` - Go gqlgen resolvers
+- `types.ts` - TypeScript types for Apollo Client
+
+---
+
+### 13.2 gRPC & Protobuf Integration
+
+**Goal:** Replace Protocol Buffers with LUMOS for microservices
+
+**gRPC Service Definition:**
+\`\`\`lumos
+#[grpc_service]
+struct OrderService {
+  #[rpc]
+  CreateOrder: fn(request: CreateOrderRequest) -> Order,
+
+  #[rpc]
+  GetOrder: fn(request: GetOrderRequest) -> Order,
+
+  #[rpc]
+  ListOrders: fn(request: ListOrdersRequest) -> stream OrderResponse,
+
+  #[rpc]
+  CancelOrder: fn(request: CancelOrderRequest) -> Empty
+}
+
+struct Order {
+  id: String,
+  customer_id: String,
+  items: Vec<OrderItem>,
+  total_amount: Decimal,
+  status: OrderStatus,
+  created_at: Timestamp
+}
+
+enum OrderStatus {
+  Pending,
+  Processing,
+  Shipped,
+  Delivered,
+  Cancelled
+}
+\`\`\`
+
+**Generates:**
+- `order.proto` - Protocol Buffers definition
+- `order_grpc.rs` - Rust tonic server/client
+- `order_grpc.ts` - TypeScript grpc-js stubs
+- `order_grpc.py` - Python grpcio implementation
+- `order_grpc.go` - Go gRPC server/client
+
+**Advantages over raw Protobuf:**
+- Simpler syntax (no proto3 quirks)
+- Multi-serialization (JSON + Protobuf + MessagePack)
+- Better error messages
+- Unified with Web3 tooling
+
+---
+
+### 13.3 Database Schema Generation
+
+**Goal:** Generate database schemas and ORM models from `.lumos`
+
+**Database Schema Example:**
+\`\`\`lumos
+#[database(postgres)]
+struct Product {
+  #[primary_key]
+  id: uuid,
+
+  name: String,
+  description: Option<String>,
+  price: Decimal,
+
+  #[index]
+  category: String,
+
+  inventory: i32,
+
+  #[default("NOW()")]
+  created_at: Timestamp,
+
+  #[default("NOW()"), #[on_update("NOW()")]]
+  updated_at: Timestamp
+}
+
+#[database(postgres)]
+struct Order {
+  #[primary_key]
+  id: uuid,
+
+  #[foreign_key(User.id)]
+  user_id: uuid,
+
+  #[foreign_key(Product.id)]
+  items: Vec<uuid>,
+
+  total: Decimal,
+  status: OrderStatus,
+  created_at: Timestamp
+}
+\`\`\`
+
+**Generates:**
+
+**PostgreSQL:**
+- `migrations/001_create_products.sql` - SQL migration
+- `schema.sql` - Full database schema
+- Indexes, foreign keys, constraints
+
+**ORM Models:**
+- `product.rs` - Rust SQLx/Diesel model
+- `product.ts` - TypeScript Prisma model
+- `product.py` - Python SQLAlchemy/Django model
+- `product.go` - Go sqlc/GORM model
+
+**Multi-Database Support:**
+\`\`\`bash
+# Generate for multiple databases
+lumos generate schema.lumos --db postgres,mysql,mongodb
+
+# Output:
+# - postgres_schema.sql
+# - mysql_schema.sql
+# - mongodb_schema.js (collections + indexes)
+\`\`\`
+
+---
+
+### 13.4 Microservices Communication Contracts
+
+**Goal:** Unified data contracts across entire microservice mesh
+
+**Full-Stack Example:**
+\`\`\`lumos
+// Single source of truth for entire system
+#[system("e-commerce")]
+module shared_types {
+  struct User {
+    id: uuid,
+    email: String,
+    name: String
+  }
+
+  struct Product {
+    id: uuid,
+    name: String,
+    price: Decimal
+  }
+
+  struct Order {
+    id: uuid,
+    user: User,
+    items: Vec<Product>,
+    total: Decimal
+  }
+}
+
+// Generate for each service
+#[service("user-service")]
+#[database(postgres)]
+#[api(grpc)]
+module user_service {
+  use shared_types::{User};
+
+  struct UserProfile extends User {
+    avatar_url: String,
+    preferences: Map<String, String>
+  }
+}
+
+#[service("order-service")]
+#[database(postgres)]
+#[api(rest)]
+module order_service {
+  use shared_types::{Order, User, Product};
+
+  struct OrderWithDetails extends Order {
+    shipping_address: Address,
+    tracking_number: Option<String>
+  }
+}
+\`\`\`
+
+**Generates:**
+- User Service: gRPC stubs + PostgreSQL schema + Go/Rust code
+- Order Service: REST API + PostgreSQL schema + Python/TypeScript code
+- Frontend: TypeScript types for both services
+- API Gateway: Unified OpenAPI spec
+- Message Queue: Protobuf/JSON schemas for events
+
+**Benefits:**
+- ✅ Single source of truth across entire system
+- ✅ Type-safe communication between all services
+- ✅ Database schema sync guaranteed
+- ✅ Frontend always in sync with backend
+- ✅ Works with ANY tech stack
+
+---
+
+### 13.5 Success Criteria
+
+**We know Web2 expansion succeeded when:**
+
+1. **Developer Adoption**
+   - Web2 developers use LUMOS for full-stack apps
+   - "Generated with LUMOS" badges on projects
+   - Stack Overflow questions about LUMOS
+
+2. **Enterprise Customers**
+   - SaaS companies use LUMOS for microservices
+   - Fintech companies use for banking APIs
+   - E-commerce platforms use for service mesh
+
+3. **Community Validation**
+   - Community creates Web2 language plugins
+   - Templates marketplace has Web2 categories
+   - Conference talks: "LUMOS for Full-Stack Development"
+
+4. **Revenue Validation**
+   - Web2 templates selling
+   - Enterprise contracts for microservices
+   - Migration consulting from Protobuf/Prisma
 
 ---
 

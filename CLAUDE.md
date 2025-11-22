@@ -230,7 +230,7 @@ npm run docs:build   # Build for production
 
 Write data structures once in `.lumos` syntax → Generate production-ready Rust + TypeScript with guaranteed Borsh serialization compatibility.
 
-**Status:** v0.2.0 (unreleased) | 142/142 tests passing | 0 warnings | 0 vulnerabilities
+**Status:** v0.1.1 published to crates.io | 142/142 tests passing | 0 warnings | 0 vulnerabilities
 
 ---
 
@@ -447,8 +447,8 @@ enum GameState {
 - [x] Homepage updated (lumos-lang.org)
 - [x] Published to crates.io (lumos-core v0.1.0, lumos-cli v0.1.0)
 - [x] VSCode extension published (v0.5.0)
-- [ ] Publish v0.2.0 with LSP implementation
-- [ ] Publish lumos-lsp v0.1.0 to crates.io
+- [x] Published lumos-core v0.1.1 with security improvements
+- [x] Published lumos-lsp v0.1.0 to crates.io
 
 ---
 
@@ -468,8 +468,9 @@ cargo add lumos-core
 **crates.io URLs:**
 - https://crates.io/crates/lumos-core
 - https://crates.io/crates/lumos-cli
+- https://crates.io/crates/lumos-lsp
 
 ---
 
-**Last Updated:** 2025-11-22
-**Status:** v0.1.2 (unreleased) - Fuzzing & Security Improvements 🔒
+**Last Updated:** 2025-11-23
+**Status:** v0.1.1 published | lumos-lsp v0.1.0 published | All packages live on crates.io 🚀
