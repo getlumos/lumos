@@ -33,6 +33,12 @@ Thank you for your interest in contributing to LUMOS! This document provides gui
    cargo run --package lumos-cli -- --help
    ```
 
+5. **Install git hooks (recommended)**
+   ```bash
+   bash .github/scripts/install-hooks.sh
+   ```
+   This installs a pre-commit hook that automatically validates `.lumos` schema files before each commit.
+
 ## 📋 How to Contribute
 
 ### Reporting Bugs
@@ -74,6 +80,7 @@ Feature requests are welcome! Please create an issue describing:
 4. **Commit your changes**
    - Write clear, concise commit messages
    - Reference any related issues
+   - If you've installed git hooks, `.lumos` files are automatically validated
 
 5. **Push and create a pull request**
    ```bash
