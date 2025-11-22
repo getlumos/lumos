@@ -793,6 +793,7 @@ Core CLI functionality to make LUMOS usable in real projects:
   - `lumos generate <schema>` - Generate Rust + TypeScript code
   - `lumos validate <schema>` - Validate schema syntax
   - `lumos check <schema>` - Verify generated code is up-to-date
+  - `lumos diff <schema1> <schema2>` - Compare schemas and show differences
   - `lumos generate --watch` - Watch mode for auto-regeneration
   - `lumos --version` - Version information
   - `lumos --help` - Comprehensive help

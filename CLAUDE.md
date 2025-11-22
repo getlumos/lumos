@@ -25,7 +25,7 @@ Write data structures once in `.lumos` syntax → Generate production-ready Rust
 - `packages/core/src/transform.rs` - AST → IR conversion
 - `packages/core/src/generators/rust.rs` - Rust code generation (context-aware)
 - `packages/core/src/generators/typescript.rs` - TypeScript + Borsh schemas
-- `packages/cli/src/main.rs` - CLI commands (generate, validate, init, check)
+- `packages/cli/src/main.rs` - CLI commands (generate, validate, init, check, diff)
 
 ---
 

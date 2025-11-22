@@ -108,6 +108,19 @@ enum Commands {
         #[command(subcommand)]
         command: FuzzCommands,
     },
+
+    /// Compare two schema files and show differences
+    Diff {
+        /// Path to first .lumos schema file (v1)
+        schema1: PathBuf,
+
+        /// Path to second .lumos schema file (v2)
+        schema2: PathBuf,
+
+        /// Output format (text or json)
+        #[arg(short, long, default_value = "text")]
+        format: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -247,6 +260,11 @@ fn main() -> Result<()> {
                 type_name,
             } => run_fuzz_corpus(&schema, output.as_deref(), type_name.as_deref()),
         },
+        Commands::Diff {
+            schema1,
+            schema2,
+            format,
+        } => run_diff(&schema1, &schema2, &format),
     }
 }
 
@@ -1113,8 +1131,7 @@ fn output_security_text(
     println!("{}", "Summary:".bold());
     if !critical.is_empty() {
         println!(
-            "  {} {} critical issues",
-            "🚨".to_string(),
+            "  🚨 {} critical issues",
             critical.len().to_string().red().bold()
         );
     }
@@ -1433,9 +1450,8 @@ fn run_fuzz_generate(
     let output_dir = output_dir.unwrap_or_else(|| Path::new("fuzz"));
 
     println!(
-        "{:>12} {}",
-        "Generating".cyan().bold(),
-        "fuzz targets..."
+        "{:>12} fuzz targets...",
+        "Generating".cyan().bold()
     );
 
     // Read and parse schema
@@ -1533,9 +1549,8 @@ fn run_fuzz_run(
     max_time: Option<u64>,
 ) -> Result<()> {
     println!(
-        "{:>12} {} for type '{}'",
+        "{:>12} fuzzer for type '{}'",
         "Running".cyan().bold(),
-        "fuzzer",
         type_name
     );
 
@@ -1609,9 +1624,8 @@ fn run_fuzz_corpus(
     let output_dir = output_dir.unwrap_or_else(|| Path::new("fuzz/corpus"));
 
     println!(
-        "{:>12} {}",
-        "Generating".cyan().bold(),
-        "corpus files..."
+        "{:>12} corpus files...",
+        "Generating".cyan().bold()
     );
 
     // Read and parse schema
@@ -1668,6 +1682,336 @@ fn run_fuzz_corpus(
         corpus_files.len(),
         if corpus_files.len() == 1 { "" } else { "s" }
     );
+
+    Ok(())
+}
+
+/// Compare two schema files and show differences
+fn run_diff(schema1_path: &Path, schema2_path: &Path, format: &str) -> Result<()> {
+    use std::collections::{HashMap, HashSet};
+
+    println!(
+        "{:>12} schemas...",
+        "Comparing".cyan().bold()
+    );
+    println!("  Schema 1: {}", schema1_path.display());
+    println!("  Schema 2: {}", schema2_path.display());
+    println!();
+
+    // Read and parse first schema
+    let content1 = fs::read_to_string(schema1_path)
+        .with_context(|| format!("Failed to read schema file: {}", schema1_path.display()))?;
+
+    let ast1 = parse_lumos_file(&content1)
+        .with_context(|| format!("Failed to parse schema: {}", schema1_path.display()))?;
+
+    let ir1 = transform_to_ir(ast1)?;
+
+    // Read and parse second schema
+    let content2 = fs::read_to_string(schema2_path)
+        .with_context(|| format!("Failed to read schema file: {}", schema2_path.display()))?;
+
+    let ast2 = parse_lumos_file(&content2)
+        .with_context(|| format!("Failed to parse schema: {}", schema2_path.display()))?;
+
+    let ir2 = transform_to_ir(ast2)?;
+
+    // Build maps for efficient lookup
+    let map1: HashMap<&str, &lumos_core::ir::TypeDefinition> = ir1.iter()
+        .map(|t| (t.name(), t))
+        .collect();
+
+    let map2: HashMap<&str, &lumos_core::ir::TypeDefinition> = ir2.iter()
+        .map(|t| (t.name(), t))
+        .collect();
+
+    let names1: HashSet<&str> = map1.keys().copied().collect();
+    let names2: HashSet<&str> = map2.keys().copied().collect();
+
+    // Calculate differences
+    let added: Vec<&str> = names2.difference(&names1).copied().collect();
+    let removed: Vec<&str> = names1.difference(&names2).copied().collect();
+    let common: Vec<&str> = names1.intersection(&names2).copied().collect();
+
+    // Track modifications
+    let mut modified = Vec::new();
+    let mut modifications = Vec::new();
+
+    for name in &common {
+        let type1 = map1[name];
+        let type2 = map2[name];
+
+        let changes = compare_types(type1, type2);
+        if !changes.is_empty() {
+            modified.push(*name);
+            modifications.push((*name, changes));
+        }
+    }
+
+    // Output based on format
+    if format == "json" {
+        output_diff_json(&added, &removed, &modifications)?;
+    } else {
+        output_diff_text(&added, &removed, &modifications)?;
+    }
+
+    // Summary
+    let total_changes = added.len() + removed.len() + modified.len();
+    if total_changes == 0 {
+        println!("\n{} No differences found", "✓".green().bold());
+    } else {
+        println!(
+            "\n{} {} change{} detected",
+            "✓".green().bold(),
+            total_changes,
+            if total_changes == 1 { "" } else { "s" }
+        );
+    }
+
+    Ok(())
+}
+
+/// Compare two type definitions and return list of changes
+fn compare_types(
+    type1: &lumos_core::ir::TypeDefinition,
+    type2: &lumos_core::ir::TypeDefinition,
+) -> Vec<String> {
+    use lumos_core::ir::TypeDefinition;
+
+    let mut changes = Vec::new();
+
+    match (type1, type2) {
+        (TypeDefinition::Struct(s1), TypeDefinition::Struct(s2)) => {
+            compare_structs(s1, s2, &mut changes);
+        }
+        (TypeDefinition::Enum(e1), TypeDefinition::Enum(e2)) => {
+            compare_enums(e1, e2, &mut changes);
+        }
+        (TypeDefinition::Struct(_), TypeDefinition::Enum(_)) => {
+            changes.push("Type changed from struct to enum".to_string());
+        }
+        (TypeDefinition::Enum(_), TypeDefinition::Struct(_)) => {
+            changes.push("Type changed from enum to struct".to_string());
+        }
+    }
+
+    changes
+}
+
+/// Compare two struct definitions
+fn compare_structs(
+    s1: &lumos_core::ir::StructDefinition,
+    s2: &lumos_core::ir::StructDefinition,
+    changes: &mut Vec<String>,
+) {
+    use std::collections::{HashMap, HashSet};
+
+    let fields1: HashMap<&str, &lumos_core::ir::FieldDefinition> = s1.fields.iter()
+        .map(|f| (f.name.as_str(), f))
+        .collect();
+
+    let fields2: HashMap<&str, &lumos_core::ir::FieldDefinition> = s2.fields.iter()
+        .map(|f| (f.name.as_str(), f))
+        .collect();
+
+    let names1: HashSet<&str> = fields1.keys().copied().collect();
+    let names2: HashSet<&str> = fields2.keys().copied().collect();
+
+    // Added fields
+    for field in names2.difference(&names1) {
+        let f = fields2[field];
+        changes.push(format!("+ Added field: {} ({})", field, format_type(&f.type_info)));
+    }
+
+    // Removed fields
+    for field in names1.difference(&names2) {
+        let f = fields1[field];
+        changes.push(format!("- Removed field: {} ({})", field, format_type(&f.type_info)));
+    }
+
+    // Modified fields
+    for field in names1.intersection(&names2) {
+        let f1 = fields1[field];
+        let f2 = fields2[field];
+
+        if format_type(&f1.type_info) != format_type(&f2.type_info) {
+            changes.push(format!(
+                "~ Modified field: {} ({} → {})",
+                field,
+                format_type(&f1.type_info),
+                format_type(&f2.type_info)
+            ));
+        }
+    }
+
+    // Check metadata changes
+    if s1.metadata.solana != s2.metadata.solana {
+        changes.push(format!(
+            "~ Solana attribute changed: {} → {}",
+            s1.metadata.solana,
+            s2.metadata.solana
+        ));
+    }
+
+    // Check other attributes
+    if s1.metadata.attributes != s2.metadata.attributes {
+        changes.push("~ Attributes changed".to_string());
+    }
+}
+
+/// Compare two enum definitions
+fn compare_enums(
+    e1: &lumos_core::ir::EnumDefinition,
+    e2: &lumos_core::ir::EnumDefinition,
+    changes: &mut Vec<String>,
+) {
+    use std::collections::{HashMap, HashSet};
+
+    let variants1: HashMap<&str, &lumos_core::ir::EnumVariantDefinition> = e1.variants.iter()
+        .map(|v| (v.name(), v))
+        .collect();
+
+    let variants2: HashMap<&str, &lumos_core::ir::EnumVariantDefinition> = e2.variants.iter()
+        .map(|v| (v.name(), v))
+        .collect();
+
+    let names1: HashSet<&str> = variants1.keys().copied().collect();
+    let names2: HashSet<&str> = variants2.keys().copied().collect();
+
+    // Added variants
+    for variant in names2.difference(&names1) {
+        changes.push(format!("+ Added variant: {}", variant));
+    }
+
+    // Removed variants
+    for variant in names1.difference(&names2) {
+        changes.push(format!("- Removed variant: {}", variant));
+    }
+
+    // Modified variants
+    for variant in names1.intersection(&names2) {
+        let v1 = variants1[variant];
+        let v2 = variants2[variant];
+
+        if !variants_equal(v1, v2) {
+            changes.push(format!("~ Modified variant: {}", variant));
+        }
+    }
+
+    // Check metadata changes
+    if e1.metadata.solana != e2.metadata.solana {
+        changes.push(format!(
+            "~ Solana attribute changed: {} → {}",
+            e1.metadata.solana,
+            e2.metadata.solana
+        ));
+    }
+}
+
+/// Check if two enum variants are equal
+fn variants_equal(
+    v1: &lumos_core::ir::EnumVariantDefinition,
+    v2: &lumos_core::ir::EnumVariantDefinition,
+) -> bool {
+    use lumos_core::ir::EnumVariantDefinition;
+
+    match (v1, v2) {
+        (EnumVariantDefinition::Unit { .. }, EnumVariantDefinition::Unit { .. }) => true,
+        (
+            EnumVariantDefinition::Tuple { types: t1, .. },
+            EnumVariantDefinition::Tuple { types: t2, .. },
+        ) => t1.len() == t2.len() && t1.iter().zip(t2.iter()).all(|(a, b)| format_type(a) == format_type(b)),
+        (
+            EnumVariantDefinition::Struct { fields: f1, .. },
+            EnumVariantDefinition::Struct { fields: f2, .. },
+        ) => f1.len() == f2.len() && f1.iter().zip(f2.iter()).all(|(a, b)| {
+            a.name == b.name && format_type(&a.type_info) == format_type(&b.type_info)
+        }),
+        _ => false,
+    }
+}
+
+/// Format a TypeInfo as a string
+fn format_type(type_info: &lumos_core::ir::TypeInfo) -> String {
+    use lumos_core::ir::TypeInfo;
+
+    match type_info {
+        TypeInfo::Primitive(p) => p.clone(),
+        TypeInfo::UserDefined(u) => u.clone(),
+        TypeInfo::Array(inner) => format!("Vec<{}>", format_type(inner)),
+        TypeInfo::Option(inner) => format!("Option<{}>", format_type(inner)),
+    }
+}
+
+/// Output differences in text format
+fn output_diff_text(
+    added: &[&str],
+    removed: &[&str],
+    modifications: &[(&str, Vec<String>)],
+) -> Result<()> {
+    if !added.is_empty() {
+        println!("{}", "Added Types:".green().bold());
+        for name in added {
+            println!("  {} {}", "+".green().bold(), name);
+        }
+        println!();
+    }
+
+    if !removed.is_empty() {
+        println!("{}", "Removed Types:".red().bold());
+        for name in removed {
+            println!("  {} {}", "-".red().bold(), name);
+        }
+        println!();
+    }
+
+    if !modifications.is_empty() {
+        println!("{}", "Modified Types:".yellow().bold());
+        for (name, changes) in modifications {
+            println!("  {} {}", "~".yellow().bold(), name);
+            for change in changes {
+                if change.starts_with('+') {
+                    println!("    {}", change.green());
+                } else if change.starts_with('-') {
+                    println!("    {}", change.red());
+                } else if change.starts_with('~') {
+                    println!("    {}", change.yellow());
+                } else {
+                    println!("    {}", change);
+                }
+            }
+        }
+        println!();
+    }
+
+    Ok(())
+}
+
+/// Output differences in JSON format
+fn output_diff_json(
+    added: &[&str],
+    removed: &[&str],
+    modifications: &[(&str, Vec<String>)],
+) -> Result<()> {
+    // Simple JSON output
+    println!("{{");
+    println!("  \"added\": [{}],", added.iter().map(|s| format!("\"{}\"", s)).collect::<Vec<_>>().join(", "));
+    println!("  \"removed\": [{}],", removed.iter().map(|s| format!("\"{}\"", s)).collect::<Vec<_>>().join(", "));
+    println!("  \"modified\": [");
+    for (i, (name, changes)) in modifications.iter().enumerate() {
+        println!("    {{");
+        println!("      \"name\": \"{}\",", name);
+        println!("      \"changes\": [");
+        for (j, change) in changes.iter().enumerate() {
+            let comma = if j < changes.len() - 1 { "," } else { "" };
+            println!("        \"{}\"{}",change.replace('"', "\\\""), comma);
+        }
+        println!("      ]");
+        let comma = if i < modifications.len() - 1 { "," } else { "" };
+        println!("    }}{}", comma);
+    }
+    println!("  ]");
+    println!("}}");
 
     Ok(())
 }
