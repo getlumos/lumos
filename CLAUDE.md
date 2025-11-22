@@ -449,6 +449,7 @@ enum GameState {
 - [x] VSCode extension published (v0.5.0)
 - [x] Published lumos-core v0.1.1 with security improvements
 - [x] Published lumos-lsp v0.1.0 to crates.io
+- [x] Published lumos-lsp v0.1.1 with library component (docs.rs support)
 
 ---
 
