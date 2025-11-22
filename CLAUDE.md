@@ -1,8 +1,205 @@
-# CLAUDE.md - LUMOS Core
+# CLAUDE.md - LUMOS Ecosystem
 
-**Repository:** https://github.com/getlumos/lumos
+**Organization:** https://github.com/getlumos
 **Website:** https://lumos-lang.org
-**Purpose:** Type-safe schema language bridging TypeScript ↔ Rust for Solana development
+**Purpose:** This file contains ecosystem-wide context for AI assistants working across all LUMOS repositories
+
+---
+
+## ECOSYSTEM OVERVIEW
+
+**LUMOS** is a type-safe schema language for Solana development that bridges TypeScript ↔ Rust with guaranteed Borsh serialization compatibility.
+
+**Write once in `.lumos`** → Generate production-ready Rust + TypeScript
+
+### How Repositories Relate
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  lumos (core)                                           │
+│  Schema language compiler + CLI                         │
+│  • Rust parser & code generator                         │
+│  • Published to crates.io                               │
+└────────────┬────────────────────────────────────────────┘
+             │
+        ┌────┴─────┬──────────────┬─────────────┐
+        │          │              │             │
+        v          v              v             v
+┌───────────┐ ┌────────────┐ ┌──────────┐ ┌──────────┐
+│  vscode-  │ │  awesome-  │ │   docs-  │ │  Future  │
+│   lumos   │ │   lumos    │ │   lumos  │ │   Repos  │
+│           │ │            │ │          │ │          │
+│ VSCode    │ │ Community  │ │ Official │ │ LSP,     │
+│ extension │ │ examples & │ │ docs &   │ │ Plugins, │
+│ (syntax,  │ │ full-stack │ │ website  │ │ Tools    │
+│ IntelliS, │ │ templates  │ │ VitePress│ │          │
+│ commands) │ │ 5 examples │ │ guides   │ │          │
+└───────────┘ └────────────┘ └──────────┘ └──────────┘
+```
+
+**Organization Mission:** Become the standard schema language for type-safe Solana development
+
+---
+
+## CROSS-REPO STANDARDS
+
+These standards apply to ALL repositories under getlumos organization.
+
+### Shared Coding Standards
+
+**Formatting:**
+- Rust: `cargo fmt --all` (rustfmt)
+- TypeScript/JavaScript: 2-space indentation
+- Markdown: Consistent headers, code blocks with language tags
+
+**Quality Gates:**
+- Zero warnings in CI/CD
+- All tests passing before merge
+- No security vulnerabilities (cargo audit, npm audit)
+
+**Git Workflow:**
+- Feature branches from `dev` or `main`
+- Descriptive commit messages (no AI attribution)
+- Squash commits on PR merge when sensible
+
+**Documentation:**
+- Keep README.md synchronized with code
+- Update CHANGELOG.md for user-facing changes
+- Maintain repo-specific CLAUDE.md (references this file)
+
+### Shared AI Assistant Guidelines
+
+**✅ ALWAYS DO:**
+- Read repo-specific CLAUDE.md for unique details
+- Run tests after code changes
+- Use proper formatting tools before committing
+- Reference file:line when discussing code
+- Update documentation when changing behavior
+- Check for redundant or duplicate information
+
+**❌ NEVER DO:**
+- Include AI attribution in commits, docs, or code
+- Skip running tests to save time
+- Create files without checking existing structure
+- Use bash echo for communication (output directly)
+- Proceed with ambiguous or unclear instructions
+
+### Licenses
+
+All LUMOS projects are dual-licensed:
+- **MIT License** - Permissive for commercial use
+- **Apache License 2.0** - Patent protection
+
+---
+
+## REPOSITORY INDEX
+
+Quick reference for navigating between LUMOS repositories.
+
+### 1. lumos (Core) - **YOU ARE HERE**
+
+**Purpose:** Schema language compiler and CLI
+**Tech Stack:** Rust (syn, proc-macro2, borsh)
+**Key Commands:**
+```bash
+cargo test --all-features --workspace    # Run 129 tests
+cargo clippy -- -D warnings              # Lint
+lumos generate schema.lumos              # Generate code
+```
+**Maintainers:** Core team
+**Status:** v0.1.1 published to crates.io
+**Full details:** See "LUMOS CORE REPOSITORY" section below
+
+---
+
+### 2. vscode-lumos
+
+**Purpose:** VSCode extension for `.lumos` files
+**Tech Stack:** TypeScript, VSCode API, TextMate grammar
+**Key Commands:**
+```bash
+npm run compile      # Build extension
+npm run package      # Create .vsix
+vsce publish         # Publish to marketplace
+```
+**Key Files:**
+- `src/extension.ts` - Extension activation
+- `syntaxes/lumos.tmLanguage.json` - Grammar (26 rules)
+- `snippets/lumos.json` - 13 snippets
+
+**Features:** Syntax highlighting, IntelliSense, diagnostics, quick fixes, format-on-save
+**Status:** v0.5.0 published to VS Marketplace
+**CLAUDE.md:** [vscode-lumos/CLAUDE.md](https://github.com/getlumos/vscode-lumos/blob/main/CLAUDE.md)
+
+---
+
+### 3. awesome-lumos
+
+**Purpose:** Production-ready examples and community projects
+**Tech Stack:** Anchor, TypeScript, Solana web3.js
+**Examples:** 5 complete (NFT Marketplace, DeFi Staking, DAO Governance, Gaming Inventory, Token Vesting)
+**Structure:**
+```
+examples/[project-name]/
+├── schema.lumos          # Source of truth
+├── generated.rs/.ts      # Generated code
+├── programs/             # Anchor program
+└── client/               # TypeScript client
+```
+**Total:** 53 types, 42 instructions, 4000+ LOC
+**CLAUDE.md:** [awesome-lumos/CLAUDE.md](https://github.com/getlumos/awesome-lumos/blob/main/CLAUDE.md)
+
+---
+
+### 4. docs-lumos
+
+**Purpose:** Official documentation website
+**Tech Stack:** VitePress, Markdown, Vue
+**Deployment:** Cloudflare Pages → lumos-lang.org
+**Key Commands:**
+```bash
+npm run docs:dev     # Dev server (localhost:5173)
+npm run docs:build   # Build for production
+```
+**Content Sections:** guide/, reference/, examples/, api/
+**Auto-deploy:** Push to `main` → live
+**CLAUDE.md:** [docs-lumos/CLAUDE.md](https://github.com/getlumos/docs-lumos/blob/main/CLAUDE.md)
+
+---
+
+## CURRENT FOCUS
+
+**Active Development Areas:**
+
+1. **Phase 5.1 - Schema Evolution** (Q2 2026)
+   - Versioning with `#[version]` attribute (#40)
+   - Automatic migration code generation (#41)
+   - Backward compatibility validation (#42)
+
+2. **Phase 5.2 - IDE Integration** (Q2 2026)
+   - Language Server Protocol implementation (#45) - HIGH PRIORITY
+   - Multi-editor support (IntelliJ, Neovim, Emacs, Sublime)
+
+3. **Phase 6.2 - Tooling Ecosystem**
+   - npm package for JavaScript/TypeScript projects (#62) - HIGH PRIORITY
+   - cargo subcommand integration (#59)
+   - GitHub Action marketplace publishing (#72)
+
+**Cross-Repo Initiatives:**
+- Hybrid CLAUDE.md architecture (reducing token usage) - IN PROGRESS
+- Unified changelog automation across repos
+- Consistent CI/CD patterns
+
+**Recent Changes Affecting Multiple Repos:**
+- v0.1.1 security improvements (affects all repos using CLI)
+- VSCode extension v0.5.0 with quick fixes (vscode-lumos)
+- 5 complete examples published (awesome-lumos)
+
+---
+
+# LUMOS CORE REPOSITORY
+
+> **Note:** The sections below are specific to the `getlumos/lumos` repository (core compiler and CLI). For other repos, see their respective CLAUDE.md files linked above.
 
 ---
 
@@ -39,19 +236,21 @@ Write data structures once in `.lumos` syntax → Generate production-ready Rust
 | Solana types | ✅ | PublicKey, Signature |
 | Complex types | ✅ | Vec, Option |
 | Context-aware generation | ✅ | Anchor vs pure Borsh detection |
-| CLI tool | ✅ | 4 commands (generate, validate, init, check) |
+| CLI tool | ✅ | 5 commands (generate, validate, init, check, diff) |
 | VSCode extension | ✅ | Separate repo: getlumos/vscode-lumos |
 | User-defined type validation | ✅ | Validates type references during transformation (v0.1.1) |
 | Path traversal protection | ✅ | CLI validates output paths for security (v0.1.1) |
 | u64 precision warnings | ✅ | JSDoc comments in generated TypeScript (v0.1.1) |
 | Deprecation warnings | ✅ | #[deprecated] attribute for schema evolution (v0.1.2) |
+| Security analysis | ✅ | Static analysis for vulnerabilities (v0.1.2) |
+| Fuzzing support | ✅ | Generate fuzzing harnesses for code (v0.1.2) |
 
 ---
 
 ## Development Commands
 
 ```bash
-# Run tests (108 tests, ~140s with E2E)
+# Run tests (129 tests, ~140s with E2E)
 cargo test --all-features --workspace
 
 # Check formatting
@@ -163,21 +362,19 @@ warning: Account.email: Use new_email instead
 
 ---
 
-## AI Assistant Guidelines
+## Core-Specific AI Guidelines
 
-### ✅ DO:
+### ✅ DO (Core Repository):
 - Run `cargo test` after any code changes
 - Use `cargo fmt` before committing
 - Check E2E tests pass (actual Rust compilation)
 - Update this file when architecture changes
 - Reference file:line when discussing code (e.g., `parser.rs:123`)
 
-### ❌ DON'T:
+### ❌ DON'T (Core Repository):
 - Add manual derives to `#[account]` structs (causes conflicts)
 - Change IR structure without updating all generators
 - Skip E2E tests (they catch real compilation issues)
-- Use `echo` or bash for communication (output directly)
-- Create .md files without surveying existing structure first
 
 ---
 
@@ -208,7 +405,7 @@ enum GameState {
 
 ## Publishing Checklist
 
-- [x] All tests passing (64/64)
+- [x] All tests passing (129/129)
 - [x] Zero clippy warnings
 - [x] Zero rustfmt violations
 - [x] Security audit clean (0 vulnerabilities)
@@ -218,8 +415,8 @@ enum GameState {
 - [x] Organization migrated (getlumos)
 - [x] Homepage updated (lumos-lang.org)
 - [x] Published to crates.io (lumos-core v0.1.0, lumos-cli v0.1.0)
-- [ ] VSCode extension published
-- [ ] Publish v0.1.1 with security & validation improvements
+- [x] VSCode extension published (v0.5.0)
+- [ ] Publish v0.1.2 with fuzzing & security improvements
 
 ---
 
@@ -242,21 +439,5 @@ cargo add lumos-core
 
 ---
 
-## Community Resources
-
-- **awesome-lumos** - 5 production-ready examples (NFT Marketplace, DeFi Staking, DAO Governance, Gaming Inventory, Token Vesting) - 53 types, 42 instructions, 4000+ LOC
-- **docs-lumos** - Official documentation at https://lumos-lang.org
-- **vscode-lumos** - VSCode extension (syntax highlighting, snippets, commands) - ready for VS Marketplace
-
----
-
-## Related Repositories
-
-- **vscode-lumos** - VSCode extension (syntax highlighting, snippets, commands)
-- **awesome-lumos** - Community examples and full-stack applications
-- **docs-lumos** - Official documentation site
-
----
-
-**Last Updated:** 2025-11-21
-**Status:** v0.1.1 - Security & Validation Improvements 🔒
+**Last Updated:** 2025-11-22
+**Status:** v0.1.2 (unreleased) - Fuzzing & Security Improvements 🔒
