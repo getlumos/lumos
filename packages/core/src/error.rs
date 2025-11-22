@@ -5,16 +5,41 @@
 
 use thiserror::Error;
 
+/// Source location information for error reporting
+#[derive(Debug, Clone)]
+pub struct SourceLocation {
+    /// Line number (1-indexed)
+    pub line: usize,
+    /// Column number (1-indexed)
+    pub column: usize,
+}
+
+impl SourceLocation {
+    /// Create a new source location
+    pub fn new(line: usize, column: usize) -> Self {
+        Self { line, column }
+    }
+
+    /// Format location as "line:column"
+    pub fn format(&self) -> String {
+        format!("{}:{}", self.line, self.column)
+    }
+}
+
 /// Errors that can occur in LUMOS core
 #[derive(Error, Debug)]
 pub enum LumosError {
-    /// Schema parsing error
-    #[error("Schema parsing error: {0}")]
-    SchemaParse(String),
+    /// Schema parsing error with optional source location
+    #[error("{}{}", .0, .1.as_ref().map(|loc| format!(" at line {}, column {}", loc.line, loc.column)).unwrap_or_default())]
+    SchemaParse(String, Option<SourceLocation>),
 
     /// Code generation error
     #[error("Code generation error: {0}")]
     CodeGen(String),
+
+    /// Type validation error with optional source location
+    #[error("{}{}", .0, .1.as_ref().map(|loc| format!(" (at {})", loc.format())).unwrap_or_default())]
+    TypeValidation(String, Option<SourceLocation>),
 
     /// IO error
     #[error("IO error: {0}")]

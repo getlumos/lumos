@@ -98,8 +98,9 @@ pub fn parse_lumos_file(input: &str) -> Result<LumosFile> {
     let mut items = Vec::new();
 
     // Parse the file as Rust code using syn
-    let file = syn::parse_file(input)
-        .map_err(|e| LumosError::SchemaParse(format!("Failed to parse .lumos file: {}", e)))?;
+    let file = syn::parse_file(input).map_err(|e| {
+        LumosError::SchemaParse(format!("Failed to parse .lumos file: {}", e), None)
+    })?;
 
     // Extract struct and enum definitions
     for item in file.items {
@@ -121,6 +122,7 @@ pub fn parse_lumos_file(input: &str) -> Result<LumosFile> {
     if items.is_empty() {
         return Err(LumosError::SchemaParse(
             "No type definitions found in .lumos file".to_string(),
+            None,
         ));
     }
 
@@ -146,10 +148,10 @@ fn parse_struct(item: syn::ItemStruct) -> Result<StructDef> {
             field_defs
         }
         _ => {
-            return Err(LumosError::SchemaParse(format!(
-                "Struct '{}' must have named fields",
-                name
-            )))
+            return Err(LumosError::SchemaParse(
+                format!("Struct '{}' must have named fields", name),
+                None,
+            ))
         }
     };
 
@@ -177,10 +179,10 @@ fn parse_enum(item: syn::ItemEnum) -> Result<EnumDef> {
     }
 
     if variants.is_empty() {
-        return Err(LumosError::SchemaParse(format!(
-            "Enum '{}' must have at least one variant",
-            name
-        )));
+        return Err(LumosError::SchemaParse(
+            format!("Enum '{}' must have at least one variant", name),
+            None,
+        ));
     }
 
     Ok(EnumDef {
@@ -227,7 +229,7 @@ fn parse_field(field: syn::Field) -> Result<FieldDef> {
     let name = field
         .ident
         .as_ref()
-        .ok_or_else(|| LumosError::SchemaParse("Field must have a name".to_string()))?
+        .ok_or_else(|| LumosError::SchemaParse("Field must have a name".to_string(), None))?
         .to_string();
 
     let span = field.ident.as_ref().map(|i| i.span());
@@ -272,7 +274,7 @@ fn parse_attributes(attrs: &[syn::Attribute]) -> Result<Vec<Attribute>> {
                 let name = meta_list
                     .path
                     .get_ident()
-                    .ok_or_else(|| LumosError::SchemaParse("Invalid attribute".to_string()))?
+                    .ok_or_else(|| LumosError::SchemaParse("Invalid attribute".to_string(), None))?
                     .to_string();
 
                 // Parse the value inside parentheses
@@ -331,7 +333,7 @@ fn parse_type(ty: &Type) -> Result<(TypeSpec, bool)> {
                 .path
                 .segments
                 .last()
-                .ok_or_else(|| LumosError::SchemaParse("Invalid type".to_string()))?
+                .ok_or_else(|| LumosError::SchemaParse("Invalid type".to_string(), None))?
                 .ident
                 .to_string();
 
@@ -364,10 +366,10 @@ fn parse_type(ty: &Type) -> Result<(TypeSpec, bool)> {
             Ok((TypeSpec::Array(Box::new(inner_type_spec)), false))
         }
 
-        _ => Err(LumosError::SchemaParse(format!(
-            "Unsupported type: {:?}",
-            ty
-        ))),
+        _ => Err(LumosError::SchemaParse(
+            format!("Unsupported type: {:?}", ty),
+            None,
+        )),
     }
 }
 

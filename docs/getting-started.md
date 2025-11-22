@@ -28,7 +28,7 @@ my-solana-project/
 
 Edit `schema.lumos`:
 
-```lumos
+```rust
 #[solana]
 #[account]
 struct UserAccount {

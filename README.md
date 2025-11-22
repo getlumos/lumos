@@ -47,7 +47,7 @@ LUMOS is a **powerful code generation framework** that bridges TypeScript and Ru
 
 ### Input: Single LUMOS Schema
 
-```lumos
+```rust
 #[solana]
 #[account]
 struct UserAccount {
@@ -121,6 +121,7 @@ export const UserAccountBorshSchema = borsh.struct([
 - [Examples](#-examples)
 - [Type Mapping](#-type-mapping)
 - [Roadmap](#-roadmap)
+- [Long-term Vision](docs/VISION.md)
 - [Tech Stack](#️-tech-stack)
 - [Test Suite](#-test-suite)
 - [Contributing](#-contributing)
@@ -175,7 +176,7 @@ interface GameState {
 <td valign="top">
 
 **Single Source of Truth**
-```lumos
+```rust
 #[solana]
 struct GameState {
     player: PublicKey,
@@ -374,7 +375,7 @@ This creates:
 
 Open `schema.lumos` and define your data structures:
 
-```lumos
+```rust
 #[solana]
 #[account]
 struct PlayerAccount {
@@ -526,7 +527,7 @@ LUMOS uses an **Intermediate Representation (IR)** architecture to decouple pars
 **Why?** Mixed modules (some with `#[account]`, some without) require different imports. Smart detection prevents compile errors.
 
 Example:
-```lumos
+```rust
 #[solana]
 #[account]
 struct Config { ... }  // Uses anchor_lang::prelude::*
@@ -555,7 +556,7 @@ LUMOS includes **5 real-world example schemas** covering common Solana use cases
 ### 1. Gaming Platform
 **File:** `examples/gaming/schema.lumos`
 
-```lumos
+```rust
 #[solana]
 #[account]
 struct PlayerAccount {
@@ -586,7 +587,7 @@ struct MatchResult {
 ### 2. NFT Marketplace
 **File:** `examples/nft-marketplace/schema.lumos`
 
-```lumos
+```rust
 #[solana]
 #[account]
 struct Listing {
@@ -610,7 +611,7 @@ struct PurchaseReceipt {
 ### 3. DeFi Staking Protocol
 **File:** `examples/defi-staking/schema.lumos`
 
-```lumos
+```rust
 #[solana]
 #[account]
 struct StakeAccount {
@@ -633,7 +634,7 @@ struct RewardClaim {
 ### 4. DAO Governance
 **File:** `examples/dao-governance/schema.lumos`
 
-```lumos
+```rust
 #[solana]
 #[account]
 struct Proposal {
@@ -660,7 +661,7 @@ struct Vote {
 ### 5. Token Vesting
 **File:** `examples/token-vesting/schema.lumos`
 
-```lumos
+```rust
 #[solana]
 #[account]
 struct VestingSchedule {
@@ -721,7 +722,7 @@ LUMOS provides complete bidirectional type mapping between `.lumos` syntax, Rust
 
 ### Type Mapping Examples
 
-```lumos
+```rust
 #[solana]
 struct Example {
     id: u64,                      // → Rust: u64, TS: number
@@ -750,6 +751,8 @@ export const ExampleBorshSchema = borsh.struct([
 ## 🚀 Roadmap
 
 > 📍 **Looking for our future plans?** See the detailed [ROADMAP.md](ROADMAP.md) for Phase 4+, including VSCode extension polish, community examples, and ecosystem expansion.
+
+> 🔮 **Curious about our long-term vision?** Check out [docs/VISION.md](docs/VISION.md) - LUMOS is evolving from a schema DSL into a full typed workflow programming language for developer automation.
 
 ### Phase 1: Core TypeScript ↔ Rust Codegen ✅ **COMPLETED**
 
@@ -868,7 +871,7 @@ Full support for Rust-style enums with three variant types:
 
 **Example:**
 
-```lumos
+```rust
 #[solana]
 enum GameInstruction {
     Initialize {
@@ -1236,6 +1239,7 @@ The **Solana developer community** - developers building the future of decentral
 ### Official Documentation
 
 - **LUMOS Docs** - Coming soon
+- **Migration Guide** - [docs/MIGRATION.md](docs/MIGRATION.md) - Version upgrade instructions
 - **Execution Plan** - [docs/execution-plan.md](docs/execution-plan.md)
 - **Project Context** - [CLAUDE.md](CLAUDE.md)
 

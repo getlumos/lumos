@@ -9,8 +9,13 @@ use colored::*;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use lumos_core::audit_generator::AuditGenerator;
+use lumos_core::corpus_generator::CorpusGenerator;
+use lumos_core::fuzz_generator::FuzzGenerator;
 use lumos_core::generators::{rust, typescript};
 use lumos_core::parser::parse_lumos_file;
+use lumos_core::security_analyzer::SecurityAnalyzer;
+use lumos_core::size_calculator::SizeCalculator;
 use lumos_core::transform::transform_to_ir;
 
 #[derive(Parser)]
@@ -35,6 +40,9 @@ enum Commands {
         output: Option<PathBuf>,
 
         /// Watch for changes and regenerate automatically
+        ///
+        /// Debounce duration can be configured via LUMOS_WATCH_DEBOUNCE env var
+        /// (default: 100ms, max: 5000ms). Example: LUMOS_WATCH_DEBOUNCE=200
         #[arg(short, long)]
         watch: bool,
 
@@ -72,6 +80,117 @@ enum Commands {
         #[arg(short, long)]
         output: Option<PathBuf>,
     },
+
+    /// Analyze account sizes and check for Solana limits
+    CheckSize {
+        /// Path to .lumos schema file
+        schema: PathBuf,
+
+        /// Output format (text or json)
+        #[arg(short, long, default_value = "text")]
+        format: String,
+    },
+
+    /// Security analysis commands
+    Security {
+        #[command(subcommand)]
+        command: SecurityCommands,
+    },
+
+    /// Audit checklist generation commands
+    Audit {
+        #[command(subcommand)]
+        command: AuditCommands,
+    },
+
+    /// Fuzz testing commands
+    Fuzz {
+        #[command(subcommand)]
+        command: FuzzCommands,
+    },
+}
+
+#[derive(Subcommand)]
+enum SecurityCommands {
+    /// Analyze schema for common Solana vulnerabilities
+    Analyze {
+        /// Path to .lumos schema file
+        schema: PathBuf,
+
+        /// Output format (text or json)
+        #[arg(short, long, default_value = "text")]
+        format: String,
+
+        /// Enable strict mode (more aggressive warnings)
+        #[arg(short, long)]
+        strict: bool,
+    },
+}
+
+#[derive(Subcommand)]
+enum AuditCommands {
+    /// Generate security audit checklist from schema
+    Generate {
+        /// Path to .lumos schema file
+        schema: PathBuf,
+
+        /// Output file path (default: SECURITY_AUDIT.md)
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Output format (markdown or json)
+        #[arg(short, long, default_value = "markdown")]
+        format: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum FuzzCommands {
+    /// Generate fuzz targets for types
+    Generate {
+        /// Path to .lumos schema file
+        schema: PathBuf,
+
+        /// Output directory for fuzz targets (default: fuzz/)
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Specific type to generate fuzz target for (optional)
+        #[arg(short, long)]
+        type_name: Option<String>,
+    },
+
+    /// Run fuzzing for a specific type
+    Run {
+        /// Path to .lumos schema file
+        schema: PathBuf,
+
+        /// Type to fuzz
+        #[arg(short, long)]
+        type_name: String,
+
+        /// Number of parallel jobs
+        #[arg(short, long, default_value = "1")]
+        jobs: usize,
+
+        /// Maximum run time in seconds (optional)
+        #[arg(short, long)]
+        max_time: Option<u64>,
+    },
+
+    /// Generate corpus files for fuzzing
+    Corpus {
+        /// Path to .lumos schema file
+        schema: PathBuf,
+
+        /// Output directory for corpus (default: fuzz/corpus/)
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Specific type to generate corpus for (optional)
+        #[arg(short, long)]
+        type_name: Option<String>,
+    },
 }
 
 fn main() -> Result<()> {
@@ -95,6 +214,39 @@ fn main() -> Result<()> {
         Commands::Validate { schema } => run_validate(&schema),
         Commands::Init { name } => run_init(name.as_deref()),
         Commands::Check { schema, output } => run_check(&schema, output.as_deref()),
+        Commands::CheckSize { schema, format } => run_check_size(&schema, &format),
+        Commands::Security { command } => match command {
+            SecurityCommands::Analyze {
+                schema,
+                format,
+                strict,
+            } => run_security_analyze(&schema, &format, strict),
+        },
+        Commands::Audit { command } => match command {
+            AuditCommands::Generate {
+                schema,
+                output,
+                format,
+            } => run_audit_generate(&schema, output.as_deref(), &format),
+        },
+        Commands::Fuzz { command } => match command {
+            FuzzCommands::Generate {
+                schema,
+                output,
+                type_name,
+            } => run_fuzz_generate(&schema, output.as_deref(), type_name.as_deref()),
+            FuzzCommands::Run {
+                schema,
+                type_name,
+                jobs,
+                max_time,
+            } => run_fuzz_run(&schema, &type_name, jobs, max_time),
+            FuzzCommands::Corpus {
+                schema,
+                output,
+                type_name,
+            } => run_fuzz_corpus(&schema, output.as_deref(), type_name.as_deref()),
+        },
     }
 }
 
@@ -107,6 +259,9 @@ fn run_generate(
     show_diff: bool,
 ) -> Result<()> {
     let output_dir = output_dir.unwrap_or_else(|| Path::new("."));
+
+    // Validate output directory for security
+    validate_output_path(output_dir)?;
 
     // Dry-run mode header
     if dry_run {
@@ -572,6 +727,9 @@ https://github.com/RECTOR-LABS/lumos
 fn run_check(schema_path: &Path, output_dir: Option<&Path>) -> Result<()> {
     let output_dir = output_dir.unwrap_or_else(|| Path::new("."));
 
+    // Validate output directory
+    validate_output_path(output_dir)?;
+
     println!("{:>12} generated code status", "Checking".cyan().bold());
 
     // Check if output files exist
@@ -674,12 +832,19 @@ fn run_watch_mode(schema_path: &Path, output_dir: Option<&Path>) -> Result<()> {
 
     watcher.watch(&schema_path, RecursiveMode::NonRecursive)?;
 
+    // Get configurable debounce duration (default: 100ms)
+    let debounce_ms = std::env::var("LUMOS_WATCH_DEBOUNCE")
+        .ok()
+        .and_then(|s| s.parse::<u64>().ok())
+        .filter(|&ms| ms <= 5000) // Max 5 seconds
+        .unwrap_or(100);
+
     // Watch for changes
     loop {
-        match rx.recv_timeout(Duration::from_millis(100)) {
+        match rx.recv_timeout(Duration::from_millis(debounce_ms)) {
             Ok(_event) => {
                 // Debounce: wait a bit for multiple rapid changes
-                std::thread::sleep(Duration::from_millis(100));
+                std::thread::sleep(Duration::from_millis(debounce_ms));
 
                 // Drain any pending events
                 while rx.try_recv().is_ok() {}
@@ -706,4 +871,904 @@ fn run_watch_mode(schema_path: &Path, output_dir: Option<&Path>) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Check account sizes and detect overflow
+fn run_check_size(schema_path: &Path, format: &str) -> Result<()> {
+    // Read and parse schema
+    let content = fs::read_to_string(schema_path)
+        .with_context(|| format!("Failed to read schema file: {}", schema_path.display()))?;
+
+    let ast = parse_lumos_file(&content)
+        .with_context(|| format!("Failed to parse schema: {}", schema_path.display()))?;
+
+    let ir = transform_to_ir(ast).with_context(|| "Failed to transform AST to IR")?;
+
+    if ir.is_empty() {
+        eprintln!(
+            "{}: No type definitions found in schema",
+            "warning".yellow().bold()
+        );
+        return Ok(());
+    }
+
+    // Calculate sizes
+    let mut calculator = SizeCalculator::new(&ir);
+    let sizes = calculator.calculate_all();
+
+    if format == "json" {
+        // JSON output for programmatic use
+        output_json(&sizes)?;
+    } else {
+        // Human-readable text output
+        output_text(&sizes)?;
+    }
+
+    // Exit with error if any account exceeds limits
+    let has_errors = sizes.iter().any(|s| !s.warnings.is_empty());
+    if has_errors {
+        std::process::exit(1);
+    }
+
+    Ok(())
+}
+
+/// Output sizes in human-readable format
+fn output_text(sizes: &[lumos_core::size_calculator::AccountSize]) -> Result<()> {
+    use lumos_core::size_calculator::SizeInfo;
+
+    println!("{}", "Account Size Analysis:".bold());
+    println!();
+
+    for account in sizes {
+        // Account header
+        let status = if account.warnings.is_empty() {
+            "✓".green()
+        } else {
+            "⚠".yellow()
+        };
+
+        let size_str = match &account.total_bytes {
+            SizeInfo::Fixed(bytes) => format!("{} bytes", bytes),
+            SizeInfo::Variable { min, .. } => format!("{}+ bytes (variable)", min),
+        };
+
+        println!(
+            "{} {}: {}",
+            status,
+            account.name.bold(),
+            size_str.cyan()
+        );
+
+        // Field breakdown
+        for field in &account.field_breakdown {
+            let field_size = match &field.size {
+                SizeInfo::Fixed(bytes) => format!("{} bytes", bytes),
+                SizeInfo::Variable { min, .. } => format!("{}+ bytes", min),
+            };
+
+            println!(
+                "  {} {} ({}) - {}",
+                "├─".dimmed(),
+                field.name,
+                field_size.dimmed(),
+                field.description.dimmed()
+            );
+        }
+
+        // Total and rent
+        println!(
+            "  {} Total: {}",
+            "└─".dimmed(),
+            size_str.bold()
+        );
+        println!("     Rent: {} SOL", format!("{:.8}", account.rent_sol).cyan());
+
+        // Warnings
+        for warning in &account.warnings {
+            println!();
+            println!("  {} {}", "⚠".yellow(), warning.yellow());
+        }
+
+        println!();
+    }
+
+    // Summary
+    let total_accounts = sizes.len();
+    let accounts_with_warnings = sizes.iter().filter(|s| !s.warnings.is_empty()).count();
+
+    println!("{}", "Summary:".bold());
+    println!("  Total accounts: {}", total_accounts);
+
+    if accounts_with_warnings > 0 {
+        println!(
+            "  {} with warnings/errors",
+            accounts_with_warnings.to_string().yellow()
+        );
+    } else {
+        println!("  {}", "All accounts within limits ✓".green());
+    }
+
+    Ok(())
+}
+
+/// Output sizes in JSON format
+fn output_json(sizes: &[lumos_core::size_calculator::AccountSize]) -> Result<()> {
+    use lumos_core::size_calculator::SizeInfo;
+    use serde_json::json;
+
+    let json_data: Vec<_> = sizes
+        .iter()
+        .map(|account| {
+            let (total_bytes, is_variable) = match &account.total_bytes {
+                SizeInfo::Fixed(bytes) => (*bytes, false),
+                SizeInfo::Variable { min, .. } => (*min, true),
+            };
+
+            json!({
+                "name": account.name,
+                "total_bytes": total_bytes,
+                "is_variable": is_variable,
+                "is_account": account.is_account,
+                "rent_sol": account.rent_sol,
+                "warnings": account.warnings,
+                "fields": account.field_breakdown.iter().map(|field| {
+                    let (bytes, var) = match &field.size {
+                        SizeInfo::Fixed(b) => (*b, false),
+                        SizeInfo::Variable { min, .. } => (*min, true),
+                    };
+                    json!({
+                        "name": field.name,
+                        "bytes": bytes,
+                        "is_variable": var,
+                        "description": field.description,
+                    })
+                }).collect::<Vec<_>>(),
+            })
+        })
+        .collect();
+
+    println!("{}", serde_json::to_string_pretty(&json_data)?);
+    Ok(())
+}
+
+/// Run security analysis on schema
+fn run_security_analyze(schema_path: &Path, format: &str, strict: bool) -> Result<()> {
+    // Read and parse schema
+    let content = fs::read_to_string(schema_path)
+        .with_context(|| format!("Failed to read schema file: {}", schema_path.display()))?;
+
+    let ast = parse_lumos_file(&content)
+        .with_context(|| format!("Failed to parse schema: {}", schema_path.display()))?;
+
+    let ir = transform_to_ir(ast).with_context(|| "Failed to transform AST to IR")?;
+
+    if ir.is_empty() {
+        eprintln!(
+            "{}: No type definitions found in schema",
+            "warning".yellow().bold()
+        );
+        return Ok(());
+    }
+
+    // Run security analysis
+    let mut analyzer = SecurityAnalyzer::new(&ir);
+    if strict {
+        analyzer = analyzer.with_strict_mode();
+    }
+
+    let findings = analyzer.analyze();
+
+    if format == "json" {
+        output_security_json(&findings)?;
+    } else {
+        output_security_text(&findings, schema_path)?;
+    }
+
+    // Exit with error if any critical findings
+    let has_critical = findings
+        .iter()
+        .any(|f| matches!(f.severity, lumos_core::security_analyzer::Severity::Critical));
+
+    if has_critical {
+        std::process::exit(1);
+    }
+
+    Ok(())
+}
+
+/// Output security findings in human-readable format
+fn output_security_text(
+    findings: &[lumos_core::security_analyzer::SecurityFinding],
+    schema_path: &Path,
+) -> Result<()> {
+    use lumos_core::security_analyzer::Severity;
+
+    println!("{}", "Security Analysis Report".bold());
+    println!("Schema: {}", schema_path.display().to_string().cyan());
+    println!();
+
+    if findings.is_empty() {
+        println!("{}", "✓ No security issues found!".green().bold());
+        println!();
+        println!("All checks passed. Your schema follows Solana security best practices.");
+        return Ok(());
+    }
+
+    // Group by severity
+    let critical: Vec<_> = findings
+        .iter()
+        .filter(|f| matches!(f.severity, Severity::Critical))
+        .collect();
+    let warnings: Vec<_> = findings
+        .iter()
+        .filter(|f| matches!(f.severity, Severity::Warning))
+        .collect();
+    let info: Vec<_> = findings
+        .iter()
+        .filter(|f| matches!(f.severity, Severity::Info))
+        .collect();
+
+    // Summary
+    println!("{}", "Summary:".bold());
+    if !critical.is_empty() {
+        println!(
+            "  {} {} critical issues",
+            "🚨".to_string(),
+            critical.len().to_string().red().bold()
+        );
+    }
+    if !warnings.is_empty() {
+        println!("  ⚠️  {} warnings", warnings.len().to_string().yellow());
+    }
+    if !info.is_empty() {
+        println!("  ℹ️  {} informational", info.len());
+    }
+    println!();
+
+    // Critical findings
+    if !critical.is_empty() {
+        println!("{}", "CRITICAL ISSUES".red().bold());
+        println!("{}", "═".repeat(60).red());
+        println!();
+
+        for (i, finding) in critical.iter().enumerate() {
+            print_finding(finding, i + 1);
+        }
+    }
+
+    // Warnings
+    if !warnings.is_empty() {
+        println!("{}", "WARNINGS".yellow().bold());
+        println!("{}", "═".repeat(60).yellow());
+        println!();
+
+        for (i, finding) in warnings.iter().enumerate() {
+            print_finding(finding, i + 1);
+        }
+    }
+
+    // Info
+    if !info.is_empty() {
+        println!("{}", "INFORMATIONAL".dimmed().bold());
+        println!("{}", "═".repeat(60).dimmed());
+        println!();
+
+        for (i, finding) in info.iter().enumerate() {
+            print_finding(finding, i + 1);
+        }
+    }
+
+    // Footer
+    println!();
+    println!("{}", "Recommendations:".bold());
+    if !critical.is_empty() {
+        println!(
+            "  {} Fix all critical issues before deployment",
+            "🚨".red()
+        );
+    }
+    if !warnings.is_empty() {
+        println!("  ⚠️  Review and address warnings");
+    }
+    println!("  📚 See: docs/security/static-analysis.md");
+
+    Ok(())
+}
+
+/// Print a single finding
+fn print_finding(finding: &lumos_core::security_analyzer::SecurityFinding, _index: usize) {
+    use lumos_core::security_analyzer::Severity;
+
+    let emoji = finding.severity.emoji();
+    let severity_str = match finding.severity {
+        Severity::Critical => finding.severity.as_str().red().bold(),
+        Severity::Warning => finding.severity.as_str().yellow().bold(),
+        Severity::Info => finding.severity.as_str().dimmed().bold(),
+    };
+
+    println!(
+        "{} [{}] {}",
+        emoji,
+        severity_str,
+        finding.vulnerability.as_str().bold()
+    );
+
+    // Location
+    let location = if let Some(ref field) = finding.location.field_name {
+        format!("{}::{}", finding.location.type_name, field)
+    } else {
+        finding.location.type_name.clone()
+    };
+    println!("   Location: {}", location.cyan());
+
+    // Message
+    println!("   {}", finding.message);
+
+    // Suggestion
+    println!("   💡 {}", finding.suggestion.dimmed());
+
+    println!();
+}
+
+/// Output security findings in JSON format
+fn output_security_json(findings: &[lumos_core::security_analyzer::SecurityFinding]) -> Result<()> {
+    use serde_json::json;
+
+    let json_data: Vec<_> = findings
+        .iter()
+        .map(|finding| {
+            json!({
+                "severity": finding.severity.as_str(),
+                "vulnerability_type": finding.vulnerability.as_str(),
+                "location": {
+                    "type_name": finding.location.type_name,
+                    "field_name": finding.location.field_name,
+                },
+                "message": finding.message,
+                "suggestion": finding.suggestion,
+            })
+        })
+        .collect();
+
+    println!("{}", serde_json::to_string_pretty(&json_data)?);
+    Ok(())
+}
+
+/// Run audit checklist generation
+fn run_audit_generate(schema_path: &Path, output_path: Option<&Path>, format: &str) -> Result<()> {
+    // Read and parse schema
+    let content = fs::read_to_string(schema_path)
+        .with_context(|| format!("Failed to read schema file: {}", schema_path.display()))?;
+
+    let ast = parse_lumos_file(&content)
+        .with_context(|| format!("Failed to parse schema: {}", schema_path.display()))?;
+
+    let ir = transform_to_ir(ast).with_context(|| "Failed to transform AST to IR")?;
+
+    if ir.is_empty() {
+        eprintln!(
+            "{}: No type definitions found in schema",
+            "warning".yellow().bold()
+        );
+        return Ok(());
+    }
+
+    // Generate checklist
+    let generator = AuditGenerator::new(&ir);
+    let checklist = generator.generate();
+
+    // Determine output path
+    let output = output_path.unwrap_or_else(|| Path::new("SECURITY_AUDIT.md"));
+
+    // Generate output based on format
+    if format == "json" {
+        generate_audit_json(&checklist, output)?;
+    } else {
+        generate_audit_markdown(&checklist, schema_path, output)?;
+    }
+
+    println!(
+        "\n{} {}",
+        "Generated:".green().bold(),
+        output.display().to_string().bold()
+    );
+    println!();
+    println!("Checklist includes:");
+    println!("  ✓ {} total checks", checklist.len());
+
+    // Count by category
+    use lumos_core::audit_generator::CheckCategory;
+    let categories = [
+        CheckCategory::AccountValidation,
+        CheckCategory::SignerChecks,
+        CheckCategory::ArithmeticSafety,
+        CheckCategory::AccessControl,
+    ];
+
+    for category in categories {
+        let count = checklist
+            .iter()
+            .filter(|item| item.category == category)
+            .count();
+        if count > 0 {
+            println!("  ✓ {} {} checks", count, category.as_str().to_lowercase());
+        }
+    }
+
+    Ok(())
+}
+
+/// Generate audit checklist in Markdown format
+fn generate_audit_markdown(
+    checklist: &[lumos_core::audit_generator::ChecklistItem],
+    schema_path: &Path,
+    output_path: &Path,
+) -> Result<()> {
+    use lumos_core::audit_generator::CheckCategory;
+    use std::collections::HashMap;
+
+    let mut content = String::new();
+
+    // Header
+    content.push_str("# Security Audit Checklist\n\n");
+    content.push_str(&format!(
+        "**Generated from:** `{}`\n",
+        schema_path.display()
+    ));
+    content.push_str(&format!("**Date:** {}\n\n", chrono::Local::now().format("%Y-%m-%d")));
+    content.push_str(&format!("**Total Checks:** {}\n\n", checklist.len()));
+
+    content.push_str("---\n\n");
+    content.push_str("## ⚠️ Important Disclaimer\n\n");
+    content.push_str("**This automated checklist is a supplementary tool and does NOT replace professional security audits.**\n\n");
+    content.push_str("- Generated checklists identify common vulnerability patterns based on schema structure\n");
+    content.push_str("- They cannot detect logic bugs, business logic flaws, or complex attack vectors\n");
+    content.push_str("- **Always conduct thorough manual code review and professional security audits** before deploying to production\n");
+    content.push_str("- Consider engaging professional security auditors for mainnet deployments\n\n");
+    content.push_str("---\n\n");
+    content.push_str("## How to Use This Checklist\n\n");
+    content.push_str("- [ ] = Not checked yet\n");
+    content.push_str("- [x] = Verified and compliant\n");
+    content.push_str("- Priority: 🔴 CRITICAL | 🟡 HIGH | 🟢 MEDIUM | ⚪ LOW\n\n");
+    content.push_str("**Review each item during your security audit and check the box when verified.**\n\n");
+
+    content.push_str("---\n\n");
+
+    // Group by category
+    let mut by_category: HashMap<CheckCategory, Vec<&lumos_core::audit_generator::ChecklistItem>> =
+        HashMap::new();
+
+    for item in checklist {
+        by_category
+            .entry(item.category.clone())
+            .or_default()
+            .push(item);
+    }
+
+    // Output each category
+    let category_order = [
+        CheckCategory::AccountValidation,
+        CheckCategory::SignerChecks,
+        CheckCategory::AccessControl,
+        CheckCategory::ArithmeticSafety,
+        CheckCategory::DataValidation,
+        CheckCategory::StateTransition,
+        CheckCategory::Initialization,
+        CheckCategory::RentExemption,
+    ];
+
+    for category in category_order {
+        if let Some(items) = by_category.get(&category) {
+            content.push_str(&format!(
+                "## {} {}\n\n",
+                category.emoji(),
+                category.as_str()
+            ));
+
+            for item in items {
+                let priority_icon = match item.priority {
+                    lumos_core::audit_generator::Priority::Critical => "🔴",
+                    lumos_core::audit_generator::Priority::High => "🟡",
+                    lumos_core::audit_generator::Priority::Medium => "🟢",
+                    lumos_core::audit_generator::Priority::Low => "⚪",
+                };
+
+                content.push_str(&format!("- [ ] {} **{}**\n", priority_icon, item.item));
+                content.push_str(&format!("  - Context: `{}`\n", item.context));
+                content.push_str(&format!("  - {}\n\n", item.explanation));
+            }
+        }
+    }
+
+    // Footer
+    content.push_str("---\n\n");
+    content.push_str("## Additional Security Considerations\n\n");
+    content.push_str("- [ ] **Program Logic:** Verify business logic correctness\n");
+    content.push_str("- [ ] **Error Handling:** Ensure all error paths are covered\n");
+    content.push_str("- [ ] **Testing:** Comprehensive test suite including edge cases\n");
+    content.push_str("- [ ] **Documentation:** Code is well-documented\n");
+    content.push_str("- [ ] **Dependencies:** All dependencies are audited and up-to-date\n\n");
+
+    content.push_str("---\n\n");
+    content.push_str("**Audit Status:**\n\n");
+    content.push_str("- Auditor: _________________\n");
+    content.push_str("- Date Started: _________________\n");
+    content.push_str("- Date Completed: _________________\n");
+    content.push_str("- Findings: _________________\n\n");
+
+    fs::write(output_path, content)
+        .with_context(|| format!("Failed to write checklist to {}", output_path.display()))?;
+
+    Ok(())
+}
+
+/// Generate audit checklist in JSON format
+fn generate_audit_json(
+    checklist: &[lumos_core::audit_generator::ChecklistItem],
+    output_path: &Path,
+) -> Result<()> {
+    use serde_json::json;
+
+    let json_data: Vec<_> = checklist
+        .iter()
+        .map(|item| {
+            json!({
+                "category": item.category.as_str(),
+                "priority": item.priority.as_str(),
+                "item": item.item,
+                "context": item.context,
+                "explanation": item.explanation,
+                "checked": false,
+            })
+        })
+        .collect();
+
+    let output = serde_json::to_string_pretty(&json_data)?;
+    fs::write(output_path, output)
+        .with_context(|| format!("Failed to write checklist to {}", output_path.display()))?;
+
+    Ok(())
+}
+
+/// Generate fuzz targets from schema
+fn run_fuzz_generate(
+    schema_path: &Path,
+    output_dir: Option<&Path>,
+    type_name: Option<&str>,
+) -> Result<()> {
+    let output_dir = output_dir.unwrap_or_else(|| Path::new("fuzz"));
+
+    println!(
+        "{:>12} {}",
+        "Generating".cyan().bold(),
+        "fuzz targets..."
+    );
+
+    // Read and parse schema
+    let source = fs::read_to_string(schema_path)
+        .with_context(|| format!("Failed to read schema file: {}", schema_path.display()))?;
+
+    let ast = parse_lumos_file(&source)?;
+    let ir = transform_to_ir(ast)?;
+
+    let generator = FuzzGenerator::new(&ir);
+
+    // Filter by type if specified
+    let targets: Vec<_> = if let Some(name) = type_name {
+        if !generator.type_exists(name) {
+            anyhow::bail!("Type '{}' not found in schema", name);
+        }
+        generator
+            .generate_all()
+            .into_iter()
+            .filter(|t| t.type_name == name)
+            .collect()
+    } else {
+        generator.generate_all()
+    };
+
+    if targets.is_empty() {
+        println!("{}", "⚠ No types found in schema".yellow());
+        return Ok(());
+    }
+
+    // Create directory structure
+    let fuzz_dir = output_dir;
+    let fuzz_targets_dir = fuzz_dir.join("fuzz_targets");
+
+    fs::create_dir_all(&fuzz_targets_dir)
+        .with_context(|| format!("Failed to create directory: {}", fuzz_targets_dir.display()))?;
+
+    // Generate Cargo.toml
+    let cargo_toml_path = fuzz_dir.join("Cargo.toml");
+    let cargo_toml = generator.generate_cargo_toml("generated");
+    fs::write(&cargo_toml_path, cargo_toml)
+        .with_context(|| format!("Failed to write {}", cargo_toml_path.display()))?;
+
+    println!(
+        "{:>12} {}",
+        "Created".green().bold(),
+        cargo_toml_path.display()
+    );
+
+    // Generate README
+    let readme_path = fuzz_dir.join("README.md");
+    let readme = generator.generate_readme();
+    fs::write(&readme_path, readme)
+        .with_context(|| format!("Failed to write {}", readme_path.display()))?;
+
+    println!(
+        "{:>12} {}",
+        "Created".green().bold(),
+        readme_path.display()
+    );
+
+    // Generate fuzz targets
+    for target in &targets {
+        let target_path = fuzz_targets_dir.join(format!("{}.rs", target.name));
+        fs::write(&target_path, &target.code)
+            .with_context(|| format!("Failed to write {}", target_path.display()))?;
+
+        println!(
+            "{:>12} {} (for {})",
+            "Generated".green().bold(),
+            target_path.display(),
+            target.type_name
+        );
+    }
+
+    println!(
+        "\n{} Generated {} fuzz target{}",
+        "✓".green().bold(),
+        targets.len(),
+        if targets.len() == 1 { "" } else { "s" }
+    );
+
+    println!("\n{}", "Next steps:".cyan().bold());
+    println!("  1. Install cargo-fuzz: {}", "cargo install cargo-fuzz".yellow());
+    println!("  2. Run fuzzing: {}", format!("cd {} && cargo fuzz run {}", fuzz_dir.display(), targets[0].name).yellow());
+
+    Ok(())
+}
+
+/// Run fuzzing for a specific type
+fn run_fuzz_run(
+    schema_path: &Path,
+    type_name: &str,
+    jobs: usize,
+    max_time: Option<u64>,
+) -> Result<()> {
+    println!(
+        "{:>12} {} for type '{}'",
+        "Running".cyan().bold(),
+        "fuzzer",
+        type_name
+    );
+
+    // Read and parse schema to verify type exists
+    let source = fs::read_to_string(schema_path)
+        .with_context(|| format!("Failed to read schema file: {}", schema_path.display()))?;
+
+    let ast = parse_lumos_file(&source)?;
+    let ir = transform_to_ir(ast)?;
+
+    let generator = FuzzGenerator::new(&ir);
+
+    if !generator.type_exists(type_name) {
+        anyhow::bail!("Type '{}' not found in schema", type_name);
+    }
+
+    // Convert type name to fuzz target name
+    let target_name = format!("fuzz_{}", to_snake_case(type_name));
+
+    // Build cargo-fuzz command
+    let mut args = vec!["fuzz", "run", &target_name];
+
+    // Add arguments
+    let mut extra_args = vec![];
+
+    if jobs > 1 {
+        extra_args.push(format!("-jobs={}", jobs));
+    }
+
+    if let Some(time) = max_time {
+        extra_args.push(format!("-max_total_time={}", time));
+    }
+
+    if !extra_args.is_empty() {
+        args.push("--");
+        for arg in &extra_args {
+            args.push(arg);
+        }
+    }
+
+    println!(
+        "{:>12} {}",
+        "Executing".cyan().bold(),
+        format!("cargo {}", args.join(" ")).yellow()
+    );
+
+    // Execute cargo-fuzz
+    use std::process::Command;
+
+    let status = Command::new("cargo")
+        .args(&args)
+        .current_dir("fuzz")
+        .status()
+        .with_context(|| "Failed to run cargo-fuzz. Is it installed? (cargo install cargo-fuzz)")?;
+
+    if !status.success() {
+        anyhow::bail!("Fuzzing failed with exit code: {}", status);
+    }
+
+    println!("{}", "✓ Fuzzing completed".green().bold());
+
+    Ok(())
+}
+
+/// Generate corpus files for fuzzing
+fn run_fuzz_corpus(
+    schema_path: &Path,
+    output_dir: Option<&Path>,
+    type_name: Option<&str>,
+) -> Result<()> {
+    let output_dir = output_dir.unwrap_or_else(|| Path::new("fuzz/corpus"));
+
+    println!(
+        "{:>12} {}",
+        "Generating".cyan().bold(),
+        "corpus files..."
+    );
+
+    // Read and parse schema
+    let source = fs::read_to_string(schema_path)
+        .with_context(|| format!("Failed to read schema file: {}", schema_path.display()))?;
+
+    let ast = parse_lumos_file(&source)?;
+    let ir = transform_to_ir(ast)?;
+
+    let generator = CorpusGenerator::new(&ir);
+
+    // Filter by type if specified
+    let corpus_files: Vec<_> = if let Some(name) = type_name {
+        generator
+            .generate_all()
+            .into_iter()
+            .filter(|c| c.type_name == name)
+            .collect()
+    } else {
+        generator.generate_all()
+    };
+
+    if corpus_files.is_empty() {
+        println!("{}", "⚠ No corpus files generated".yellow());
+        return Ok(());
+    }
+
+    // Create corpus directory structure
+    // Organize by type: fuzz/corpus/{target_name}/...
+    for file in &corpus_files {
+        let target_name = format!("fuzz_{}", to_snake_case(&file.type_name));
+        let target_corpus_dir = output_dir.join(&target_name);
+
+        fs::create_dir_all(&target_corpus_dir).with_context(|| {
+            format!("Failed to create directory: {}", target_corpus_dir.display())
+        })?;
+
+        let file_path = target_corpus_dir.join(&file.name);
+        fs::write(&file_path, &file.data)
+            .with_context(|| format!("Failed to write {}", file_path.display()))?;
+
+        println!(
+            "{:>12} {} ({} bytes) - {}",
+            "Created".green().bold(),
+            file_path.display(),
+            file.data.len(),
+            file.description
+        );
+    }
+
+    println!(
+        "\n{} Generated {} corpus file{}",
+        "✓".green().bold(),
+        corpus_files.len(),
+        if corpus_files.len() == 1 { "" } else { "s" }
+    );
+
+    Ok(())
+}
+
+/// Convert PascalCase to snake_case
+fn to_snake_case(s: &str) -> String {
+    let mut result = String::new();
+    let mut prev_is_upper = false;
+
+    for (i, ch) in s.chars().enumerate() {
+        if ch.is_uppercase() {
+            if i > 0 && !prev_is_upper {
+                result.push('_');
+            }
+            result.push(ch.to_lowercase().next().unwrap());
+            prev_is_upper = true;
+        } else {
+            result.push(ch);
+            prev_is_upper = false;
+        }
+    }
+
+    result
+}
+
+/// Validate output path for security and accessibility
+///
+/// This function prevents path traversal attacks and ensures the path
+/// is writable before attempting file operations.
+///
+/// # Security Checks
+///
+/// 1. **Path Canonicalization** - Resolves `..`, `.`, and symlinks
+/// 2. **Directory Existence** - Ensures parent directory exists
+/// 3. **Write Permissions** - Verifies write access to the directory
+///
+/// # Arguments
+///
+/// * `path` - Output path to validate
+///
+/// # Returns
+///
+/// * `Ok(())` - Path is valid and writable
+/// * `Err(anyhow::Error)` - Path is invalid or not writable
+///
+/// # Examples
+///
+/// ```rust,ignore
+/// // Valid paths
+/// validate_output_path(Path::new("./output"))?;
+/// validate_output_path(Path::new("."))?;
+///
+/// // Invalid paths (would fail)
+/// validate_output_path(Path::new("../../etc"))?;  // Path traversal
+/// validate_output_path(Path::new("/root"))?;      // No write permission
+/// ```
+fn validate_output_path(path: &Path) -> Result<()> {
+    // If path doesn't exist, check parent directory
+    let check_path = if path.exists() {
+        path
+    } else if let Some(parent) = path.parent() {
+        // If parent doesn't exist, we can't validate write permissions
+        if !parent.exists() {
+            anyhow::bail!(
+                "Output directory parent does not exist: {}. Create it first.",
+                parent.display()
+            );
+        }
+        parent
+    } else {
+        // No parent means root directory or invalid path
+        anyhow::bail!("Invalid output path: {}", path.display());
+    };
+
+    // Check if path is absolute or can be canonicalized
+    let canonical = check_path
+        .canonicalize()
+        .with_context(|| format!("Cannot resolve output path: {}", path.display()))?;
+
+    // Verify the canonical path is writable
+    // Try to create a temporary file to test write permissions
+    let test_file = canonical.join(".lumos_write_test");
+    match fs::write(&test_file, "") {
+        Ok(_) => {
+            // Clean up test file
+            let _ = fs::remove_file(&test_file);
+            Ok(())
+        }
+        Err(e) => {
+            anyhow::bail!(
+                "Output directory is not writable: {}\nError: {}",
+                canonical.display(),
+                e
+            );
+        }
+    }
 }

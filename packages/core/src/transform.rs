@@ -137,6 +137,9 @@ pub fn transform_to_ir(file: LumosFile) -> Result<Vec<TypeDefinition>> {
         }
     }
 
+    // Validate user-defined type references
+    validate_user_defined_types(&type_defs)?;
+
     Ok(type_defs)
 }
 
@@ -250,8 +253,8 @@ fn transform_type(type_spec: AstType, optional: bool) -> Result<TypeInfo> {
         }
 
         AstType::UserDefined(name) => {
-            // For now, accept user-defined types
-            // TODO: Validate against defined types in schema
+            // User-defined types are validated after full transformation
+            // See validate_user_defined_types() called in transform_to_ir()
             TypeInfo::UserDefined(name)
         }
     };
@@ -322,6 +325,128 @@ fn extract_enum_metadata(enum_def: &AstEnum) -> Metadata {
             .iter()
             .map(|attr| attr.name.clone())
             .collect(),
+    }
+}
+
+/// Validate that all user-defined type references are defined in the schema
+///
+/// This function ensures type safety by catching references to undefined types
+/// during transformation rather than at Rust/TypeScript compile time.
+///
+/// # Arguments
+///
+/// * `type_defs` - All type definitions in the schema
+///
+/// # Returns
+///
+/// * `Ok(())` - All user-defined types are valid
+/// * `Err(LumosError::TypeValidation)` - Found reference to undefined type
+///
+/// # Example
+///
+/// ```rust,ignore
+/// // This would fail validation:
+/// struct Player {
+///     inventory: UndefinedType  // Error: UndefinedType not found
+/// }
+/// ```
+fn validate_user_defined_types(type_defs: &[TypeDefinition]) -> Result<()> {
+    use std::collections::HashSet;
+
+    // Collect all defined type names
+    let defined_types: HashSet<String> = type_defs.iter().map(|t| t.name().to_string()).collect();
+
+    // Validate each type definition
+    for type_def in type_defs {
+        match type_def {
+            TypeDefinition::Struct(s) => {
+                // Validate struct fields
+                for field in &s.fields {
+                    validate_type_info(&field.type_info, &defined_types, &s.name, &field.name)?;
+                }
+            }
+            TypeDefinition::Enum(e) => {
+                // Validate enum variants
+                for variant in &e.variants {
+                    match variant {
+                        EnumVariantDefinition::Unit { .. } => {
+                            // Unit variants have no types to validate
+                        }
+                        EnumVariantDefinition::Tuple { name, types } => {
+                            // Validate tuple variant types
+                            for (idx, type_info) in types.iter().enumerate() {
+                                let context = format!("{}.{}[{}]", e.name, name, idx);
+                                validate_type_info(type_info, &defined_types, &context, "")?;
+                            }
+                        }
+                        EnumVariantDefinition::Struct { name, fields } => {
+                            // Validate struct variant fields
+                            for field in fields {
+                                let context = format!("{}.{}", e.name, name);
+                                validate_type_info(
+                                    &field.type_info,
+                                    &defined_types,
+                                    &context,
+                                    &field.name,
+                                )?;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Recursively validate a TypeInfo against defined types
+///
+/// # Arguments
+///
+/// * `type_info` - The type to validate
+/// * `defined_types` - Set of all defined type names
+/// * `parent_context` - Parent type name for error messages (e.g., "Player")
+/// * `field_name` - Field name for error messages (e.g., "inventory")
+fn validate_type_info(
+    type_info: &TypeInfo,
+    defined_types: &std::collections::HashSet<String>,
+    parent_context: &str,
+    field_name: &str,
+) -> Result<()> {
+    use crate::error::LumosError;
+
+    match type_info {
+        TypeInfo::Primitive(_) => {
+            // Primitive types are always valid
+            Ok(())
+        }
+        TypeInfo::UserDefined(type_name) => {
+            // Check if the user-defined type exists
+            if !defined_types.contains(type_name) {
+                let location = if field_name.is_empty() {
+                    parent_context.to_string()
+                } else {
+                    format!("{}.{}", parent_context, field_name)
+                };
+                return Err(LumosError::TypeValidation(
+                    format!(
+                        "Undefined type '{}' referenced in '{}'",
+                        type_name, location
+                    ),
+                    None, // TODO: Add actual source location from AST spans
+                ));
+            }
+            Ok(())
+        }
+        TypeInfo::Array(inner) => {
+            // Recursively validate array element type
+            validate_type_info(inner, defined_types, parent_context, field_name)
+        }
+        TypeInfo::Option(inner) => {
+            // Recursively validate optional type
+            validate_type_info(inner, defined_types, parent_context, field_name)
+        }
     }
 }
 
@@ -555,5 +680,176 @@ mod tests {
             }
             _ => panic!("Expected enum type definition"),
         }
+    }
+
+    // Type validation tests
+    #[test]
+    fn test_validate_undefined_type_in_struct() {
+        let input = r#"
+            struct Player {
+                inventory: UndefinedType,
+            }
+        "#;
+
+        let ast = parse_lumos_file(input).unwrap();
+        let result = transform_to_ir(ast);
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(
+            err,
+            crate::error::LumosError::TypeValidation(_, _)
+        ));
+        assert!(err.to_string().contains("Undefined type 'UndefinedType'"));
+        assert!(err.to_string().contains("Player.inventory"));
+    }
+
+    #[test]
+    fn test_validate_undefined_type_in_array() {
+        let input = r#"
+            struct Inventory {
+                items: [MissingItem],
+            }
+        "#;
+
+        let ast = parse_lumos_file(input).unwrap();
+        let result = transform_to_ir(ast);
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("Undefined type 'MissingItem'"));
+    }
+
+    #[test]
+    fn test_validate_undefined_type_in_option() {
+        let input = r#"
+            struct User {
+                profile: Option<NonexistentProfile>,
+            }
+        "#;
+
+        let ast = parse_lumos_file(input).unwrap();
+        let result = transform_to_ir(ast);
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err
+            .to_string()
+            .contains("Undefined type 'NonexistentProfile'"));
+    }
+
+    #[test]
+    fn test_validate_undefined_type_in_enum_tuple_variant() {
+        let input = r#"
+            enum GameEvent {
+                PlayerJoined(UndefinedPlayer),
+            }
+        "#;
+
+        let ast = parse_lumos_file(input).unwrap();
+        let result = transform_to_ir(ast);
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("Undefined type 'UndefinedPlayer'"));
+    }
+
+    #[test]
+    fn test_validate_undefined_type_in_enum_struct_variant() {
+        let input = r#"
+            enum Instruction {
+                Initialize {
+                    config: MissingConfig,
+                },
+            }
+        "#;
+
+        let ast = parse_lumos_file(input).unwrap();
+        let result = transform_to_ir(ast);
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("Undefined type 'MissingConfig'"));
+    }
+
+    #[test]
+    fn test_validate_valid_user_defined_types() {
+        let input = r#"
+            struct Item {
+                id: u64,
+                name: String,
+            }
+
+            struct Inventory {
+                items: [Item],
+                selected: Option<Item>,
+            }
+
+            enum GameState {
+                Playing {
+                    inventory: Inventory,
+                },
+                GameOver,
+            }
+        "#;
+
+        let ast = parse_lumos_file(input).unwrap();
+        let result = transform_to_ir(ast);
+
+        // Should succeed - all user-defined types are valid
+        assert!(result.is_ok());
+        let ir = result.unwrap();
+        assert_eq!(ir.len(), 3);
+    }
+
+    #[test]
+    fn test_validate_nested_user_defined_types() {
+        let input = r#"
+            struct Inner {
+                value: u64,
+            }
+
+            struct Middle {
+                inner: Inner,
+            }
+
+            struct Outer {
+                middle: [Middle],
+            }
+        "#;
+
+        let ast = parse_lumos_file(input).unwrap();
+        let result = transform_to_ir(ast);
+
+        // Should succeed - nested references are valid
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_primitive_types_always_valid() {
+        let input = r#"
+            struct AllPrimitives {
+                a: u8,
+                b: u16,
+                c: u32,
+                d: u64,
+                e: u128,
+                f: i8,
+                g: i16,
+                h: i32,
+                i: i64,
+                j: i128,
+                k: bool,
+                l: String,
+                m: PublicKey,
+                n: Signature,
+            }
+        "#;
+
+        let ast = parse_lumos_file(input).unwrap();
+        let result = transform_to_ir(ast);
+
+        // Should succeed - all primitive types
+        assert!(result.is_ok());
     }
 }

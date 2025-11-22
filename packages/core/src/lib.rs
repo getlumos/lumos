@@ -86,6 +86,21 @@ pub mod generators {
 /// Error types for LUMOS core
 pub mod error;
 
+/// Account size calculator for Solana programs
+pub mod size_calculator;
+
+/// Security analyzer for detecting common Solana vulnerabilities
+pub mod security_analyzer;
+
+/// Security audit checklist generator
+pub mod audit_generator;
+
+/// Fuzz target generator for cargo-fuzz integration
+pub mod fuzz_generator;
+
+/// Corpus generator for fuzz testing
+pub mod corpus_generator;
+
 /// WASM bindings for browser playground
 #[cfg(feature = "wasm")]
 pub mod wasm;

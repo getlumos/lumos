@@ -204,7 +204,7 @@ pub struct Listing {
 
 **Create:** `lumos/schema.lumos`
 
-```lumos
+```rust
 // NFT Marketplace Types
 // Migrated from programs/marketplace/src/state.rs
 
@@ -285,7 +285,7 @@ npm run type-check  # or tsc --noEmit
 
 **Add to schema.lumos:**
 
-```lumos
+```rust
 #[solana]
 #[account]
 struct Listing {
@@ -345,7 +345,7 @@ cargo test
 
 **Add remaining types to LUMOS:**
 
-```lumos
+```rust
 // Complete schema.lumos
 
 #[solana]
@@ -524,7 +524,7 @@ pub struct ComplexAccount {
 ```
 
 **LUMOS:**
-```lumos
+```rust
 #[solana]
 #[account]
 struct ComplexAccount {
@@ -683,7 +683,7 @@ pub struct Player {
 ```
 
 **And generate:**
-```lumos
+```rust
 #[solana]
 #[account]
 struct Player {
@@ -745,7 +745,7 @@ Commit `generated.rs` and `generated.ts` to Git for build reproducibility.
 
 Add comments to `.lumos` files explaining types:
 
-```lumos
+```rust
 // Player account stores user game state
 // Updated: 2025-01-18
 #[solana]
@@ -760,7 +760,7 @@ struct PlayerAccount {
 
 Use Git tags or version comments:
 
-```lumos
+```rust
 // Schema version: v1.2.0
 // Last breaking change: 2025-01-15
 ```

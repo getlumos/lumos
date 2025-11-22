@@ -38,7 +38,7 @@ LUMOS uses a hybrid syntax combining:
 
 ### Simple Struct
 
-```lumos
+```rust
 struct User {
     id: u64,
     name: string,
@@ -96,7 +96,7 @@ LUMOS supports both **Rust types** and **TypeScript-friendly aliases**:
 
 ### TypeScript-Friendly Aliases
 
-```lumos
+```rust
 struct Product {
     price: number,      // Maps to u64 in Rust, number in TS
     name: string,       // Maps to String in Rust, string in TS
@@ -108,7 +108,7 @@ struct Product {
 
 Use `?` suffix for optional fields:
 
-```lumos
+```rust
 struct User {
     id: u64,
     email?: string,      // Optional field
@@ -138,7 +138,7 @@ export interface User {
 
 ### Arrays
 
-```lumos
+```rust
 struct Team {
     name: string,
     members: [u64],        // Array of user IDs
@@ -168,7 +168,7 @@ export interface Team {
 
 ### Nested Types
 
-```lumos
+```rust
 struct Address {
     street: string,
     city: string,
@@ -190,7 +190,7 @@ Attributes provide metadata and generation hints.
 
 #### `#[solana]` - Mark as Solana Program Type
 
-```lumos
+```rust
 #[solana]
 struct UserAccount {
     owner: PublicKey,
@@ -204,7 +204,7 @@ struct UserAccount {
 
 #### `#[account]` - Mark as Anchor Account
 
-```lumos
+```rust
 #[solana]
 #[account]
 struct UserAccount {
@@ -228,7 +228,7 @@ pub struct UserAccount {
 
 #### `#[key]` - Primary Key Field
 
-```lumos
+```rust
 #[solana]
 struct UserAccount {
     #[key]
@@ -243,7 +243,7 @@ struct UserAccount {
 
 #### `#[max(n)]` - Maximum Length
 
-```lumos
+```rust
 struct Post {
     #[max(100)]
     title: string,
@@ -270,7 +270,7 @@ LUMOS provides native Solana types:
 | `Signature` | `Signature` | `string` |
 | `Keypair` | `Keypair` | N/A (server-side only) |
 
-```lumos
+```rust
 #[solana]
 struct Transaction {
     from: PublicKey,
@@ -284,7 +284,7 @@ struct Transaction {
 
 All `#[solana]` types automatically get Borsh serialization:
 
-```lumos
+```rust
 #[solana]
 struct TokenAccount {
     mint: PublicKey,
@@ -311,7 +311,7 @@ pub struct TokenAccount {
 
 ### Enums (Future)
 
-```lumos
+```rust
 enum Status {
     Pending,
     Active,
@@ -326,7 +326,7 @@ struct Order {
 
 ### Generics (Future)
 
-```lumos
+```rust
 struct Result<T> {
     success: bool,
     data?: T,
@@ -335,7 +335,7 @@ struct Result<T> {
 
 ### Imports (Future)
 
-```lumos
+```rust
 import { Address } from "./common.lumos";
 
 struct User {
@@ -350,7 +350,7 @@ struct User {
 
 ### Example 1: Simple User Account
 
-```lumos
+```rust
 #[solana]
 struct UserAccount {
     #[key]
@@ -364,7 +364,7 @@ struct UserAccount {
 
 ### Example 2: NFT Metadata
 
-```lumos
+```rust
 #[solana]
 #[account]
 struct NftMetadata {
@@ -383,7 +383,7 @@ struct NftMetadata {
 
 ### Example 3: DEX Order
 
-```lumos
+```rust
 #[solana]
 struct Order {
     trader: PublicKey,
@@ -398,7 +398,7 @@ struct Order {
 
 ### Example 4: Escrow Account
 
-```lumos
+```rust
 #[solana]
 #[account]
 struct EscrowAccount {
@@ -415,7 +415,7 @@ struct EscrowAccount {
 
 ### Example 5: Staking Pool
 
-```lumos
+```rust
 #[solana]
 #[account]
 struct StakingPool {

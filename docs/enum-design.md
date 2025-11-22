@@ -18,7 +18,7 @@ This document outlines the design and implementation strategy for adding enum su
 ### 1. Unit Enums (Simple State Machines)
 
 **LUMOS Syntax:**
-```lumos
+```rust
 #[solana]
 enum GameState {
     Inactive,
@@ -60,7 +60,7 @@ export const GameStateSchema = borsh.enum([
 ### 2. Tuple Variants (Data-Carrying Variants)
 
 **LUMOS Syntax:**
-```lumos
+```rust
 #[solana]
 enum GameEvent {
     PlayerJoined(PublicKey),
@@ -98,7 +98,7 @@ export const GameEventSchema = borsh.enum([
 ### 3. Struct Variants (Instruction Pattern)
 
 **LUMOS Syntax:**
-```lumos
+```rust
 #[solana]
 enum GameInstruction {
     Initialize {
@@ -589,7 +589,7 @@ Adding enum support does NOT break existing code:
 
 ### Q1: Should we support custom discriminant values?
 
-```lumos
+```rust
 enum Status {
     Active = 1,
     Inactive = 2,

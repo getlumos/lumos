@@ -299,27 +299,318 @@ my-solana-project/
 
 ### `lumos check`
 
-Health check and diagnostics for LUMOS installation.
+Verify that generated code is up-to-date with the schema.
 
 #### Usage
 
 ```bash
-lumos check
+lumos check <SCHEMA_FILE> [OPTIONS]
 ```
 
-#### Example Output
+#### Options
 
+| Option | Description |
+|--------|-------------|
+| `--output <DIR>` | Output directory to check (default: current directory) |
+
+#### Examples
+
+**Check if generated files match schema:**
+```bash
+lumos check schema.lumos
 ```
-LUMOS Health Check
-──────────────────
 
-✓ LUMOS version: 0.2.0
-✓ Rust toolchain: 1.75.0
-✓ Node.js: v20.10.0
-✓ npm: 10.2.3
-
-All systems operational!
+Output (when up-to-date):
 ```
+Checking generated code status
+ Success generated code is up-to-date
+```
+
+Output (when out-of-date):
+```
+warning: Generated code is out-of-date
+  ./generated.rs
+  ./generated.ts
+
+Run: lumos generate schema.lumos
+```
+
+**Exit codes:**
+- `0` - Generated code is up-to-date
+- `1` - Generated code is out-of-date or missing
+
+---
+
+### `lumos check-size`
+
+Analyze account sizes and detect Solana size limit violations.
+
+#### Usage
+
+```bash
+lumos check-size <SCHEMA_FILE> [OPTIONS]
+```
+
+#### Options
+
+| Option | Description |
+|--------|-------------|
+| `--format <FORMAT>` | Output format: `text` or `json` (default: text) |
+
+#### Examples
+
+**Basic size analysis:**
+```bash
+lumos check-size schema.lumos
+```
+
+Output:
+```
+Account Size Analysis:
+
+✓ PlayerAccount: 110+ bytes (variable)
+  ├─ discriminator (8 bytes) - Anchor account discriminator
+  ├─ wallet (32 bytes) - PublicKey (32 bytes)
+  ├─ level (2 bytes) - u16
+  ├─ experience (8 bytes) - u64
+  └─ Total: 110+ bytes (variable)
+     Rent: 0.00000166 SOL
+
+Summary:
+  Total accounts: 1
+  All accounts within limits ✓
+```
+
+**JSON output for CI/CD:**
+```bash
+lumos check-size schema.lumos --format json
+```
+
+Output:
+```json
+[
+  {
+    "name": "PlayerAccount",
+    "total_bytes": 110,
+    "is_variable": true,
+    "is_account": true,
+    "rent_sol": 0.00000166,
+    "warnings": [],
+    "fields": [...]
+  }
+]
+```
+
+**Size limit violation:**
+```
+⚠ LargeAccount: 12,582,912 bytes
+  - Exceeds Solana's 10MB limit (12.00 MB)
+  - Consider splitting into multiple accounts
+```
+
+**Exit codes:**
+- `0` - All accounts within size limits
+- `1` - One or more accounts exceed limits or have warnings
+
+#### See Also
+
+For detailed information about size calculation and optimization strategies, see [Account Size Guide](./security/account-size.md).
+
+---
+
+### `lumos security analyze`
+
+Analyze schema for common Solana security vulnerabilities through static analysis.
+
+#### Usage
+
+```bash
+lumos security analyze <SCHEMA_FILE> [OPTIONS]
+```
+
+#### Options
+
+| Option | Description |
+|--------|-------------|
+| `--format <FORMAT>` | Output format: `text` or `json` (default: text) |
+| `--strict` | Enable strict mode (more aggressive warnings) |
+
+#### Examples
+
+**Basic security analysis:**
+```bash
+lumos security analyze schema.lumos
+```
+
+Output:
+```
+Security Analysis Report
+Schema: schema.lumos
+
+Summary:
+  🚨 1 critical issues
+  ⚠️  3 warnings
+
+CRITICAL ISSUES
+════════════════════════════════════════════════════════════
+
+🚨 [CRITICAL] Missing Signer Check
+   Location: UpdateInstruction::authority
+   Field 'authority' appears to be an authority but lacks explicit signer validation
+   💡 Ensure this field requires signer validation in your Anchor program
+
+Recommendations:
+  🚨 Fix all critical issues before deployment
+  ⚠️  Review and address warnings
+```
+
+**Strict mode (more warnings):**
+```bash
+lumos security analyze schema.lumos --strict
+```
+
+Enables additional checks:
+- Owner validation warnings
+- Integer overflow detection on all large integers
+- Re-initialization vulnerability detection
+
+**JSON output for CI/CD:**
+```bash
+lumos security analyze schema.lumos --format json
+```
+
+Output:
+```json
+[
+  {
+    "severity": "CRITICAL",
+    "vulnerability_type": "Missing Signer Check",
+    "location": {
+      "type_name": "UpdateInstruction",
+      "field_name": "authority"
+    },
+    "message": "Field 'authority' appears to be an authority...",
+    "suggestion": "Ensure this field requires signer validation..."
+  }
+]
+```
+
+**Vulnerability types detected:**
+
+| Severity | Type | Description |
+|----------|------|-------------|
+| 🚨 CRITICAL | Missing Signer Check | Authority fields without signer validation |
+| ⚠️ WARNING | Unchecked Arithmetic | Arithmetic operations prone to overflow |
+| ⚠️ WARNING | No Discriminator | Missing #[account] discriminator protection |
+| ⚠️ WARNING | Missing Owner Validation | Owner fields without validation (strict mode) |
+| ℹ️ INFO | Integer Overflow Risk | Large integers that may overflow (strict mode) |
+| ⚠️ WARNING | Re-initialization Risk | Missing initialization flags (strict mode) |
+
+**Exit codes:**
+- `0` - No critical issues found
+- `1` - One or more critical issues detected
+
+#### See Also
+
+For detailed information about vulnerability types and fixes, see [Static Analysis Guide](./security/static-analysis.md).
+
+---
+
+### `lumos audit generate`
+
+Generate comprehensive security audit checklist from schema for manual code review.
+
+#### Usage
+
+```bash
+lumos audit generate <SCHEMA_FILE> [OPTIONS]
+```
+
+#### Options
+
+| Option | Description |
+|--------|-------------|
+| `--output <PATH>` | Output file path (default: SECURITY_AUDIT.md) |
+| `--format <FORMAT>` | Output format: `markdown` or `json` (default: markdown) |
+
+#### Examples
+
+**Basic checklist generation:**
+```bash
+lumos audit generate schema.lumos
+```
+
+Output:
+```
+Generated: SECURITY_AUDIT.md
+
+Checklist includes:
+  ✓ 39 total checks
+  ✓ 6 account validation checks
+  ✓ 1 signer checks
+  ✓ 7 arithmetic safety checks
+  ✓ 2 access control checks
+```
+
+**Custom output path:**
+```bash
+lumos audit generate schema.lumos --output my-audit.md
+```
+
+**JSON format for tools:**
+```bash
+lumos audit generate schema.lumos --format json --output audit.json
+```
+
+**Generated checklist structure:**
+
+```markdown
+# Security Audit Checklist
+
+**Generated from:** `schema.lumos`
+**Date:** 2025-11-22
+**Total Checks:** 39
+
+---
+
+## 🔐 Account Validation
+
+- [ ] 🔴 **Verify account ownership (program owns the account)**
+  - Context: `PlayerAccount`
+  - Ensure the account is owned by the program to prevent attacks...
+
+## ✍️ Signer Checks
+
+- [ ] 🔴 **Verify 'authority' field requires signer**
+  - Context: `Config::authority`
+  - Authority fields must validate that the transaction is signed...
+```
+
+**Check categories generated:**
+
+| Category | Icon | Types of Checks |
+|----------|------|-----------------|
+| Account Validation | 🔐 | Ownership, discriminator, initialization, rent |
+| Signer Checks | ✍️ | Authority field signer validation |
+| Arithmetic Safety | 🔢 | Checked math, bounds validation |
+| Access Control | 🚪 | Owner validation, authorization |
+| Data Validation | ✅ | PublicKey checks, Vec/Option handling |
+| State Transition | 🔄 | Valid transitions, reentrancy |
+| Initialization | 🎬 | Account initialization checks |
+| Rent Exemption | 💰 | Lamport balance checks |
+
+**Priority levels:**
+- 🔴 CRITICAL - Must fix before deployment
+- 🟡 HIGH - Should be addressed
+- 🟢 MEDIUM - Recommended to review
+- ⚪ LOW - Best practice
+
+**Exit codes:**
+- `0` - Checklist generated successfully
+
+#### See Also
+
+For detailed information about using audit checklists and security review processes, see [Audit Checklist Guide](./security/audit-checklist.md).
 
 ---
 
@@ -485,6 +776,171 @@ LUMOS_LOG=debug lumos generate schema.lumos
 
 ---
 
+### `lumos fuzz generate`
+
+Generate fuzz targets for testing generated code with cargo-fuzz.
+
+#### Usage
+
+```bash
+lumos fuzz generate <SCHEMA_FILE> [OPTIONS]
+```
+
+#### Options
+
+| Option | Description |
+|--------|-------------|
+| `--output <DIR>` | Output directory for fuzz targets (default: fuzz/) |
+| `--type <NAME>` | Generate fuzz target for specific type only |
+
+#### Examples
+
+**Generate fuzz targets for all types:**
+```bash
+lumos fuzz generate schema.lumos
+```
+
+Output:
+```
+Generating fuzz targets...
+Created fuzz/Cargo.toml
+Created fuzz/README.md
+Generated fuzz/fuzz_targets/fuzz_player_account.rs (for PlayerAccount)
+Generated fuzz/fuzz_targets/fuzz_game_state.rs (for GameState)
+
+✓ Generated 2 fuzz targets
+
+Next steps:
+  1. Install cargo-fuzz: cargo install cargo-fuzz
+  2. Run fuzzing: cd fuzz && cargo fuzz run fuzz_player_account
+```
+
+**Generate for specific type:**
+```bash
+lumos fuzz generate schema.lumos --type PlayerAccount
+```
+
+**Custom output directory:**
+```bash
+lumos fuzz generate schema.lumos --output my-fuzz
+```
+
+#### Generated Structure
+
+```
+fuzz/
+├── Cargo.toml                 # Fuzz project configuration
+├── README.md                  # How to run fuzzing
+└── fuzz_targets/              # Generated fuzz targets
+    ├── fuzz_player_account.rs
+    └── fuzz_game_state.rs
+```
+
+#### See Also
+
+For detailed fuzzing guide, see [Fuzzing Documentation](./security/fuzzing.md).
+
+---
+
+### `lumos fuzz corpus`
+
+Generate corpus files with valid serialized instances for fuzzing.
+
+#### Usage
+
+```bash
+lumos fuzz corpus <SCHEMA_FILE> [OPTIONS]
+```
+
+#### Options
+
+| Option | Description |
+|--------|-------------|
+| `--output <DIR>` | Output directory for corpus (default: fuzz/corpus/) |
+| `--type <NAME>` | Generate corpus for specific type only |
+
+#### Examples
+
+**Generate corpus for all types:**
+```bash
+lumos fuzz corpus schema.lumos
+```
+
+Output:
+```
+Generating corpus files...
+Created fuzz/corpus/fuzz_player_account/player_account_minimal (50 bytes) - Minimal valid instance
+Created fuzz/corpus/fuzz_player_account/player_account_maximal (50 bytes) - Maximal valid instance
+Created fuzz/corpus/fuzz_game_state/game_state_active_variant (4 bytes) - Enum variant: Active
+
+✓ Generated 8 corpus files
+```
+
+**Generate for specific type:**
+```bash
+lumos fuzz corpus schema.lumos --type PlayerAccount
+```
+
+#### Corpus Types Generated
+
+| Type | Description |
+|------|-------------|
+| Minimal | Zero/default values |
+| Maximal | Maximum values where applicable |
+| Optional None | All Option fields set to None |
+| Optional Some | All Option fields set to Some |
+| Empty Vec | All Vec fields empty |
+| Single Element Vec | All Vec fields with one element |
+| Enum Variants | One file per variant |
+
+---
+
+### `lumos fuzz run`
+
+Run fuzzing for a specific type (convenience wrapper around cargo-fuzz).
+
+#### Usage
+
+```bash
+lumos fuzz run <SCHEMA_FILE> --type <NAME> [OPTIONS]
+```
+
+#### Options
+
+| Option | Description |
+|--------|-------------|
+| `--type <NAME>` | Type to fuzz (required) |
+| `--jobs <N>` | Number of parallel jobs (default: 1) |
+| `--max-time <SECONDS>` | Maximum run time in seconds |
+
+#### Examples
+
+**Basic fuzzing:**
+```bash
+lumos fuzz run schema.lumos --type PlayerAccount
+```
+
+**Parallel fuzzing (4 jobs):**
+```bash
+lumos fuzz run schema.lumos --type PlayerAccount --jobs 4
+```
+
+**Time-limited fuzzing (60 seconds):**
+```bash
+lumos fuzz run schema.lumos --type PlayerAccount --max-time 60
+```
+
+#### Direct cargo-fuzz Usage
+
+You can also use `cargo fuzz` directly for more control:
+
+```bash
+cd fuzz
+cargo fuzz run fuzz_player_account -- -jobs=4 -max_total_time=60
+```
+
+---
+
 ## Getting Help
 
 ```bash
@@ -496,6 +952,12 @@ lumos generate --help
 lumos validate --help
 lumos init --help
 lumos check --help
+lumos check-size --help
+lumos security analyze --help
+lumos audit generate --help
+lumos fuzz generate --help
+lumos fuzz corpus --help
+lumos fuzz run --help
 ```
 
 **Resources:**
@@ -505,4 +967,4 @@ lumos check --help
 
 ---
 
-**Last Updated:** 2025-11-18 (Safety features added)
+**Last Updated:** 2025-11-22 (Fuzzing support added)

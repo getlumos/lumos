@@ -884,7 +884,7 @@ let output = formatter::format(&lumos_items, &config)?;
 
 ### Output: LUMOS Schema
 
-```lumos
+```rust
 // Player account storing game state
 #[solana]
 #[account]

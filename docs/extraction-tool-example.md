@@ -182,7 +182,7 @@ Happy coding! ✨
 
 **File:** `lumos/game-types.lumos`
 
-```lumos
+```rust
 // ═══════════════════════════════════════════════════════════
 // LUMOS Schema for Solana RPG
 // ═══════════════════════════════════════════════════════════
@@ -656,7 +656,7 @@ interface Player {
 ```
 
 **Type update example:**
-```lumos
+```rust
 // Update once
 struct Player {
     wallet: PublicKey,

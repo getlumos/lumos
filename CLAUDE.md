@@ -10,7 +10,7 @@
 
 Write data structures once in `.lumos` syntax → Generate production-ready Rust + TypeScript with guaranteed Borsh serialization compatibility.
 
-**Status:** Phase 3.3 Complete (Production Ready) | 64/64 tests passing | 0 warnings | 0 vulnerabilities
+**Status:** v0.1.1 Released | 108/108 tests passing | 0 warnings | 0 vulnerabilities
 
 ---
 
@@ -41,13 +41,16 @@ Write data structures once in `.lumos` syntax → Generate production-ready Rust
 | Context-aware generation | ✅ | Anchor vs pure Borsh detection |
 | CLI tool | ✅ | 4 commands (generate, validate, init, check) |
 | VSCode extension | ✅ | Separate repo: getlumos/vscode-lumos |
+| User-defined type validation | ✅ | Validates type references during transformation (v0.1.1) |
+| Path traversal protection | ✅ | CLI validates output paths for security (v0.1.1) |
+| u64 precision warnings | ✅ | JSDoc comments in generated TypeScript (v0.1.1) |
 
 ---
 
 ## Development Commands
 
 ```bash
-# Run tests (64 tests, ~150s with E2E)
+# Run tests (108 tests, ~140s with E2E)
 cargo test --all-features --workspace
 
 # Check formatting
@@ -65,17 +68,25 @@ cargo run --bin lumos -- generate examples/gaming/schema.lumos
 
 ---
 
-## Test Suite (64 tests)
+## Test Suite (108 tests)
 
 | Suite | Count | Location |
 |-------|-------|----------|
-| Unit tests | 39 | `packages/core/src/**/*.rs` |
+| Unit tests | 47 | `packages/core/src/**/*.rs` |
 | Parser integration | 5 | `packages/core/tests/integration_test.rs` |
-| Rust generator | 8 | `packages/core/tests/test_rust_generator.rs` |
-| TypeScript generator | 9 | `packages/core/tests/test_typescript_generator.rs` |
+| Error path tests | 30 | `packages/core/tests/test_error_paths.rs` |
+| Rust generator | 5 | `packages/core/tests/test_rust_generator.rs` |
+| TypeScript generator | 6 | `packages/core/tests/test_typescript_generator.rs` |
 | E2E compilation | 9 | `packages/core/tests/test_e2e.rs` |
+| Doc tests | 6 | Documentation examples (3 ignored) |
 
 **E2E tests compile generated Rust code with `cargo check` (takes ~60s per test).**
+
+**Quality Improvements (v0.1.1):**
+- 30 new error path tests (parser, transform, generator, edge cases)
+- 10 type validation tests (included in unit tests)
+- Enhanced error messages with source location tracking
+- Comprehensive migration guide at `docs/MIGRATION.md`
 
 ---
 
@@ -101,6 +112,30 @@ PublicKey  → Pubkey      → PublicKey
 Option<T>  → Option<T>   → T | undefined
 ```
 
+### 4. User-Defined Type Validation (v0.1.1)
+- **Early Detection:** Undefined types caught during transformation, not at compile time
+- **Recursive Checking:** Validates types inside arrays and options
+- **Clear Errors:** Shows exact location of undefined type reference (e.g., `Player.inventory`)
+- **Implementation:** `packages/core/src/transform.rs:353-448`
+
+### 5. CLI Security (v0.1.1)
+- **Path Validation:** Prevents path traversal attacks (e.g., `../../etc/passwd`)
+- **Canonicalization:** Resolves `..`, `.`, and symlinks before file operations
+- **Write Permission Check:** Tests directory writability before generating files
+- **Implementation:** `packages/cli/src/main.rs:745-785`
+
+### 6. TypeScript Precision Warnings (v0.1.1)
+- **JSDoc Comments:** Auto-generated warnings for u64/i64 fields
+- **Precision Limit:** Documents 2^53-1 safe range for TypeScript `number`
+- **Solana Context:** Specifically mentions lamports and large values
+- **Implementation:** `packages/core/src/generators/typescript.rs:327-368`
+
+---
+
+## Strategic Direction
+
+**For long-term vision**: See `docs/VISION.md` - LUMOS evolution from schema DSL to programming language
+
 ---
 
 ## AI Assistant Guidelines
@@ -123,7 +158,7 @@ Option<T>  → Option<T>   → T | undefined
 
 ## Example Schema
 
-```lumos
+```rust
 #[solana]
 #[account]
 struct PlayerAccount {
@@ -159,6 +194,7 @@ enum GameState {
 - [x] Homepage updated (lumos-lang.org)
 - [x] Published to crates.io (lumos-core v0.1.0, lumos-cli v0.1.0)
 - [ ] VSCode extension published
+- [ ] Publish v0.1.1 with security & validation improvements
 
 ---
 
@@ -197,5 +233,5 @@ cargo add lumos-core
 
 ---
 
-**Last Updated:** 2025-11-20
-**Status:** Published on crates.io ✅
+**Last Updated:** 2025-11-21
+**Status:** v0.1.1 - Security & Validation Improvements 🔒
