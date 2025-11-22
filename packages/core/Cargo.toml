@@ -7,6 +7,7 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 description = "Core schema parsing and code generation for LUMOS"
+readme = "../../README.md"
 
 [dependencies]
 syn.workspace = true

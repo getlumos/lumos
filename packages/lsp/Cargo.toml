@@ -8,6 +8,7 @@ repository = "https://github.com/getlumos/lumos"
 license = "MIT OR Apache-2.0"
 keywords = ["lumos", "solana", "lsp", "language-server", "ide"]
 categories = ["development-tools", "parser-implementations"]
+readme = "README.md"
 
 [[bin]]
 name = "lumos-lsp"
