@@ -25,7 +25,7 @@ async fn main() {
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
 
-    let (service, socket) = LspService::new(|client| LumosLanguageServer::new(client));
+    let (service, socket) = LspService::new(LumosLanguageServer::new);
 
     // Start LSP server
     Server::new(stdin, stdout, socket).serve(service).await;
