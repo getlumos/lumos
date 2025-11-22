@@ -19,6 +19,7 @@
 
 [![Crates.io](https://img.shields.io/crates/v/lumos-core?label=lumos-core)](https://crates.io/crates/lumos-core)
 [![Crates.io](https://img.shields.io/crates/v/lumos-cli?label=lumos-cli)](https://crates.io/crates/lumos-cli)
+[![GitHub Action](https://img.shields.io/badge/Marketplace-LUMOS%20Generate-purple.svg?logo=github)](https://github.com/marketplace/actions/lumos-generate)
 [![CI](https://img.shields.io/github/actions/workflow/status/getlumos/lumos/ci.yml?branch=main&label=CI&logo=github)](https://github.com/getlumos/lumos/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE-MIT)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE-APACHE)
@@ -456,6 +457,26 @@ lumos generate schema.lumos --watch
 ### 6. Iterate with Confidence
 
 Update your `.lumos` schema, run `lumos generate`, and both codebases stay in sync automatically. No manual synchronization needed!
+
+### 7. CI/CD Integration
+
+Automate schema validation and code generation in your CI/CD pipeline with the [official GitHub Action](https://github.com/marketplace/actions/lumos-generate):
+
+```yaml
+- uses: actions/checkout@v4
+- uses: getlumos/lumos-action@v1
+  with:
+    schema: 'schemas/**/*.lumos'
+    fail-on-drift: true  # Ensure generated code is committed
+```
+
+**Features:**
+- ✅ Auto-install LUMOS CLI
+- ✅ Validate schemas on every PR
+- ✅ Detect drift between schemas and generated code
+- ✅ Post PR comments with diff summaries
+
+[View full documentation →](https://github.com/getlumos/lumos-action#readme)
 
 ---
 
@@ -1240,6 +1261,8 @@ The **Solana developer community** - developers building the future of decentral
 ### Official Documentation
 
 - **LUMOS Docs** - Coming soon
+- **Vision & Positioning** - [docs/VISION.md](docs/VISION.md) - Long-term direction and market positioning
+- **Roadmap** - [ROADMAP.md](ROADMAP.md) - Development phases and timeline
 - **Migration Guide** - [docs/MIGRATION.md](docs/MIGRATION.md) - Version upgrade instructions
 - **Execution Plan** - [docs/execution-plan.md](docs/execution-plan.md)
 - **Project Context** - [CLAUDE.md](CLAUDE.md)

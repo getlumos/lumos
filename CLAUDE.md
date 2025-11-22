@@ -167,6 +167,24 @@ npm run docs:build   # Build for production
 
 ---
 
+### 5. lumos-action
+
+**Purpose:** GitHub Action for automated schema validation and code generation
+**Tech Stack:** Composite Action (Bash, GitHub Actions)
+**Marketplace:** https://github.com/marketplace/actions/lumos-generate
+**Repository:** https://github.com/getlumos/lumos-action
+**Usage:**
+```yaml
+- uses: getlumos/lumos-action@v1
+  with:
+    schema: 'schemas/**/*.lumos'
+```
+**Features:** Auto-install CLI, validate schemas, generate code, drift detection, PR comments
+**Status:** v1.0.0 published to GitHub Marketplace
+**Docs:** [lumos-action/README.md](https://github.com/getlumos/lumos-action#readme)
+
+---
+
 ## CURRENT FOCUS
 
 **Active Development Areas:**
@@ -183,14 +201,15 @@ npm run docs:build   # Build for production
 3. **Phase 6.2 - Tooling Ecosystem**
    - npm package for JavaScript/TypeScript projects (#62) - HIGH PRIORITY
    - cargo subcommand integration (#59)
-   - GitHub Action marketplace publishing (#72)
 
 **Cross-Repo Initiatives:**
-- Hybrid CLAUDE.md architecture (reducing token usage) - IN PROGRESS
+- Hybrid CLAUDE.md architecture (reducing token usage) - COMPLETE ✅
 - Unified changelog automation across repos
 - Consistent CI/CD patterns
 
 **Recent Changes Affecting Multiple Repos:**
+- v1.0.0 GitHub Action published to marketplace (#72) - NEW ✨
+- Hybrid CLAUDE.md architecture deployed (21.6% token reduction) (#36)
 - v0.1.1 security improvements (affects all repos using CLI)
 - VSCode extension v0.5.0 with quick fixes (vscode-lumos)
 - 5 complete examples published (awesome-lumos)

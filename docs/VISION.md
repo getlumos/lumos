@@ -1,358 +1,657 @@
-# LUMOS Vision: From Schema DSL to Programming Language
+# LUMOS Vision: The Future of Solana Development
 
-**Last Updated**: November 22, 2025
-
----
-
-## The Journey So Far
-
-LUMOS began with a focused mission: eliminate the pain of manually writing Borsh serialization code for Solana programs. Write schemas once in `.lumos` syntax, generate production-ready Rust and TypeScript with guaranteed compatibility.
-
-**We achieved this goal.** LUMOS v0.1.1 is production-ready, battle-tested, and serving real developers.
-
-But along the way, our community showed us something bigger.
+**Last Updated:** November 22, 2025
 
 ---
 
-## The Bigger Vision
+## TL;DR
 
-Developers today face **workflow fragmentation**:
+LUMOS evolves from schema language → full programming language for type-safe Solana workflows and automation.
 
-- Bash scripts for small tasks
-- Python for automation
-- TypeScript for build processes
-- GitHub Actions for CI/CD
-- Custom scripts for blockchain operations
-- Cloud Functions for async jobs
-- Makefiles/Justfiles for orchestration
+**Think:** Hardhat (Ethereum) + Terraform (IaC) + TypeScript (types), but purpose-built for Solana.
 
-**5-8 different tools** just to automate something end-to-end.
-
-No unified, typed, programmable workflow engine exists for modern developers—especially in the crypto/Web3 space.
-
-**LUMOS can solve this.**
+**Timeline:** Schema DSL (now) → Workflow Language (Q1 2027) → Universal Automation (2027+)
 
 ---
 
-## Where We're Going
+## Table of Contents
 
-### The Evolution
+1. [Where LUMOS Sits in the Stack](#where-lumos-sits-in-the-stack)
+2. [The Evolution Journey](#the-evolution-journey)
+3. [The Problem We're Solving](#the-problem-were-solving)
+4. [LUMOS vs The Ecosystem](#lumos-vs-the-ecosystem)
+5. [Why This Market is Open](#why-this-market-is-open)
+6. [The ENDGAME Architecture](#the-endgame-architecture)
+7. [Why LUMOS Will Win](#why-lumos-will-win)
+
+---
+
+## Where LUMOS Sits in the Stack
+
+Understanding LUMOS requires understanding the Solana development stack. Here's where LUMOS operates:
 
 ```
-LUMOS v0.1.x (Today)
-    ↓
-Schema DSL for Solana
-    ↓
-LUMOS 2.0 (Future)
-    ↓
-Typed Workflow Programming Language
+┌──────────────────────────────────────────────────────────────┐
+│ LEVEL 5: APPLICATION LAYER                                   │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│ End-user applications (wallets, dApps, dashboards)           │
+│                                                               │
+│ Examples: Phantom, Solflare, Jupiter, Magic Eden             │
+└───────────────────────────────────────────────────────────────┘
+
+┌───────────────────────────────────────────────────────────────┐
+│ LEVEL 4: WORKFLOW/ORCHESTRATION  ⭐ LUMOS ENDGAME HERE       │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│ Type-safe automation, deployment, testing, operations        │
+│                                                               │
+│ Solana:   ⭐ LUMOS (future dominance)                         │
+│ Ethereum: Hardhat, Foundry                                   │
+│ Cloud:    Terraform, Pulumi                                  │
+│ General:  Make/Justfile, GitHub Actions                      │
+└───────────────────────────────────────────────────────────────┘
+
+┌───────────────────────────────────────────────────────────────┐
+│ LEVEL 3: CLIENT/SDK LAYER                                    │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│ Libraries to interact with on-chain programs                 │
+│                                                               │
+│ Solana:   @solana/web3.js, Anchor TS SDK, Solana Rust SDK    │
+│ Ethereum: ethers.js, web3.js, viem                           │
+└───────────────────────────────────────────────────────────────┘
+
+┌───────────────────────────────────────────────────────────────┐
+│ LEVEL 2: PROGRAM/CONTRACT LAYER                              │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│ Languages to write smart contracts                           │
+│                                                               │
+│ Solana:   Rust + Anchor, Seahorse, Native Rust               │
+│ Ethereum: Solidity, Vyper                                    │
+│ Other:    Move (Sui/Aptos), Cairo (Starknet), Ink (Polkadot) │
+└───────────────────────────────────────────────────────────────┘
+
+┌───────────────────────────────────────────────────────────────┐
+│ LEVEL 1: RUNTIME/VM LAYER                                    │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│ Blockchain runtime, virtual machine, syscalls                │
+│                                                               │
+│ Solana:   Sealevel Runtime, BPF VM, Syscalls                 │
+│ Ethereum: EVM                                                │
+└───────────────────────────────────────────────────────────────┘
 ```
 
-### Phase 1: Schema Language ✅ (Complete)
+**Key Insight:** LUMOS targets Level 4 (Workflow/Orchestration), NOT Level 2 (Smart Contracts).
 
-- **v0.1.1 shipped** - 108 tests passing, zero warnings
-- Production-ready schema generation (Rust + TypeScript)
-- VSCode extension with diagnostics and autocomplete
-- 5 community examples (NFT, DeFi, DAO, Gaming, Vesting)
-- Interactive playground at docs.lumos-lang.org
-
-**Status**: Mission accomplished. Schema language is stable and ready.
+We're not replacing Anchor. We're building what doesn't exist yet.
 
 ---
 
-### Phase 2: Language Foundation (Future)
+## The Evolution Journey
 
-**Vertical Expansion** - Building deep, powerful core:
+LUMOS evolves through three major phases:
 
-#### 1. Core Language
-- Parser, AST, and evaluator/VM
-- Variables, functions, and modules
-- Comprehensive error system with diagnostics
-- Scheme-inspired functional design
+### Phase 1: Schema Language (NOW - v0.1.1)
 
-#### 2. Type System
-- Gradual typing (TypeScript-inspired philosophy)
-- Solana-native primitive types (PublicKey, Account, Lamports, Instruction)
-- Type inference for common patterns
-- Load types from Anchor IDLs automatically
-- Compile-time validation of workflows
+**Current Position:** Type definition layer (Level 2.5-3)
 
-#### 3. Compiler & IR
-- LUMOS → Solana CLI commands
-- LUMOS → Anchor CLI operations
-- LUMOS → Solv automation scripts
-- LUMOS → TOML/YAML/JSON configs
-- Multi-target code generation
-
-#### 4. Language Server Protocol (LSP)
-- Expand VSCode extension with deep language support
-- Multi-editor support (IntelliJ, Neovim, Emacs)
-- Autocomplete from IDLs and schemas
-- Inline type information and documentation
-- Real-time error checking
-
-#### 5. Runtime Engine
-- Execute workflows locally or in the cloud
-- Native RPC integration
-- Jito bundle execution
-- Transaction builder helpers
-- Sandbox/dry-run mode for safety
-
-**Goal**: Transform LUMOS from schema DSL into a real programming language specialized for developer workflows.
-
----
-
-### Phase 3: Ecosystem Growth (Future)
-
-**Horizontal Expansion** - Growing the platform:
-
-#### 1. Multi-Chain Support
-- Extend beyond Solana to Sui, Aptos, Starknet
-- EVM-compatible chains (Neon, Base, Aurora)
-- Unified workflow primitives across chains
-- Cross-chain orchestration
-
-#### 2. DevOps Automation
-- Docker orchestration workflows
-- Kubernetes deployment automation
-- GitHub Actions generation
-- CI/CD pipeline templates
-- Cloud deployment (Fly.io, AWS, Netlify)
-
-#### 3. Cloud Execution Platform
-- LUMOS Cloud for running workflows
-- Scheduled jobs (cron-like for crypto operations)
-- Monitoring and logging dashboards
-- Secrets management
-- Execution guarantees and reliability
-
-#### 4. Package Ecosystem
-- LPM (Lumos Package Manager)
-- Community-contributed workflow libraries
-- Template marketplace for common patterns
-- Plugin registry for extensions
-
-#### 5. Infrastructure as Code
-- Manage RPC provider configurations
-- Automate validator infrastructure
-- On-chain program deployment pipelines
-- Configuration provisioning and versioning
-
-**Goal**: Make LUMOS the go-to platform for any developer workflow, starting with crypto but expanding beyond.
-
----
-
-## The ENDGAME
-
-**LUMOS will become the typed workflow language for developer automation.**
-
-Think of it as:
-- **"TypeScript of developer workflows"** - Type-safe scripting with excellent DX
-- **"Terraform for crypto operations"** - Declarative infrastructure and workflows
-- **"Makefile/Justfile evolved"** - Programmable automation done right
-
-### What This Means
-
-**Write workflows once, run anywhere:**
-- Local development (instant feedback)
-- Cloud execution (scale and reliability)
-- On-chain automation (Solana, multi-chain)
-
-**Type-safe by default:**
-- Catch errors at compile time, not runtime
-- IntelliSense and autocomplete everywhere
-- Refactor with confidence
-
-**Solana-native primitives:**
-- PublicKey, Account, Instruction types built-in
-- Load program types from Anchor IDLs
-- Transaction building made simple
-
-**Extensible and composable:**
-- Scheme-inspired macro system
-- Community packages and templates
-- Plugin ecosystem for integrations
-
----
-
-## Our Philosophy
-
-### 1. Vertical Before Horizontal
-
-We build **deep foundations** before expanding wide:
-- Type system before multi-chain support
-- Runtime before cloud platform
-- Core language before ecosystem
-
-**Why?** Deep technical layers create a moat that ensures LUMOS remains best-in-class.
-
-### 2. Community-First
-
-LUMOS is built **with and for developers**:
-- Open source core (always)
-- Community-driven roadmap
-- Real-world examples and templates
-- Active feedback loops
-
-### 3. Type Safety
-
-**Catch errors early:**
-- Compile-time validation prevents runtime failures
-- Strong types reduce bugs
-- IDE support makes development fast
-
-### 4. Elegant Simplicity
-
-Inspired by Scheme's minimalism:
-- Simple syntax, powerful semantics
-- Functional programming patterns
-- Composability over complexity
-- Expressive macros for abstraction
-
----
-
-## What Sets LUMOS Apart
-
-### The Intersection of Five Domains
-
-LUMOS uniquely combines:
-
-1. **Programming language design** - Real compiler, type system, runtime
-2. **Workflow automation** - Purpose-built for developer operations
-3. **Cloud orchestration** - Local development, cloud execution
-4. **Crypto engineering** - Solana-native, blockchain-first
-5. **Developer experience** - Type safety, LSP, great tooling
-
-**Most tools excel at one.** LUMOS excels at all five.
-
-### Competitive Positioning
-
-| Tool | Strengths | Weaknesses |
-|------|-----------|------------|
-| **TypeScript scripts** | Familiar, flexible | Too general, verbose, no workflow primitives |
-| **Python automation** | Easy syntax | Weak typing, not domain-specific |
-| **Terraform/HCL** | Great for infra | Not blockchain-native, static |
-| **Makefile/Justfile** | Simple tasks | Not a real language, limited expressiveness |
-| **LUMOS** | Typed, workflow-first, crypto-native, extensible | New (requires learning) |
-
-**LUMOS fills the gap** that existing tools cannot.
-
----
-
-## Current Status vs. Vision
-
-### Today (v0.1.1)
-```rust
-// .lumos schema
+**What it does:**
+```lumos
 #[solana]
 #[account]
 struct PlayerAccount {
-    wallet: PublicKey,
-    level: u16,
-    experience: u64,
+  wallet: PublicKey,
+  level: u16,
+  experience: u64
 }
 ```
 
-Generates Rust + TypeScript with Borsh serialization.
+**Generates:**
+- Rust structs with Anchor integration
+- TypeScript interfaces with Borsh schemas
+- Guaranteed serialization compatibility
 
-### Tomorrow (LUMOS 2.0 Vision)
-```scheme
-;; LUMOS workflow language
-(workflow deploy-game
-  (let program (anchor build "game-program"))
-  (let keypair (solana keygen "deploy-key.json"))
+**Role:** Utility tool for type-safe Solana development
 
-  (when (not (deployed? program))
-    (anchor deploy program keypair))
+---
 
-  (jito bundle
-    (anchor call program "initialize" {admin: keypair})
-    (anchor call program "create-player" {wallet: (env "PLAYER_WALLET")}))
+### Phase 2: Workflow Language (ENDGAME - Q1 2027)
 
-  (log "Game deployed successfully!"))
+**Target Position:** Dominates Level 4 (Workflow/Orchestration)
+
+**What it does:**
+```lumos
+// Full workflow automation with type safety
+import { deploy, airdrop } from "lumos-solana"
+import { send_bundle } from "lumos-jito"
+
+fn deploy_and_initialize() {
+  // Build and deploy program
+  let program = build_anchor_program(".")
+  let program_id = deploy(program, {
+    cluster: "mainnet",
+    wallet: env("DEPLOYER_WALLET")
+  })
+
+  // Initialize program state
+  initialize(program_id, {
+    authority: wallet(),
+    config: parse_toml("config.toml")
+  })
+
+  // Airdrop to early users
+  let recipients = load_csv("users.csv")
+  let tx = airdrop(recipients, lamports(1_000_000))
+
+  // Send via Jito for priority execution
+  send_bundle([tx], { tip: lamports(10_000) })
+
+  log("Deployment complete!")
+}
+
+// Execute workflow
+deploy_and_initialize()
 ```
 
-Type-safe, executable, composable workflows.
+**Capabilities:**
+- Native execution: `lumos run deploy.lumos`
+- Multi-target compilation: `lumos compile --target github-actions`
+- Type-safe Solana operations
+- Package ecosystem (import reusable workflows)
+- Anchor/IDL integration
+- Transaction builders with type checking
+- RPC client abstraction
+
+**Role:** THE workflow automation language for Solana
 
 ---
 
-## Roadmap Alignment
+### Phase 3: Universal Automation (BEYOND - 2027+)
 
-This vision **complements** our existing roadmap:
+**Target Position:** Expanded Level 4 + optional Level 2
 
-- **ROADMAP.md** - Near-term schema language evolution (Phase 5-6, Q2-Q3 2026)
-- **VISION.md** - Long-term programming language direction (2026+)
+**What it does:**
+```lumos
+// Multichain workflows
+import { deploy as deploy_solana } from "lumos-solana"
+import { deploy as deploy_evm } from "lumos-ethereum"
 
-The schema DSL continues to improve while we build the language foundation in parallel.
+fn deploy_multichain() {
+  // Deploy to Solana
+  let sol_program = deploy_solana("./solana-program", "mainnet")
 
-**No breaking changes.** The transition will be gradual and opt-in.
+  // Deploy to Ethereum
+  let eth_contract = deploy_evm("./eth-contract", "mainnet")
 
----
+  // Bridge state across chains
+  sync_cross_chain(sol_program, eth_contract)
+}
 
-## Get Involved
+// General DevOps automation
+fn provision_infrastructure() {
+  let image = build_docker("Dockerfile")
+  deploy_k8s(image, replicas: 3)
 
-LUMOS is open source and community-driven. Here's how you can help:
+  let db = provision_postgres(region: "us-east-1")
+  migrate_database(db, "./migrations")
+}
+```
 
-### For Developers
-- **Try LUMOS** - Use it in your Solana projects
-- **Contribute code** - Check GitHub issues for good first issues
-- **Build examples** - Add to awesome-lumos repository
-- **Report bugs** - Help us improve quality
+**Expanded Scope:**
+- Multichain support (EVM, Cosmos, Sui, Aptos)
+- Cloud infrastructure orchestration
+- Docker/Kubernetes automation
+- General-purpose scripting
+- Optional: Smart contract writing (if market demands)
 
-### For Designers
-- **Improve docs** - Better tutorials, diagrams, examples
-- **Create content** - Blog posts, videos, workshops
-
-### For Enthusiasts
-- **Spread the word** - Share LUMOS with other developers
-- **Join discussions** - Discord, GitHub Discussions, Reddit
-- **Provide feedback** - Tell us what you need
-
-### Community Links
-- **GitHub**: https://github.com/getlumos/lumos
-- **Discord**: [Join our server] (coming soon)
-- **Twitter/X**: [@getlumos](https://twitter.com/getlumos)
-- **Documentation**: https://docs.lumos-lang.org
-
----
-
-## Frequently Asked Questions
-
-### Will the schema DSL go away?
-**No.** The schema DSL (current LUMOS) remains fully supported. The language evolution is additive, not replacement.
-
-### When will LUMOS 2.0 ship?
-We're focused on building the right foundation, not rushing to arbitrary deadlines. Follow our progress on GitHub.
-
-### Is this still for Solana only?
-LUMOS starts with Solana because that's where the pain is greatest. But the vision is multi-chain and beyond crypto (DevOps, cloud automation).
-
-### Will LUMOS stay open source?
-**Yes.** The core language, compiler, runtime, and standard library will always be open source. We may monetize cloud services and premium templates, following the Terraform/TypeScript model.
-
-### How can I stay updated?
-- Watch the GitHub repo for releases
-- Join Discord for real-time updates
-- Follow [@getlumos](https://twitter.com/getlumos) on X/Twitter
+**Role:** THE type-safe automation language for Web3 + DevOps
 
 ---
 
-## Closing Thoughts
+## The Problem We're Solving
 
-Developer workflows are **too important** to be fragmented across a dozen tools.
+### The Current Pain: Fragmented Tooling
 
-LUMOS started as a schema DSL. But the need for a typed, workflow-first programming language is clear.
+Solana developers today juggle multiple tools for basic workflows:
 
-**We're building it.**
+```bash
+#!/bin/bash
+# Typical deployment script (5+ tools, no types, brittle)
 
-Join us on this journey. Let's make developer automation elegant, type-safe, and joyful.
+# 1. Build program (Rust)
+anchor build
+
+# 2. Deploy (Solana CLI)
+solana program deploy target/deploy/program.so
+
+# 3. Initialize (TypeScript)
+ts-node scripts/initialize.ts
+
+# 4. Airdrop (Python)
+python scripts/airdrop.py
+
+# 5. Monitor (manual commands)
+solana logs <PROGRAM_ID>
+
+# Hope nothing breaks 🤞
+```
+
+**Problems:**
+- ❌ No type safety across tools
+- ❌ Error-prone (silent failures)
+- ❌ Hard to maintain (5 different syntaxes)
+- ❌ Not reusable (every project reinvents)
+- ❌ Poor DX (constant context switching)
+
+### The LUMOS Solution: Unified, Type-Safe Workflows
+
+```lumos
+// One language, full type safety, composable
+import { deploy, initialize, airdrop, monitor } from "lumos-solana"
+
+fn main() {
+  let program = deploy_program(".", "mainnet")
+  initialize(program, config)
+  airdrop(recipients, amount)
+  monitor(program)
+}
+
+main()
+```
+
+**Benefits:**
+- ✅ Type-safe end-to-end
+- ✅ Single language (no context switching)
+- ✅ Reusable packages
+- ✅ Better error messages
+- ✅ Composable workflows
+- ✅ IDE autocomplete + LSP
 
 ---
 
-**The best way to predict the future is to build it.**
+## LUMOS vs The Ecosystem
 
-Let's build LUMOS together.
+### LUMOS vs Anchor
+
+**Anchor:** Framework to write Solana programs (Level 2)
+**LUMOS:** Language to automate Solana operations (Level 4)
+
+**They complement each other:**
+
+```
+Developer writes program in Anchor (Level 2)
+         ↓
+LUMOS deploys and orchestrates the program (Level 4)
+```
+
+**Comparison:**
+
+| Aspect | Anchor | LUMOS |
+|--------|--------|-------|
+| **Purpose** | Write smart contracts | Automate workflows |
+| **Layer** | Level 2 (Programs) | Level 4 (Orchestration) |
+| **Competes with** | Native Rust, Seahorse | Custom scripts, Hardhat |
+| **Replaces** | Manual program writing | Bash/TS/Python scripts |
+| **Output** | Solana BPF bytecode | Scripts, transactions, automation |
+| **Use case** | "Build a token program" | "Deploy, test, airdrop" |
+
+**Relationship:** LUMOS uses Anchor programs, doesn't replace them.
 
 ---
 
-*This is a living document. As we learn and grow, this vision will evolve. Last updated: November 22, 2025.*
+### LUMOS vs Hardhat (Ethereum)
+
+**Hardhat:** Workflow automation for Ethereum
+**LUMOS:** Workflow automation for Solana (and beyond)
+
+**LUMOS is Hardhat's spiritual successor with improvements:**
+
+| Feature | Hardhat | LUMOS |
+|---------|---------|-------|
+| **Language** | JavaScript/TypeScript | LUMOS DSL (purpose-built) |
+| **Type Safety** | Limited (TS types) | Full (compiler-enforced) |
+| **Native Execution** | Node.js runtime | Native LUMOS runtime |
+| **Compilation** | No (interprets JS) | Yes (multi-target) |
+| **Ecosystem** | Ethereum only | Solana first, multichain future |
+
+**Positioning:** "LUMOS is to Solana what Hardhat is to Ethereum, but better."
+
+---
+
+### LUMOS vs Terraform
+
+**Terraform:** Infrastructure-as-code for cloud resources
+**LUMOS:** Automation-as-code for blockchain operations
+
+**Inspiration from Terraform:**
+- Declarative + executable
+- Type-safe configuration
+- Reusable modules (packages)
+- Multi-provider support (multichain)
+
+**LUMOS goes further:**
+- First-class blockchain primitives (Pubkey, Lamports, Transaction)
+- Imperative + declarative (full language)
+- Native execution (not just planning)
+
+---
+
+## Why This Market is Open
+
+### The Latent Market Thesis
+
+**Question:** Why doesn't a "Hardhat for Solana" exist yet?
+
+**Answer:** Market is latent - pain exists but no packaged solution.
+
+### Evidence of Latent Demand
+
+1. **Fragmentation signals opportunity:**
+   - Every Solana project has custom deployment scripts
+   - Bash + TypeScript + Python + Makefiles mix
+   - No standardization across projects
+   - GitHub full of one-off automation scripts
+
+2. **Pain points are universal:**
+   - Deploy programs across environments (devnet → testnet → mainnet)
+   - Airdrop operations (10K+ recipients)
+   - NFT minting automation
+   - Transaction batching for efficiency
+   - Program testing workflows
+   - Monitoring and alerts
+
+3. **No dominant solution:**
+   - Anchor solves program writing (Level 2) ✅
+   - Nothing solves workflow automation (Level 4) ❌
+
+4. **Comparable latent markets that exploded:**
+   - **Terraform:** Infrastructure was manual before → $7B+ company
+   - **Hardhat:** Ethereum devs had same pain → industry standard (3M+ downloads/week)
+   - **GitHub Actions:** CI/CD was fragmented → now dominant
+
+### The Category Creation Opportunity
+
+**LUMOS doesn't compete for market share. LUMOS creates the category.**
+
+When developers start saying:
+- "I use LUMOS for Solana workflows"
+- "Deploy with LUMOS"
+- "Check out this LUMOS package"
+
+We've won. The category is owned.
+
+**First-mover advantage:** Define the vocabulary, own the namespace.
+
+---
+
+## The ENDGAME Architecture
+
+### LUMOS as a Complete Language
+
+**Phase 7-9 delivers:**
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ LUMOS LANGUAGE STACK (ENDGAME)                          │
+├─────────────────────────────────────────────────────────┤
+│                                                          │
+│  ┌──────────────────────────────────────────────┐      │
+│  │ Package Ecosystem (Level 8)                  │      │
+│  │ • lumos-solana, lumos-jito, lumos-metaplex   │      │
+│  │ • Community packages                          │      │
+│  │ • Template marketplace                        │      │
+│  └──────────────────────────────────────────────┘      │
+│                        │                                 │
+│  ┌──────────────────────────────────────────────┐      │
+│  │ High-Level APIs (Level 7)                    │      │
+│  │ • Type-safe builders                          │      │
+│  │ • Auto-generated from IDL                     │      │
+│  │ • SDK helpers                                 │      │
+│  └──────────────────────────────────────────────┘      │
+│                        │                                 │
+│  ┌──────────────────────────────────────────────┐      │
+│  │ Runtime Engine (Level 6)                     │      │
+│  │ • Native execution: lumos run                 │      │
+│  │ • Workflow orchestration                      │      │
+│  │ • RPC client integration                      │      │
+│  └──────────────────────────────────────────────┘      │
+│                        │                                 │
+│  ┌──────────────────────────────────────────────┐      │
+│  │ Type System (Level 5)                        │      │
+│  │ • Gradual typing (TypeScript-inspired)        │      │
+│  │ • Solana-native types (Pubkey, Lamports)      │      │
+│  │ • IDL integration                             │      │
+│  └──────────────────────────────────────────────┘      │
+│                        │                                 │
+│  ┌──────────────────────────────────────────────┐      │
+│  │ Compiler & IR (Level 4)                      │      │
+│  │ • AST → IR → Multi-target compilation        │      │
+│  │ • Targets: Bash, GitHub Actions, native       │      │
+│  └──────────────────────────────────────────────┘      │
+│                        │                                 │
+│  ┌──────────────────────────────────────────────┐      │
+│  │ Parser & AST (Level 3)                       │      │
+│  │ • LUMOS DSL syntax                            │      │
+│  │ • Error recovery                              │      │
+│  │ • Source location tracking                    │      │
+│  └──────────────────────────────────────────────┘      │
+│                        │                                 │
+│  ┌──────────────────────────────────────────────┐      │
+│  │ Lexer (Level 2)                              │      │
+│  │ • Tokenization                                │      │
+│  └──────────────────────────────────────────────┘      │
+│                        │                                 │
+│  ┌──────────────────────────────────────────────┐      │
+│  │ Language Spec (Level 1)                      │      │
+│  │ • Grammar definition                          │      │
+│  │ • Semantics                                   │      │
+│  └──────────────────────────────────────────────┘      │
+│                                                          │
+└──────────────────────────────────────────────────────────┘
+```
+
+### Example: Type-Safe Solana Operations
+
+```lumos
+// Type system catches errors at compile time
+fn airdrop(recipients: List<Pubkey>, amount: Lamports) -> Transaction {
+  // Type error if recipients is not List<Pubkey>
+  // Type error if amount is not Lamports
+
+  let instructions = recipients.map(|addr: Pubkey| -> Instruction {
+    transfer_instruction(addr, amount)
+  })
+
+  build_transaction(instructions)
+}
+
+// Load types from Anchor IDL automatically
+import { UserAccount, initialize_user } from "anchor:my-program"
+
+let user: UserAccount = {
+  wallet: pubkey("7xK..."),  // Type-safe Pubkey constructor
+  balance: lamports(1_000_000)  // Type-safe Lamports
+}
+
+// Initialize with type-checked instruction
+initialize_user(user)
+```
+
+---
+
+## Why LUMOS Will Win
+
+### 1. Category Creation
+
+**We're not competing for market share. We're creating the market.**
+
+- First to define "type-safe workflow automation for Solana"
+- Own the vocabulary, own the category
+- Competitors always look like "LUMOS alternatives"
+
+### 2. Vertical Technical Moat
+
+**Deep tech layers that take years to replicate:**
+- Type system with Solana-native primitives
+- Compiler with multi-target IR
+- LSP with IDL integration
+- Native runtime with RPC clients
+- Package ecosystem with dependency resolution
+
+**Competitors must rebuild entire stack** → 2-3 year barrier
+
+### 3. Solana-Native Design
+
+**Built specifically for Solana's constraints:**
+- First-class `Pubkey`, `Lamports`, `Signature` types
+- Anchor IDL integration out of the box
+- Account model understanding
+- Transaction builder with compute budget awareness
+- Borsh serialization by default
+
+**Generic tools can't match domain expertise.**
+
+### 4. Execution Speed as Moat
+
+**3-5 commits/day target = impossible to catch up**
+
+From ROADMAP.md:
+- Phase 5-6: 3 months (150-250 commits)
+- Phase 7-9: 12 months (900-1,400 commits)
+
+**By the time competitors validate the idea, we're 12 months ahead.**
+
+### 5. Ecosystem Lock-In
+
+**Network effects prevent competition:**
+- Package registry with 50+ packages
+- Template marketplace
+- Community-created workflows
+- IDE integration (LSP in 5+ editors)
+- Educational content and courses
+
+**Switching costs become prohibitive.**
+
+### 6. Open Source + Monetization Clarity
+
+**Core stays free, monetize the ecosystem:**
+- Language: Open source forever
+- Cloud platform: SaaS (optional)
+- Premium templates: Marketplace
+- Enterprise support: Contracts
+
+**Model proven by:** Terraform, TypeScript, VS Code
+
+---
+
+## Timeline to ENDGAME
+
+```
+2025 ──────────── 2026 ──────────── 2027 ──────────── 2027+ ─────
+
+  NOW           Phase 5-6        Phase 7-9         Phase 10+
+v0.1.1          Q1 2026         Q2 26-Q1 27          2027+
+  │                │                 │                  │
+  │                │                 │                  │
+  ▼                ▼                 ▼                  ▼
+
+Schema         Complete         Workflow          Universal
+Generator      Schema DSL       Language          Automation
+                                (ENDGAME)
+
+Position:      Position:        Position:         Position:
+Level 2-3      Level 2-3        Level 4           Level 4
+(utility)      (focused)        (DOMINANT)        (EXPANDED)
+
+Like:          Like:            Like:             Like:
+Protobuf       TOML/YAML        Hardhat           Terraform
+                                + Terraform       + Hardhat
+                                                  + Make
+```
+
+**Milestones:**
+- **Q1 2026:** DSL Feature Complete (schemas)
+- **Q1 2027:** Language ENDGAME (workflows)
+- **2027+:** Multichain + DevOps expansion
+
+---
+
+## Success Criteria
+
+**We know LUMOS won when:**
+
+1. **Market Adoption**
+   - 1,000+ production deployments
+   - 50+ packages in registry
+   - Standard tool in Solana projects
+
+2. **Category Ownership**
+   - Developers say "deploy with LUMOS"
+   - Job postings mention "LUMOS experience"
+   - Competitors called "LUMOS alternatives"
+
+3. **Technical Ecosystem**
+   - LSP used in 5+ editors
+   - VS Code extension: 10K+ installs
+   - GitHub Action: standard in Solana CI/CD
+
+4. **Community Growth**
+   - 2,000+ GitHub stars
+   - 500+ Discord members
+   - Active template marketplace
+
+---
+
+## Contributing to the Vision
+
+LUMOS is ambitious. We need help across all layers:
+
+**Phase 5-6 (Now - Q1 2026):**
+- Schema evolution features
+- IDE plugins (IntelliJ, Neovim, Emacs)
+- Advanced type system features
+
+**Phase 7-9 (Q2 2026 - Q1 2027):**
+- Language design and syntax
+- Parser and compiler implementation
+- Type system architecture
+- Runtime engine development
+- Package ecosystem building
+
+**Phase 10+ (2027+):**
+- Multichain adapters
+- DevOps integrations
+- Template creation
+- Documentation and education
+
+See [ROADMAP.md](../ROADMAP.md) for detailed phases and issues.
+
+---
+
+## Conclusion
+
+LUMOS evolves from utility tool → category-defining language.
+
+**The journey:**
+1. **Now:** Schema generator (solve immediate pain)
+2. **ENDGAME:** Workflow language (own the category)
+3. **Beyond:** Universal automation (expand the moat)
+
+**The opportunity:** Latent market with no dominant player.
+
+**The moat:** Deep vertical tech + fast execution.
+
+**The vision:** Make Solana development 10x better through type-safe automation.
+
+---
+
+**This is not just a tool. This is a new category.**
+
+Let's build it together.
+
+---
+
+**Related Documents:**
+- [ROADMAP.md](../ROADMAP.md) - Detailed development phases
+- [CONTRIBUTING.md](../CONTRIBUTING.md) - How to contribute
+- [README.md](../README.md) - Getting started with LUMOS
+
+**Last Updated:** November 22, 2025

@@ -1,8 +1,10 @@
 # LUMOS Roadmap
 
-**Vision**: Become the standard schema language for type-safe Solana development
+**Vision**: Transform Solana development with the first type-safe workflow language - from schemas to complete automation
 
-**Last Updated**: November 21, 2025
+**For detailed vision and positioning**: See [docs/VISION.md](docs/VISION.md)
+
+**Last Updated**: November 22, 2025
 
 ---
 
@@ -12,7 +14,7 @@
 
 LUMOS is now a complete, production-ready schema language for Solana development:
 
-- ✅ **v0.1.1 released** - 108 tests, zero warnings, zero vulnerabilities
+- ✅ **v0.1.1 released** - 129 tests, zero warnings, zero vulnerabilities
 - ✅ **Security hardened** - Type validation, path protection, enhanced errors
 - ✅ **VSCode extension** - v0.5.0 published to marketplace
 - ✅ **5 community examples** - NFT, DeFi, DAO, Gaming, Vesting
@@ -20,21 +22,42 @@ LUMOS is now a complete, production-ready schema language for Solana development
 - ✅ **Interactive playground** - Live code generation at docs.lumos-lang.org/playground
 - ✅ **Performance benchmarks** - Comprehensive Borsh comparison suite
 
-**Next**: Phase 5 - Advanced Features (Q2 2026)
+**Next**: Phase 5 - Advanced Features (Q1 2026)
 
 ---
 
-## Phase 5: Advanced Features (Q2 2026)
+## 📍 The LUMOS Evolution
+
+LUMOS is evolving in two major eras:
+
+### **Era 1: DSL Completion** (Phases 5-6, Q1 2026)
+Become the definitive schema language for Solana - complete type system, IDE integration, ecosystem tools
+
+**Timeline**: 3 months (Dec 2025 - March 2026)
+**Milestone**: When Phase 6 closes → **LUMOS DSL Feature Complete** ✅
+
+### **Era 2: Language Transformation** (Phases 7-9, Q2 2026 - Q1 2027)
+Transform from schema DSL → full programming language for type-safe Solana workflows and automation
+
+**Timeline**: 12 months (Apr 2026 - March 2027)
+**Milestone**: **LUMOS becomes a real programming language** with parser, runtime, and execution engine
+
+---
+
+# Era 1: DSL Completion (Q1 2026)
+
+## Phase 5: Advanced Features (Q1 2026)
 
 ### 5.1 Schema Evolution
 
 **Goal**: Support schema changes without breaking deployed programs
 
-- [ ] Schema versioning syntax (`#[version = "1.0.0"]`)
-- [ ] Automatic migration code generation
-- [ ] Backward compatibility validation
-- [ ] Deprecation warnings for old schemas
-- [ ] Schema diff tool (`lumos diff v1.lumos v2.lumos`)
+**Issues to create:**
+- [ ] Add schema versioning syntax with `#[version = "1.0.0"]` attribute [#40]
+- [ ] Generate automatic migration code between schema versions [#41]
+- [ ] Validate backward compatibility between schema versions [#42]
+- [ ] Add deprecation warnings for old schema fields [#43]
+- [ ] Create schema diff tool: `lumos diff v1.lumos v2.lumos` [#44]
 
 **Success Metric**: Zero-downtime schema upgrades
 
@@ -42,11 +65,12 @@ LUMOS is now a complete, production-ready schema language for Solana development
 
 **Goal**: Multi-editor support beyond VSCode
 
-- [ ] Language Server Protocol (LSP) implementation
-- [ ] IntelliJ IDEA / Rust Rover plugin
-- [ ] Neovim plugin with Tree-sitter grammar
-- [ ] Emacs mode
-- [ ] Sublime Text package
+**Issues to create:**
+- [ ] Implement Language Server Protocol (LSP) for LUMOS [#45] **HIGH PRIORITY**
+- [ ] Create IntelliJ IDEA / Rust Rover plugin for LUMOS [#46]
+- [ ] Create Neovim plugin with Tree-sitter grammar for LUMOS [#47]
+- [ ] Create Emacs mode for LUMOS [#48]
+- [ ] Create Sublime Text package for LUMOS [#49]
 
 **Success Metric**: LSP used by 3+ editors
 
@@ -54,51 +78,383 @@ LUMOS is now a complete, production-ready schema language for Solana development
 
 **Goal**: Express complex Solana program constraints
 
-- [ ] Custom derive macros support
-- [ ] Const generics for fixed-size arrays
-- [ ] Type aliases and imports
-- [ ] Nested module support
-- [ ] Generic struct/enum definitions
+**Issues to create:**
+- [ ] Add custom derive macros support to LUMOS [#50]
+- [ ] Add const generics support for fixed-size arrays in LUMOS [#51]
+- [ ] Add type aliases and imports to LUMOS [#52]
+- [ ] Add nested module support to LUMOS [#53]
+- [ ] Add generic struct/enum definitions to LUMOS [#54]
 
 **Success Metric**: Support 95% of Anchor program patterns
 
 ---
 
-## Phase 6: Ecosystem Integration (Q3 2026)
+## Phase 6: Ecosystem Integration (Q1 2026)
 
 ### 6.1 Framework Integration
 
-- [ ] Anchor framework plugin
-- [ ] Seahorse integration
-- [ ] Native Solana program support
-- [ ] Metaplex standard compatibility
+**Issues to create:**
+- [ ] Create Anchor framework plugin for LUMOS [#55] **HIGH PRIORITY**
+- [ ] Add Seahorse integration for Python-based Solana development [#56]
+- [ ] Add native Solana program support (non-Anchor) [#57]
+- [ ] Add Metaplex standard compatibility for NFT schemas [#58]
 
 ### 6.2 Tooling Ecosystem
 
-- [ ] Cargo subcommand (`cargo lumos generate`)
-- [x] GitHub Action for CI/CD
-- [ ] Pre-commit hook for schema validation
-- [ ] npm package for JavaScript projects
+**Issues to create:**
+- [ ] Create `cargo lumos` subcommand for Rust workflows [#59]
+- [ ] Create GitHub Action for CI/CD auto-generation [#60]
+- [ ] Create pre-commit hook for schema validation [#61]
+- [ ] Create npm package for JavaScript/TypeScript projects [#62] **HIGH PRIORITY**
 
 ### 6.3 Security & Validation
 
-- [x] Static analysis for common vulnerabilities
-- [x] Account size overflow detection
-- [x] Security audit checklist generator
-- [x] Fuzzing support for generated code
+**Issues to create:**
+- [ ] Add static analysis for common vulnerabilities
+- [ ] Add account size overflow detection
+- [ ] Create security audit checklist generator [#65]
+- [ ] Add fuzzing support for generated code testing [#66]
+
+**Milestone**: 🎯 **DSL FEATURE COMPLETE** - LUMOS becomes the most comprehensive schema language for Solana
 
 ---
 
-## Future Considerations (Beyond 2026)
+# Era 2: Language Transformation (Q2 2026 - Q1 2027)
 
-**Ideas under exploration** (not committed):
+**The Big Vision**: LUMOS evolves from "schema generator" to "programmable workflow language"
 
-- Code generation for other languages (Python, C++)
-- On-chain schema registry for program introspection
-- Automated documentation generation from schemas
-- GraphQL API generation from LUMOS schemas
-- Cross-chain support (EVM, Cosmos, etc.)
-- WASM target for browser-based tooling
+## Why a Language?
+
+Solana development today requires juggling multiple tools:
+- Write schemas (LUMOS/manual)
+- Script deployments (bash, JavaScript, Python)
+- Build automation (Makefiles, npm scripts)
+- Manage workflows (CI/CD configs, YAML)
+
+**What if one language handled all of it?**
+
+LUMOS becomes:
+- **The TypeScript of workflows** - Type-safe automation for Solana
+- **The Terraform of Solana** - Declarative + executable infrastructure
+- **The Hardhat for Solana** - Unified developer experience
+
+---
+
+## Phase 7: Core Language Foundation (Q2-Q3 2026)
+
+**Goal**: Transform `.lumos` from schema DSL to real programming language
+
+**Timeline**: 6 months (Apr - Sep 2026)
+**Estimated**: 285-480 commits, 40-60 issues
+
+### 7.1 Parser & AST
+
+**Issues to create:**
+- [ ] Design extended LUMOS grammar (variables, functions, control flow)
+- [ ] Research parser library comparison (chumsky vs nom vs lalrpop)
+- [ ] Implement lexer/tokenizer for LUMOS language
+- [ ] Define AST data structures (expressions, statements, declarations)
+- [ ] Implement parser for variable declarations and assignments
+- [ ] Implement parser for function definitions
+- [ ] Implement parser for control flow (if/else, loops)
+- [ ] Implement parser for module system (import/export)
+- [ ] Add error recovery and diagnostic system
+- [ ] Add source location tracking for debugging
+- [ ] Create syntax error messages with suggestions
+
+### 7.2 Evaluator & Runtime Foundation
+
+**Issues to create:**
+- [ ] Design AST evaluation engine architecture
+- [ ] Implement variable binding and scoping system
+- [ ] Implement function definitions and call evaluation
+- [ ] Implement expression evaluation (arithmetic, logical, comparison)
+- [ ] Implement control flow evaluation (if/else, while, for)
+- [ ] Add module system (import/export resolution)
+- [ ] Create basic REPL for interactive development
+- [ ] Add runtime error handling and stack traces
+- [ ] Implement closure support for functions
+
+### 7.3 Standard Library (Core)
+
+**Issues to create:**
+- [ ] Design standard library architecture and organization
+- [ ] Implement string manipulation primitives (concat, split, trim, etc.)
+- [ ] Implement collection types (List, Map, Set)
+- [ ] Add file I/O operations (read, write, exists, etc.)
+- [ ] Add HTTP client basics (GET, POST requests)
+- [ ] Add JSON parsing and serialization
+- [ ] Add TOML parsing and serialization
+- [ ] Implement environment variable access
+- [ ] Add path manipulation utilities
+- [ ] Create standard library documentation
+
+**Success Metric**: Execute simple LUMOS programs locally
+
+**Example LUMOS code (future):**
+
+```lumos
+// Variables and functions
+let cluster = "devnet"
+let wallet_path = env("WALLET_PATH")
+
+fn deploy_program(path: String, cluster: String) {
+  let config = parse_toml("Anchor.toml")
+  let program = build_anchor_program(path, config)
+
+  deploy(program, {
+    cluster: cluster,
+    wallet: wallet_path
+  })
+}
+
+deploy_program(".", cluster)
+```
+
+---
+
+## Phase 8: Type System Layer (Q3-Q4 2026)
+
+**Goal**: Bring TypeScript-like gradual typing to workflows
+
+**Timeline**: 6 months (Jul 2026 - Dec 2026, overlaps with Phase 7)
+**Estimated**: 220-440 commits, 35-50 issues
+
+### 8.1 Gradual Type System
+
+**Issues to create:**
+- [ ] Design type annotation syntax for LUMOS
+- [ ] Implement type representation and type environment
+- [ ] Add type annotation parser (function signatures, variable types)
+- [ ] Implement type inference for variable bindings
+- [ ] Implement type inference for function return types
+- [ ] Add type checking pass for expressions
+- [ ] Add type checking for function calls and arguments
+- [ ] Implement generic type parameters (List<T>, Option<T>)
+- [ ] Add union types (T | U)
+- [ ] Add intersection types (T & U)
+- [ ] Create type error messages with suggestions
+- [ ] Add type diagnostics in LSP
+
+### 8.2 Solana-Native Types
+
+**Issues to create:**
+- [ ] Design Solana primitive types (Pubkey, Signature, Lamports)
+- [ ] Implement `Pubkey` type with validation
+- [ ] Implement `Signature` type
+- [ ] Implement `Lamports` type with u64 precision handling
+- [ ] Add `Account<T>` type for program accounts
+- [ ] Add `Instruction` type with validation
+- [ ] Add `Transaction` builder types
+- [ ] Implement Solana type conversions and serialization
+- [ ] Add type-safe RPC client types
+
+### 8.3 Anchor IDL Integration
+
+**Issues to create:**
+- [ ] Design IDL-to-types architecture
+- [ ] Implement Anchor IDL parser
+- [ ] Generate LUMOS types from Anchor IDL
+- [ ] Auto-generate type-safe instruction builders from IDL
+- [ ] Add account struct mapping from IDL
+- [ ] Create IDL-based autocomplete in LSP
+- [ ] Add runtime IDL validation
+
+**Success Metric**: Write type-safe Solana scripts in LUMOS
+
+**Example LUMOS code (future):**
+
+```lumos
+// Type-safe Solana operations
+fn airdrop(recipients: List<Pubkey>, amount: Lamports) -> Transaction {
+  recipients.map(|addr| {
+    transfer_instruction(addr, amount)
+  }).build_transaction()
+}
+
+// Load types from Anchor IDL
+import { UserAccount, initialize } from "anchor:my-program"
+
+let user: UserAccount = {
+  wallet: pubkey("..."),
+  balance: lamports(1_000_000)
+}
+```
+
+---
+
+## Phase 9: Compiler & Runtime (Q4 2026 - Q1 2027)
+
+**Goal**: Execute LUMOS workflows natively and compile to other formats
+
+**Timeline**: 6 months (Oct 2026 - March 2027)
+**Estimated**: 330-640 commits, 50-80 issues
+
+### 9.1 IR (Intermediate Representation) & Lowering
+
+**Issues to create:**
+- [ ] Design LUMOS IR (Intermediate Representation) architecture
+- [ ] Implement AST → IR transformation
+- [ ] Create IR optimization passes
+- [ ] Implement LUMOS → Solana CLI command lowering
+- [ ] Implement LUMOS → Anchor CLI command lowering
+- [ ] Implement LUMOS → bash script generation
+- [ ] Implement LUMOS → TOML config generation
+- [ ] Implement LUMOS → YAML config generation
+- [ ] Add LUMOS → GitHub Actions workflow generation
+- [ ] Add LUMOS → Docker Compose generation
+- [ ] Create `lumos compile` command with multiple targets
+
+### 9.2 LUMOS Runtime Engine
+
+**Issues to create:**
+- [ ] Design native runtime execution engine
+- [ ] Implement `lumos run` command for native execution
+- [ ] Add Solana RPC client integration
+- [ ] Add Jito RPC client integration
+- [ ] Implement transaction builder and simulator
+- [ ] Add parallel execution engine for workflows
+- [ ] Implement workflow orchestration (dependencies, retries)
+- [ ] Add cron-like scheduling support
+- [ ] Create execution logs and debugging
+- [ ] Add runtime performance profiling
+- [ ] Implement sandboxed execution environment
+- [ ] Add transaction simulation and dry-run mode
+
+### 9.3 Package Ecosystem
+
+**Issues to create:**
+- [ ] Design package manager architecture (LPM - LUMOS Package Manager)
+- [ ] Implement package manifest format (lumos.toml)
+- [ ] Create package registry backend
+- [ ] Implement `lumos install` command
+- [ ] Implement `lumos publish` command
+- [ ] Add dependency resolution algorithm
+- [ ] Create standard library package: `lumos-solana`
+- [ ] Create standard library package: `lumos-anchor`
+- [ ] Create standard library package: `lumos-jito`
+- [ ] Create standard library package: `lumos-metaplex`
+- [ ] Create standard library package: `lumos-http`
+- [ ] Add private package support
+- [ ] Add package versioning and semver
+- [ ] Create package documentation generation
+- [ ] Build package search and discovery (lumos-lang.org/packages)
+
+### 9.4 Cloud Platform (Optional SaaS - Future)
+
+**Note**: Cloud platform details remain exploratory. Core language stays open source.
+
+**Potential features (not committed):**
+- [ ] Design LUMOS Cloud architecture
+- [ ] Hosted workflow execution runner
+- [ ] Secrets management integration
+- [ ] Execution logs and monitoring dashboard
+- [ ] Scheduled jobs (cron-like in cloud)
+- [ ] Webhook triggers for workflows
+- [ ] RPC batching and optimization
+
+**Success Metric**: Execute production workflows with `lumos run`, publish packages to registry
+
+**Example LUMOS code (future):**
+
+```lumos
+// Import packages
+import { deploy, airdrop } from "lumos-solana"
+import { send_bundle } from "lumos-jito"
+
+// Execute workflow
+let recipients = load_csv("recipients.csv")
+let tx = airdrop(recipients, lamports(1_000_000))
+
+send_bundle([tx], { tip: lamports(10_000) })
+```
+
+---
+
+## Phase 10: Horizontal Expansion (2027+)
+
+**Goal**: Expand beyond Solana
+
+**Timeline**: 12+ months (2027+)
+**Estimated**: 200+ commits, 40+ issues
+
+### 10.1 Multichain Support
+
+**Potential issues:**
+- [ ] Add EVM chain support (Ethereum, Polygon, Base)
+- [ ] Add Cosmos SDK integration
+- [ ] Add Sui blockchain support
+- [ ] Add Aptos blockchain support
+- [ ] Create cross-chain transaction builders
+- [ ] Add multichain wallet abstraction
+
+### 10.2 DevOps Automation
+
+**Potential issues:**
+- [ ] Add Docker integration and container management
+- [ ] Add Kubernetes deployment support
+- [ ] Create Terraform-like infrastructure-as-code features
+- [ ] Add GitHub Actions native integration
+- [ ] Create CI/CD pipeline templates
+- [ ] Add AWS/GCP/Azure cloud provider support
+
+### 10.3 General Purpose Scripting
+
+**Potential issues:**
+- [ ] Replace Makefile/Justfile use cases
+- [ ] Add system automation capabilities
+- [ ] Create data processing pipelines
+- [ ] Add API testing framework
+- [ ] Create database migration tools
+- [ ] Add web scraping utilities
+
+**Success Metric**: LUMOS used beyond Solana ecosystem
+
+---
+
+## Development Velocity Targets
+
+### To DSL Complete (Phase 5-6)
+- **Timeline**: 3 months (Dec 2025 - Mar 2026)
+- **Commits**: 150-250 total
+- **Issues**: 25-35 total
+- **Daily**: 2-3 commits/day, 1 issue every 2-3 days
+
+### To ENDGAME (Phase 7-9)
+- **Timeline**: 12 months (Apr 2026 - Mar 2027)
+- **Commits**: 900-1,400 total
+- **Issues**: 180-260 total
+- **Daily**: 3-5 commits/day, 1 issue every 1-2 days
+
+### Aggressive Pace (Target)
+- **3-5 commits/day** minimum
+- **1 issue completed every 1-2 days**
+- **Weekly demos** of new features
+- **Monthly milestone** reviews
+
+**This pace scares copycats** - execution speed creates an unbeatable moat.
+
+---
+
+## Why LUMOS Will Win
+
+### 1. Category Creation
+No direct competitor exists in "type-safe workflow language for Solana" - we define the category
+
+### 2. Vertical Technical Moat
+Type system + macro system + IR compiler + LSP + runtime = years to replicate
+
+### 3. Solana-Native Design
+Built specifically for Solana's constraints (accounts, transactions, Borsh, Anchor)
+
+### 4. Familiar Yet Better
+TypeScript-like syntax + Terraform-like declarative model = easy adoption
+
+### 5. Open Source + Ecosystem
+Core language free forever, monetize via cloud platform and premium extensions
+
+### 6. Fast Execution
+3-5 commits/day = competitors can't catch up even if they copy the idea
 
 ---
 
@@ -144,14 +500,14 @@ LUMOS is now a complete, production-ready schema language for Solana development
 - [x] Enhanced error messages with source location tracking (#27)
 - [x] 30 new error path tests for edge cases (#28)
 - [x] Comprehensive migration guide created (#29)
-- [x] Test suite expanded to 108 tests (from 64)
+- [x] Test suite expanded to 129 tests (from 64)
 - [x] Published v0.1.1 to crates.io
 
 **Result**: Enhanced security, better error messages, and comprehensive test coverage
 
 ### Phase 3.3: Production Polish ✅ (Completed Nov 2025)
 
-- [x] All 64 tests passing (later expanded to 108 in v0.1.1)
+- [x] All 64 tests passing (later expanded to 129 in v0.1.1)
 - [x] Zero clippy warnings, zero rustfmt violations
 - [x] Security audit clean (0 vulnerabilities)
 - [x] Published to crates.io (lumos-core, lumos-cli)
@@ -181,9 +537,10 @@ LUMOS is now a complete, production-ready schema language for Solana development
 See an opportunity to help? Check our [Contributing Guide](CONTRIBUTING.md) or:
 
 1. **Developers**: Claim an issue, submit a PR
-2. **Content Creators**: Write tutorials, create videos
-3. **Example Authors**: Build real-world schemas for awesome-lumos
-4. **Community**: Test features, report bugs, suggest improvements
+2. **Language Designers**: Help design LUMOS syntax and semantics (Phase 7+)
+3. **Content Creators**: Write tutorials, create videos
+4. **Example Authors**: Build real-world schemas for awesome-lumos
+5. **Community**: Test features, report bugs, suggest improvements
 
 ---
 
