@@ -22,19 +22,21 @@
 │  • Published to crates.io                               │
 └────────────┬────────────────────────────────────────────┘
              │
-        ┌────┴─────┬──────────────┬─────────────┐
-        │          │              │             │
-        v          v              v             v
-┌───────────┐ ┌────────────┐ ┌──────────┐ ┌──────────┐
-│  vscode-  │ │  awesome-  │ │   docs-  │ │  Future  │
-│   lumos   │ │   lumos    │ │   lumos  │ │   Repos  │
-│           │ │            │ │          │ │          │
-│ VSCode    │ │ Community  │ │ Official │ │ LSP,     │
-│ extension │ │ examples & │ │ docs &   │ │ Plugins, │
-│ (syntax,  │ │ full-stack │ │ website  │ │ Tools    │
-│ IntelliS, │ │ templates  │ │ VitePress│ │          │
-│ commands) │ │ 5 examples │ │ guides   │ │          │
-└───────────┘ └────────────┘ └──────────┘ └──────────┘
+    ┌────────┴────────┬──────────────┬─────────────┐
+    │                 │              │             │
+    v                 v              v             v
+┌──────────┐ ┌────────────┐ ┌──────────┐ ┌─────────────┐
+│ vscode-  │ │  awesome-  │ │  docs-   │ │   lumos-    │
+│  lumos   │ │   lumos    │ │  lumos   │ │   action    │
+│          │ │            │ │          │ │             │
+│ VSCode   │ │ Community  │ │ Official │ │ GitHub      │
+│extension │ │ examples & │ │ docs &   │ │ Action for  │
+│(syntax,  │ │ full-stack │ │ website  │ │ CI/CD auto  │
+│IntelliS, │ │ templates  │ │VitePress │ │ validation  │
+│commands) │ │5 examples  │ │ guides   │ │ & generate  │
+└──────────┘ └────────────┘ └──────────┘ └─────────────┘
+
+Future: LSP server, npm package, cargo subcommand, IDE plugins
 ```
 
 **Organization Mission:** Become the standard schema language for type-safe Solana development
@@ -182,6 +184,7 @@ npm run docs:build   # Build for production
 **Features:** Auto-install CLI, validate schemas, generate code, drift detection, PR comments
 **Status:** v1.0.0 published to GitHub Marketplace
 **Docs:** [lumos-action/README.md](https://github.com/getlumos/lumos-action#readme)
+**CLAUDE.md:** [lumos-action/CLAUDE.md](https://github.com/getlumos/lumos-action/blob/main/CLAUDE.md)
 
 ---
 
