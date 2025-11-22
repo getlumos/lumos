@@ -1,0 +1,161 @@
+# Example LUMOS Generation Workflow
+#
+# This is an example workflow demonstrating various use cases for the LUMOS GitHub Action.
+# Copy this file to `lumos-generate.yml` (remove .example suffix) and customize as needed.
+#
+# Documentation: https://lumos-lang.org/tools/github-action
+
+name: LUMOS Generate
+
+# Trigger on pushes and pull requests
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - '**/*.lumos'  # Only run when schema files change
+  pull_request:
+    paths:
+      - '**/*.lumos'
+
+# Minimal required permissions
+permissions:
+  contents: read
+  pull-requests: write  # Required for PR comments
+
+jobs:
+  # Job 1: Validate on PRs (fast check)
+  validate:
+    name: Validate Schemas
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate LUMOS schemas
+        uses: getlumos/lumos/.github/actions/lumos-generate@main
+        with:
+          schema: '**/*.lumos'
+          check-only: false        # Generate to check drift
+          fail-on-drift: true      # Fail if uncommitted changes
+          comment-on-pr: true      # Post results as comment
+          version: 'latest'
+
+  # Job 2: Generate on main branch
+  generate:
+    name: Generate Code
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate from LUMOS schemas
+        uses: getlumos/lumos/.github/actions/lumos-generate@main
+        with:
+          schema: '**/*.lumos'
+          version: '0.1.1'  # Pin to specific version for reproducibility
+
+      - name: Upload generated files
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-code
+          path: |
+            **/generated.rs
+            **/generated.ts
+          retention-days: 7
+
+# ---
+# Alternative Configurations
+# ---
+
+# Example: Auto-commit generated files
+# Uncomment and customize this job to auto-commit on schema changes
+#
+#  auto-commit:
+#    name: Auto-commit Generated Files
+#    runs-on: ubuntu-latest
+#    if: github.event_name == 'push'
+#
+#    permissions:
+#      contents: write
+#
+#    steps:
+#      - uses: actions/checkout@v4
+#
+#      - uses: getlumos/lumos/.github/actions/lumos-generate@main
+#        with:
+#          schema: '**/*.lumos'
+#          fail-on-drift: false
+#
+#      - name: Commit changes
+#        run: |
+#          git config user.name "github-actions[bot]"
+#          git config user.email "github-actions[bot]@users.noreply.github.com"
+#          git add .
+#          git diff --staged --quiet || \
+#            git commit -m "chore: Update generated files from schemas"
+#          git push
+
+# Example: Matrix strategy for monorepo
+# Uncomment to generate from multiple schemas in parallel
+#
+#  generate-matrix:
+#    name: Generate (${{ matrix.program }})
+#    runs-on: ubuntu-latest
+#
+#    strategy:
+#      matrix:
+#        program:
+#          - name: nft-marketplace
+#            schema: programs/nft/schema.lumos
+#          - name: defi-staking
+#            schema: programs/defi/schema.lumos
+#          - name: dao-governance
+#            schema: programs/dao/schema.lumos
+#
+#    steps:
+#      - uses: actions/checkout@v4
+#
+#      - uses: getlumos/lumos/.github/actions/lumos-generate@main
+#        with:
+#          schema: ${{ matrix.program.schema }}
+#          working-directory: programs/${{ matrix.program.name }}
+
+# Example: Slack notification on drift
+# Uncomment to get Slack alerts when drift is detected
+#
+#  notify-drift:
+#    name: Notify on Drift
+#    runs-on: ubuntu-latest
+#
+#    steps:
+#      - uses: actions/checkout@v4
+#
+#      - name: Generate and check drift
+#        id: lumos
+#        uses: getlumos/lumos/.github/actions/lumos-generate@main
+#        with:
+#          schema: '**/*.lumos'
+#          fail-on-drift: false
+#
+#      - name: Send Slack notification
+#        if: steps.lumos.outputs.drift-detected == 'true'
+#        uses: slackapi/slack-github-action@v1
+#        with:
+#          webhook-url: ${{ secrets.SLACK_WEBHOOK }}
+#          payload: |
+#            {
+#              "text": "⚠️ LUMOS drift detected in ${{ github.repository }}",
+#              "blocks": [
+#                {
+#                  "type": "section",
+#                  "text": {
+#                    "type": "mrkdwn",
+#                    "text": "*Drift Detected*\n${{ steps.lumos.outputs.diff-summary }}"
+#                  }
+#                }
+#              ]
+#            }

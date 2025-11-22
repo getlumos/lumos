@@ -76,7 +76,7 @@ LUMOS is now a complete, production-ready schema language for Solana development
 ### 6.2 Tooling Ecosystem
 
 - [ ] Cargo subcommand (`cargo lumos generate`)
-- [ ] GitHub Action for CI/CD
+- [x] GitHub Action for CI/CD
 - [ ] Pre-commit hook for schema validation
 - [ ] npm package for JavaScript projects
 
