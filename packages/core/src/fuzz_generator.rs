@@ -350,11 +350,13 @@ mod tests {
                     name: "wallet".to_string(),
                     type_info: TypeInfo::Primitive("PublicKey".to_string()),
                     optional: false,
+                deprecated: None,
                 },
                 FieldDefinition {
                     name: "balance".to_string(),
                     type_info: TypeInfo::Primitive("u64".to_string()),
                     optional: false,
+                deprecated: None,
                 },
             ],
             metadata: Metadata {

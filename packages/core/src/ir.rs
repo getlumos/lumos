@@ -69,6 +69,9 @@ pub struct FieldDefinition {
 
     /// Whether this field is optional
     pub optional: bool,
+
+    /// Deprecation message (None if not deprecated)
+    pub deprecated: Option<String>,
 }
 
 /// Type information

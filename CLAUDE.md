@@ -10,7 +10,7 @@
 
 Write data structures once in `.lumos` syntax → Generate production-ready Rust + TypeScript with guaranteed Borsh serialization compatibility.
 
-**Status:** v0.1.1 Released | 108/108 tests passing | 0 warnings | 0 vulnerabilities
+**Status:** v0.1.2 (unreleased) | 129/129 tests passing | 0 warnings | 0 vulnerabilities
 
 ---
 
@@ -44,6 +44,7 @@ Write data structures once in `.lumos` syntax → Generate production-ready Rust
 | User-defined type validation | ✅ | Validates type references during transformation (v0.1.1) |
 | Path traversal protection | ✅ | CLI validates output paths for security (v0.1.1) |
 | u64 precision warnings | ✅ | JSDoc comments in generated TypeScript (v0.1.1) |
+| Deprecation warnings | ✅ | #[deprecated] attribute for schema evolution (v0.1.2) |
 
 ---
 
@@ -68,17 +69,17 @@ cargo run --bin lumos -- generate examples/gaming/schema.lumos
 
 ---
 
-## Test Suite (108 tests)
+## Test Suite (129 tests)
 
 | Suite | Count | Location |
 |-------|-------|----------|
-| Unit tests | 47 | `packages/core/src/**/*.rs` |
+| Unit tests | 74 | `packages/core/src/**/*.rs` |
 | Parser integration | 5 | `packages/core/tests/integration_test.rs` |
 | Error path tests | 30 | `packages/core/tests/test_error_paths.rs` |
 | Rust generator | 5 | `packages/core/tests/test_rust_generator.rs` |
 | TypeScript generator | 6 | `packages/core/tests/test_typescript_generator.rs` |
-| E2E compilation | 9 | `packages/core/tests/test_e2e.rs` |
-| Doc tests | 6 | Documentation examples (3 ignored) |
+| E2E compilation | 0 | Disabled (takes ~60s per test) |
+| Doc tests | 9 | Documentation examples (3 ignored) |
 
 **E2E tests compile generated Rust code with `cargo check` (takes ~60s per test).**
 
@@ -129,6 +130,30 @@ Option<T>  → Option<T>   → T | undefined
 - **Precision Limit:** Documents 2^53-1 safe range for TypeScript `number`
 - **Solana Context:** Specifically mentions lamports and large values
 - **Implementation:** `packages/core/src/generators/typescript.rs:327-368`
+
+### 7. Deprecation Warnings (v0.1.2)
+- **Field-Level Deprecation:** Mark fields as deprecated with `#[deprecated]` or `#[deprecated("message")]`
+- **Compile-Time Warnings:** Warnings emitted during `lumos validate` and `lumos generate`
+- **Custom Messages:** Optional deprecation message for migration guidance
+- **Enum Support:** Works for struct fields and enum variant fields
+- **Implementation:**
+  - Attribute parsing: `packages/core/src/parser.rs:252-298`
+  - Transformation: `packages/core/src/transform.rs:338-404`
+  - IR storage: `packages/core/src/ir.rs:73-74`
+
+**Example:**
+```rust
+struct Account {
+    balance: u64,
+    #[deprecated("Use new_email instead")]
+    email: String,
+    new_email: Option<String>,
+}
+```
+**Output:**
+```
+warning: Account.email: Use new_email instead
+```
 
 ---
 

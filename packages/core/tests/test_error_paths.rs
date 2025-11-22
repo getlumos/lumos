@@ -367,6 +367,7 @@ mod generator_errors {
                 Box::new(TypeInfo::Primitive("u64".to_string())),
             ))))),
             optional: true,
+            deprecated: None,
         };
 
         let struct_def = StructDefinition {
@@ -404,6 +405,7 @@ mod generator_errors {
                         name: "value".to_string(),
                         type_info: TypeInfo::Primitive("String".to_string()),
                         optional: false,
+                    deprecated: None,
                     }],
                 },
             ],

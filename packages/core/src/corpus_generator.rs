@@ -468,6 +468,7 @@ mod tests {
                 name: "value".to_string(),
                 type_info: TypeInfo::Primitive("u32".to_string()),
                 optional: false,
+            deprecated: None,
             }],
             metadata: Metadata::default(),
         })];
@@ -493,6 +494,7 @@ mod tests {
                 name: "value".to_string(),
                 type_info: TypeInfo::Primitive("u8".to_string()),
                 optional: false,
+            deprecated: None,
             }],
             metadata: Metadata {
                 solana: true,
@@ -521,6 +523,7 @@ mod tests {
                 name: "maybe_value".to_string(),
                 type_info: TypeInfo::Option(Box::new(TypeInfo::Primitive("u32".to_string()))),
                 optional: true,
+            deprecated: None,
             }],
             metadata: Metadata::default(),
         })];
@@ -553,6 +556,7 @@ mod tests {
                 name: "items".to_string(),
                 type_info: TypeInfo::Array(Box::new(TypeInfo::Primitive("u8".to_string()))),
                 optional: false,
+            deprecated: None,
             }],
             metadata: Metadata::default(),
         })];

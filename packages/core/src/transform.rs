@@ -64,8 +64,8 @@
 //! ```
 
 use crate::ast::{
-    EnumDef as AstEnum, EnumVariant as AstEnumVariant, FieldDef as AstField, Item as AstItem,
-    LumosFile, StructDef as AstStruct, TypeSpec as AstType,
+    Attribute, AttributeValue, EnumDef as AstEnum, EnumVariant as AstEnumVariant,
+    FieldDef as AstField, Item as AstItem, LumosFile, StructDef as AstStruct, TypeSpec as AstType,
 };
 use crate::error::Result;
 use crate::ir::{
@@ -139,6 +139,9 @@ pub fn transform_to_ir(file: LumosFile) -> Result<Vec<TypeDefinition>> {
 
     // Validate user-defined type references
     validate_user_defined_types(&type_defs)?;
+
+    // Emit deprecation warnings
+    emit_deprecation_warnings(&type_defs);
 
     Ok(type_defs)
 }
@@ -221,6 +224,9 @@ fn transform_field(field: AstField) -> Result<FieldDefinition> {
     let name = field.name;
     let optional = field.optional;
 
+    // Extract deprecation info from attributes
+    let deprecated = extract_deprecation(&field.attributes);
+
     // Transform type
     let type_info = transform_type(field.type_spec, optional)?;
 
@@ -228,6 +234,7 @@ fn transform_field(field: AstField) -> Result<FieldDefinition> {
         name,
         type_info,
         optional,
+        deprecated,
     })
 }
 
@@ -325,6 +332,74 @@ fn extract_enum_metadata(enum_def: &AstEnum) -> Metadata {
             .iter()
             .map(|attr| attr.name.clone())
             .collect(),
+    }
+}
+
+/// Extract deprecation information from field attributes
+///
+/// Returns `Some(message)` if the field has a `#[deprecated]` attribute,
+/// otherwise returns `None`.
+///
+/// Supports two forms:
+/// - `#[deprecated]` - uses default message
+/// - `#[deprecated("reason")]` - uses custom message
+fn extract_deprecation(attributes: &[Attribute]) -> Option<String> {
+    attributes
+        .iter()
+        .find(|attr| attr.name == "deprecated")
+        .map(|attr| {
+            // Extract custom message if provided
+            if let Some(AttributeValue::String(msg)) = &attr.value {
+                msg.clone()
+            } else {
+                "This field is deprecated".to_string()
+            }
+        })
+}
+
+/// Emit deprecation warnings for all deprecated fields in the schema
+///
+/// This function scans all type definitions and emits warnings to stderr
+/// for any fields marked with the `#[deprecated]` attribute.
+fn emit_deprecation_warnings(type_defs: &[TypeDefinition]) {
+    use colored::Colorize;
+
+    for type_def in type_defs {
+        match type_def {
+            TypeDefinition::Struct(s) => {
+                // Check struct fields
+                for field in &s.fields {
+                    if let Some(msg) = &field.deprecated {
+                        eprintln!(
+                            "{} {}.{}: {}",
+                            "warning:".yellow().bold(),
+                            s.name,
+                            field.name,
+                            msg
+                        );
+                    }
+                }
+            }
+            TypeDefinition::Enum(e) => {
+                // Check enum struct variant fields
+                for variant in &e.variants {
+                    if let EnumVariantDefinition::Struct { name, fields } = variant {
+                        for field in fields {
+                            if let Some(msg) = &field.deprecated {
+                                eprintln!(
+                                    "{} {}.{}::{}: {}",
+                                    "warning:".yellow().bold(),
+                                    e.name,
+                                    name,
+                                    field.name,
+                                    msg
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -851,5 +926,92 @@ mod tests {
 
         // Should succeed - all primitive types
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_deprecated_field_without_message() {
+        let input = r#"
+            struct User {
+                name: String,
+                #[deprecated]
+                old_field: u64,
+            }
+        "#;
+
+        let ast = parse_lumos_file(input).unwrap();
+        let ir = transform_to_ir(ast).unwrap();
+
+        // Check that the deprecated field is marked correctly
+        if let TypeDefinition::Struct(s) = &ir[0] {
+            assert_eq!(s.fields.len(), 2);
+            assert_eq!(s.fields[0].deprecated, None);
+            assert_eq!(
+                s.fields[1].deprecated,
+                Some("This field is deprecated".to_string())
+            );
+        } else {
+            panic!("Expected struct definition");
+        }
+    }
+
+    #[test]
+    fn test_deprecated_field_with_message() {
+        let input = r#"
+            struct Account {
+                balance: u64,
+                #[deprecated("Use new_email field instead")]
+                email: String,
+                new_email: Option<String>,
+            }
+        "#;
+
+        let ast = parse_lumos_file(input).unwrap();
+        let ir = transform_to_ir(ast).unwrap();
+
+        // Check that the deprecated field has custom message
+        if let TypeDefinition::Struct(s) = &ir[0] {
+            assert_eq!(s.fields.len(), 3);
+            assert_eq!(s.fields[0].deprecated, None);
+            assert_eq!(
+                s.fields[1].deprecated,
+                Some("Use new_email field instead".to_string())
+            );
+            assert_eq!(s.fields[2].deprecated, None);
+        } else {
+            panic!("Expected struct definition");
+        }
+    }
+
+    #[test]
+    fn test_deprecated_field_in_enum_variant() {
+        let input = r#"
+            #[solana]
+            enum Instruction {
+                Initialize {
+                    authority: PublicKey,
+                    #[deprecated]
+                    old_param: u64,
+                },
+            }
+        "#;
+
+        let ast = parse_lumos_file(input).unwrap();
+        let ir = transform_to_ir(ast).unwrap();
+
+        // Check that enum variant field is marked as deprecated
+        if let TypeDefinition::Enum(e) = &ir[0] {
+            if let EnumVariantDefinition::Struct { fields, .. } = &e.variants[0] {
+                assert_eq!(fields.len(), 2);
+                assert_eq!(fields[0].deprecated, None);
+                assert_eq!(
+                    fields[1].deprecated,
+                    Some("This field is deprecated".to_string())
+                );
+            } else {
+                panic!("Expected struct variant");
+            }
+        } else {
+            panic!("Expected enum definition");
+        }
     }
 }

@@ -351,6 +351,7 @@ mod tests {
                 name: "authority".to_string(),
                 type_info: TypeInfo::Primitive("PublicKey".to_string()),
                 optional: false,
+            deprecated: None,
             }],
             metadata: Metadata::default(),
         })];
@@ -372,6 +373,7 @@ mod tests {
                 name: "balance".to_string(),
                 type_info: TypeInfo::Primitive("u64".to_string()),
                 optional: false,
+            deprecated: None,
             }],
             metadata: Metadata::default(),
         })];
@@ -411,6 +413,7 @@ mod tests {
                 name: "owner".to_string(),
                 type_info: TypeInfo::Primitive("PublicKey".to_string()),
                 optional: false,
+            deprecated: None,
             }],
             metadata: Metadata {
                 solana: true,
@@ -438,11 +441,13 @@ mod tests {
                     name: "id".to_string(),
                     type_info: TypeInfo::Primitive("u32".to_string()),
                     optional: false,
+                deprecated: None,
                 },
                 FieldDefinition {
                     name: "name".to_string(),
                     type_info: TypeInfo::Primitive("String".to_string()),
                     optional: false,
+                deprecated: None,
                 },
             ],
             metadata: Metadata {

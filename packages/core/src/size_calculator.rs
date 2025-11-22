@@ -395,11 +395,13 @@ mod tests {
                     name: "wallet".to_string(),
                     type_info: TypeInfo::Primitive("PublicKey".to_string()),
                     optional: false,
+                deprecated: None,
                 },
                 FieldDefinition {
                     name: "score".to_string(),
                     type_info: TypeInfo::Primitive("u64".to_string()),
                     optional: false,
+                deprecated: None,
                 },
             ],
             metadata: Metadata::default(),
@@ -421,6 +423,7 @@ mod tests {
                 name: "score".to_string(),
                 type_info: TypeInfo::Primitive("u64".to_string()),
                 optional: false,
+            deprecated: None,
             }],
             metadata: Metadata {
                 solana: true,
@@ -444,6 +447,7 @@ mod tests {
                 name: "maybe_value".to_string(),
                 type_info: TypeInfo::Option(Box::new(TypeInfo::Primitive("u64".to_string()))),
                 optional: true,
+            deprecated: None,
             }],
             metadata: Metadata::default(),
         })];

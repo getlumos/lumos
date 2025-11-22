@@ -17,6 +17,7 @@ quote.workspace = true
 proc-macro2.workspace = true
 anyhow.workspace = true
 thiserror.workspace = true
+colored = "2.1"
 wasm-bindgen = { version = "0.2", optional = true }
 
 [features]
