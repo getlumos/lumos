@@ -47,6 +47,9 @@
   "homepage": "https://lumos-lang.org",
   "author": "RECTOR-LABS",
   "license": "MIT OR Apache-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=16.0.0"
   },
