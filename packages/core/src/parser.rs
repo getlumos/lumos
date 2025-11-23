@@ -451,7 +451,8 @@ pub fn extract_version_attribute(attributes: &[Attribute]) -> Result<Option<semv
             }
             None => {
                 return Err(LumosError::SchemaParse(
-                    "Version attribute must have a value (e.g., #[version = \"1.0.0\"])".to_string(),
+                    "Version attribute must have a value (e.g., #[version = \"1.0.0\"])"
+                        .to_string(),
                     None,
                 ))
             }

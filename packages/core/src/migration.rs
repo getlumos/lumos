@@ -6,9 +6,7 @@
 //! This module provides functionality to compare two schema versions
 //! and generate migration code to transform data from one version to another.
 
-use crate::ir::{
-    EnumDefinition, FieldDefinition, StructDefinition, TypeDefinition, TypeInfo,
-};
+use crate::ir::{EnumDefinition, FieldDefinition, StructDefinition, TypeDefinition, TypeInfo};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
@@ -116,10 +114,7 @@ impl SchemaDiff {
     }
 
     /// Compute diff for struct types
-    fn compute_struct_diff(
-        old: &StructDefinition,
-        new: &StructDefinition,
-    ) -> Result<Self, String> {
+    fn compute_struct_diff(old: &StructDefinition, new: &StructDefinition) -> Result<Self, String> {
         let mut diff = Self::new(
             old.name.clone(),
             old.metadata.version.clone(),
@@ -269,7 +264,11 @@ impl SchemaDiff {
         desc.push(String::new());
         desc.push(format!(
             "Migration is {}",
-            if self.is_safe { "SAFE ✓" } else { "UNSAFE ⚠" }
+            if self.is_safe {
+                "SAFE ✓"
+            } else {
+                "UNSAFE ⚠"
+            }
         ));
 
         desc.join("\n")
@@ -296,10 +295,19 @@ fn describe_change(change: &SchemaChange) -> String {
             optional,
         } => {
             let opt_str = if *optional { " (optional)" } else { "" };
-            format!("✓ Added field: {} ({}){}", name, type_info_display(type_info), opt_str)
+            format!(
+                "✓ Added field: {} ({}){}",
+                name,
+                type_info_display(type_info),
+                opt_str
+            )
         }
         SchemaChange::FieldRemoved { name, type_info } => {
-            format!("⚠ Removed field: {} ({})", name, type_info_display(type_info))
+            format!(
+                "⚠ Removed field: {} ({})",
+                name,
+                type_info_display(type_info)
+            )
         }
         SchemaChange::FieldTypeChanged {
             name,
@@ -540,7 +548,10 @@ pub fn generate_typescript_migration(diff: &SchemaDiff, old_def: &TypeDefinition
 }
 
 /// Generate TypeScript migration code for structs
-fn generate_typescript_struct_migration(diff: &SchemaDiff, old_struct: &StructDefinition) -> String {
+fn generate_typescript_struct_migration(
+    diff: &SchemaDiff,
+    old_struct: &StructDefinition,
+) -> String {
     let from_version = diff
         .from_version
         .as_deref()
@@ -572,7 +583,10 @@ fn generate_typescript_struct_migration(diff: &SchemaDiff, old_struct: &StructDe
     for field in &old_struct.fields {
         let ts_type = map_type_to_typescript(&field.type_info, field.optional);
         let optional_marker = if field.optional { "?" } else { "" };
-        code.push(format!("  {}{}: {};\n", field.name, optional_marker, ts_type));
+        code.push(format!(
+            "  {}{}: {};\n",
+            field.name, optional_marker, ts_type
+        ));
     }
     code.push("}\n\n".to_string());
 
@@ -658,9 +672,7 @@ fn generate_typescript_struct_migration(diff: &SchemaDiff, old_struct: &StructDe
 fn map_type_to_typescript(type_info: &TypeInfo, optional: bool) -> String {
     let base_type = match type_info {
         TypeInfo::Primitive(name) => match name.as_str() {
-            "u8" | "u16" | "u32" | "u64" | "i8" | "i16" | "i32" | "i64" | "f32" | "f64" => {
-                "number"
-            }
+            "u8" | "u16" | "u32" | "u64" | "i8" | "i16" | "i32" | "i64" | "f32" | "f64" => "number",
             "u128" | "i128" => "bigint",
             "bool" => "boolean",
             "string" | "String" => "string",
@@ -754,11 +766,8 @@ mod tests {
         );
         let v2 = v1.clone();
 
-        let diff = SchemaDiff::compute(
-            &TypeDefinition::Struct(v1),
-            &TypeDefinition::Struct(v2),
-        )
-        .unwrap();
+        let diff =
+            SchemaDiff::compute(&TypeDefinition::Struct(v1), &TypeDefinition::Struct(v2)).unwrap();
 
         assert_eq!(diff.changes.len(), 0);
         assert_eq!(diff.safety(), MigrationSafety::Safe);
@@ -782,11 +791,8 @@ mod tests {
             ],
         );
 
-        let diff = SchemaDiff::compute(
-            &TypeDefinition::Struct(v1),
-            &TypeDefinition::Struct(v2),
-        )
-        .unwrap();
+        let diff =
+            SchemaDiff::compute(&TypeDefinition::Struct(v1), &TypeDefinition::Struct(v2)).unwrap();
 
         assert_eq!(diff.changes.len(), 1);
         assert!(matches!(
@@ -814,16 +820,16 @@ mod tests {
             ],
         );
 
-        let diff = SchemaDiff::compute(
-            &TypeDefinition::Struct(v1),
-            &TypeDefinition::Struct(v2),
-        )
-        .unwrap();
+        let diff =
+            SchemaDiff::compute(&TypeDefinition::Struct(v1), &TypeDefinition::Struct(v2)).unwrap();
 
         assert_eq!(diff.changes.len(), 1);
         assert!(matches!(
             diff.changes[0],
-            SchemaChange::FieldAdded { optional: false, .. }
+            SchemaChange::FieldAdded {
+                optional: false,
+                ..
+            }
         ));
         assert_eq!(diff.safety(), MigrationSafety::Unsafe);
     }
@@ -846,11 +852,8 @@ mod tests {
             ],
         );
 
-        let diff = SchemaDiff::compute(
-            &TypeDefinition::Struct(v1),
-            &TypeDefinition::Struct(v2),
-        )
-        .unwrap();
+        let diff =
+            SchemaDiff::compute(&TypeDefinition::Struct(v1), &TypeDefinition::Struct(v2)).unwrap();
 
         assert_eq!(diff.changes.len(), 1);
         assert!(matches!(diff.changes[0], SchemaChange::FieldRemoved { .. }));
@@ -874,11 +877,8 @@ mod tests {
             ],
         );
 
-        let diff = SchemaDiff::compute(
-            &TypeDefinition::Struct(v1),
-            &TypeDefinition::Struct(v2),
-        )
-        .unwrap();
+        let diff =
+            SchemaDiff::compute(&TypeDefinition::Struct(v1), &TypeDefinition::Struct(v2)).unwrap();
 
         assert_eq!(diff.changes.len(), 1);
         assert!(matches!(
@@ -907,14 +907,14 @@ mod tests {
             ],
         );
 
-        let diff = SchemaDiff::compute(
-            &TypeDefinition::Struct(v1),
-            &TypeDefinition::Struct(v2),
-        )
-        .unwrap();
+        let diff =
+            SchemaDiff::compute(&TypeDefinition::Struct(v1), &TypeDefinition::Struct(v2)).unwrap();
 
         // Should detect reordering
-        assert!(diff.changes.iter().any(|c| matches!(c, SchemaChange::FieldReordered { .. })));
+        assert!(diff
+            .changes
+            .iter()
+            .any(|c| matches!(c, SchemaChange::FieldReordered { .. })));
         // Reordering is safe with Borsh
         assert_eq!(diff.safety(), MigrationSafety::Safe);
     }
@@ -936,15 +936,18 @@ mod tests {
             ],
         );
 
-        let diff = SchemaDiff::compute(
-            &TypeDefinition::Struct(v1),
-            &TypeDefinition::Struct(v2),
-        )
-        .unwrap();
+        let diff =
+            SchemaDiff::compute(&TypeDefinition::Struct(v1), &TypeDefinition::Struct(v2)).unwrap();
 
         assert_eq!(diff.changes.len(), 2);
-        assert!(diff.changes.iter().any(|c| matches!(c, SchemaChange::FieldAdded { .. })));
-        assert!(diff.changes.iter().any(|c| matches!(c, SchemaChange::FieldRemoved { .. })));
+        assert!(diff
+            .changes
+            .iter()
+            .any(|c| matches!(c, SchemaChange::FieldAdded { .. })));
+        assert!(diff
+            .changes
+            .iter()
+            .any(|c| matches!(c, SchemaChange::FieldRemoved { .. })));
         assert_eq!(diff.safety(), MigrationSafety::Unsafe);
     }
 }

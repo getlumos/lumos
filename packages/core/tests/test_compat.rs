@@ -4,12 +4,14 @@
 //! Tests for schema compatibility checking
 
 use lumos_core::compat::{CompatibilityChecker, IssueLevel};
-use lumos_core::ir::{
-    FieldDefinition, Metadata, StructDefinition, TypeDefinition, TypeInfo,
-};
+use lumos_core::ir::{FieldDefinition, Metadata, StructDefinition, TypeDefinition, TypeInfo};
 
 /// Helper to create a simple struct type definition
-fn create_struct(name: &str, fields: Vec<(&str, TypeInfo, bool)>, version: Option<&str>) -> TypeDefinition {
+fn create_struct(
+    name: &str,
+    fields: Vec<(&str, TypeInfo, bool)>,
+    version: Option<&str>,
+) -> TypeDefinition {
     let field_defs: Vec<FieldDefinition> = fields
         .into_iter()
         .map(|(name, type_info, optional)| FieldDefinition {
@@ -35,14 +37,22 @@ fn create_struct(name: &str, fields: Vec<(&str, TypeInfo, bool)>, version: Optio
 fn test_adding_optional_field_is_compatible() {
     let old = create_struct(
         "Player",
-        vec![("wallet", TypeInfo::Primitive("PublicKey".to_string()), false)],
+        vec![(
+            "wallet",
+            TypeInfo::Primitive("PublicKey".to_string()),
+            false,
+        )],
         Some("1.0.0"),
     );
 
     let new = create_struct(
         "Player",
         vec![
-            ("wallet", TypeInfo::Primitive("PublicKey".to_string()), false),
+            (
+                "wallet",
+                TypeInfo::Primitive("PublicKey".to_string()),
+                false,
+            ),
             ("level", TypeInfo::Primitive("u16".to_string()), true),
         ],
         Some("1.1.0"),
@@ -60,14 +70,22 @@ fn test_adding_optional_field_is_compatible() {
 fn test_adding_required_field_is_breaking() {
     let old = create_struct(
         "Player",
-        vec![("wallet", TypeInfo::Primitive("PublicKey".to_string()), false)],
+        vec![(
+            "wallet",
+            TypeInfo::Primitive("PublicKey".to_string()),
+            false,
+        )],
         Some("1.0.0"),
     );
 
     let new = create_struct(
         "Player",
         vec![
-            ("wallet", TypeInfo::Primitive("PublicKey".to_string()), false),
+            (
+                "wallet",
+                TypeInfo::Primitive("PublicKey".to_string()),
+                false,
+            ),
             ("balance", TypeInfo::Primitive("u64".to_string()), false),
         ],
         Some("2.0.0"),
@@ -90,7 +108,11 @@ fn test_removing_field_is_breaking() {
     let old = create_struct(
         "Player",
         vec![
-            ("wallet", TypeInfo::Primitive("PublicKey".to_string()), false),
+            (
+                "wallet",
+                TypeInfo::Primitive("PublicKey".to_string()),
+                false,
+            ),
             ("level", TypeInfo::Primitive("u16".to_string()), false),
         ],
         Some("1.0.0"),
@@ -98,7 +120,11 @@ fn test_removing_field_is_breaking() {
 
     let new = create_struct(
         "Player",
-        vec![("wallet", TypeInfo::Primitive("PublicKey".to_string()), false)],
+        vec![(
+            "wallet",
+            TypeInfo::Primitive("PublicKey".to_string()),
+            false,
+        )],
         Some("2.0.0"),
     );
 
@@ -133,7 +159,9 @@ fn test_changing_field_type_is_breaking() {
     assert_eq!(report.count_by_level(IssueLevel::Breaking), 1);
 
     let breaking_issues = report.breaking_issues();
-    assert!(breaking_issues[0].message.contains("Changed type of 'count'"));
+    assert!(breaking_issues[0]
+        .message
+        .contains("Changed type of 'count'"));
 }
 
 #[test]
@@ -141,7 +169,11 @@ fn test_reordering_fields_is_safe() {
     let old = create_struct(
         "Player",
         vec![
-            ("wallet", TypeInfo::Primitive("PublicKey".to_string()), false),
+            (
+                "wallet",
+                TypeInfo::Primitive("PublicKey".to_string()),
+                false,
+            ),
             ("level", TypeInfo::Primitive("u16".to_string()), false),
             ("score", TypeInfo::Primitive("u64".to_string()), false),
         ],
@@ -152,7 +184,11 @@ fn test_reordering_fields_is_safe() {
         "Player",
         vec![
             ("level", TypeInfo::Primitive("u16".to_string()), false),
-            ("wallet", TypeInfo::Primitive("PublicKey".to_string()), false),
+            (
+                "wallet",
+                TypeInfo::Primitive("PublicKey".to_string()),
+                false,
+            ),
             ("score", TypeInfo::Primitive("u64".to_string()), false),
         ],
         Some("1.0.0"),
@@ -172,7 +208,11 @@ fn test_version_bump_validation_breaking_changes() {
     let old = create_struct(
         "Player",
         vec![
-            ("wallet", TypeInfo::Primitive("PublicKey".to_string()), false),
+            (
+                "wallet",
+                TypeInfo::Primitive("PublicKey".to_string()),
+                false,
+            ),
             ("level", TypeInfo::Primitive("u16".to_string()), false),
         ],
         Some("1.0.0"),
@@ -181,7 +221,11 @@ fn test_version_bump_validation_breaking_changes() {
     // Removing field but only bumping minor version (should fail)
     let new = create_struct(
         "Player",
-        vec![("wallet", TypeInfo::Primitive("PublicKey".to_string()), false)],
+        vec![(
+            "wallet",
+            TypeInfo::Primitive("PublicKey".to_string()),
+            false,
+        )],
         Some("1.1.0"),
     );
 
@@ -197,7 +241,11 @@ fn test_version_bump_validation_valid_major_bump() {
     let old = create_struct(
         "Player",
         vec![
-            ("wallet", TypeInfo::Primitive("PublicKey".to_string()), false),
+            (
+                "wallet",
+                TypeInfo::Primitive("PublicKey".to_string()),
+                false,
+            ),
             ("level", TypeInfo::Primitive("u16".to_string()), false),
         ],
         Some("1.0.0"),
@@ -206,7 +254,11 @@ fn test_version_bump_validation_valid_major_bump() {
     // Removing field with major version bump (valid)
     let new = create_struct(
         "Player",
-        vec![("wallet", TypeInfo::Primitive("PublicKey".to_string()), false)],
+        vec![(
+            "wallet",
+            TypeInfo::Primitive("PublicKey".to_string()),
+            false,
+        )],
         Some("2.0.0"),
     );
 
@@ -221,7 +273,11 @@ fn test_version_bump_validation_valid_major_bump() {
 fn test_version_bump_validation_minor_bump_for_compatible_changes() {
     let old = create_struct(
         "Player",
-        vec![("wallet", TypeInfo::Primitive("PublicKey".to_string()), false)],
+        vec![(
+            "wallet",
+            TypeInfo::Primitive("PublicKey".to_string()),
+            false,
+        )],
         Some("1.0.0"),
     );
 
@@ -229,7 +285,11 @@ fn test_version_bump_validation_minor_bump_for_compatible_changes() {
     let new = create_struct(
         "Player",
         vec![
-            ("wallet", TypeInfo::Primitive("PublicKey".to_string()), false),
+            (
+                "wallet",
+                TypeInfo::Primitive("PublicKey".to_string()),
+                false,
+            ),
             ("email", TypeInfo::Primitive("String".to_string()), true),
         ],
         Some("1.1.0"),
@@ -247,7 +307,11 @@ fn test_multiple_breaking_changes() {
     let old = create_struct(
         "Player",
         vec![
-            ("wallet", TypeInfo::Primitive("PublicKey".to_string()), false),
+            (
+                "wallet",
+                TypeInfo::Primitive("PublicKey".to_string()),
+                false,
+            ),
             ("level", TypeInfo::Primitive("u16".to_string()), false),
             ("score", TypeInfo::Primitive("u64".to_string()), false),
         ],
@@ -257,7 +321,11 @@ fn test_multiple_breaking_changes() {
     let new = create_struct(
         "Player",
         vec![
-            ("wallet", TypeInfo::Primitive("PublicKey".to_string()), false),
+            (
+                "wallet",
+                TypeInfo::Primitive("PublicKey".to_string()),
+                false,
+            ),
             // level removed (breaking)
             ("score", TypeInfo::Primitive("u32".to_string()), false), // type changed (breaking)
             ("balance", TypeInfo::Primitive("u64".to_string()), false), // required field added (breaking)
@@ -277,7 +345,11 @@ fn test_mixed_changes_compatible_and_breaking() {
     let old = create_struct(
         "Player",
         vec![
-            ("wallet", TypeInfo::Primitive("PublicKey".to_string()), false),
+            (
+                "wallet",
+                TypeInfo::Primitive("PublicKey".to_string()),
+                false,
+            ),
             ("level", TypeInfo::Primitive("u16".to_string()), false),
         ],
         Some("1.0.0"),
@@ -286,7 +358,11 @@ fn test_mixed_changes_compatible_and_breaking() {
     let new = create_struct(
         "Player",
         vec![
-            ("wallet", TypeInfo::Primitive("PublicKey".to_string()), false),
+            (
+                "wallet",
+                TypeInfo::Primitive("PublicKey".to_string()),
+                false,
+            ),
             ("level", TypeInfo::Primitive("u16".to_string()), false),
             ("email", TypeInfo::Primitive("String".to_string()), true), // optional (compatible)
             ("balance", TypeInfo::Primitive("u64".to_string()), false), // required (breaking)
@@ -307,7 +383,11 @@ fn test_no_changes_is_compatible() {
     let old = create_struct(
         "Player",
         vec![
-            ("wallet", TypeInfo::Primitive("PublicKey".to_string()), false),
+            (
+                "wallet",
+                TypeInfo::Primitive("PublicKey".to_string()),
+                false,
+            ),
             ("level", TypeInfo::Primitive("u16".to_string()), false),
         ],
         Some("1.0.0"),
@@ -316,7 +396,11 @@ fn test_no_changes_is_compatible() {
     let new = create_struct(
         "Player",
         vec![
-            ("wallet", TypeInfo::Primitive("PublicKey".to_string()), false),
+            (
+                "wallet",
+                TypeInfo::Primitive("PublicKey".to_string()),
+                false,
+            ),
             ("level", TypeInfo::Primitive("u16".to_string()), false),
         ],
         Some("1.0.0"),

@@ -8,12 +8,12 @@ use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer};
 
-mod diagnostics;
 mod completion;
+mod diagnostics;
 mod hover;
 
-use diagnostics::DiagnosticsHandler;
 use completion::CompletionHandler;
+use diagnostics::DiagnosticsHandler;
 use hover::HoverHandler;
 
 /// LUMOS Language Server state
@@ -77,10 +77,10 @@ impl LanguageServer for LumosLanguageServer {
                 // Completion support
                 completion_provider: Some(CompletionOptions {
                     trigger_characters: Some(vec![
-                        "#".to_string(),  // Attributes: #[solana]
-                        "[".to_string(),  // After #[
-                        ":".to_string(),  // After field name
-                        " ".to_string(),  // After keywords
+                        "#".to_string(), // Attributes: #[solana]
+                        "[".to_string(), // After #[
+                        ":".to_string(), // After field name
+                        " ".to_string(), // After keywords
                     ]),
                     ..Default::default()
                 }),
@@ -128,11 +128,8 @@ impl LanguageServer for LumosLanguageServer {
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         tracing::debug!("Document opened: {}", params.text_document.uri);
 
-        self.on_change(
-            params.text_document.uri,
-            params.text_document.text,
-        )
-        .await;
+        self.on_change(params.text_document.uri, params.text_document.text)
+            .await;
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
@@ -164,10 +161,9 @@ impl LanguageServer for LumosLanguageServer {
         let document = self.documents.get(&uri);
 
         if let Some(doc) = document {
-            let items = self.completion.get_completions(
-                &doc,
-                params.text_document_position.position,
-            );
+            let items = self
+                .completion
+                .get_completions(&doc, params.text_document_position.position);
             Ok(Some(CompletionResponse::Array(items)))
         } else {
             Ok(None)
@@ -190,10 +186,9 @@ impl LanguageServer for LumosLanguageServer {
         let document = self.documents.get(&uri);
 
         if let Some(doc) = document {
-            Ok(self.hover.get_hover(
-                &doc,
-                params.text_document_position_params.position,
-            ))
+            Ok(self
+                .hover
+                .get_hover(&doc, params.text_document_position_params.position))
         } else {
             Ok(None)
         }

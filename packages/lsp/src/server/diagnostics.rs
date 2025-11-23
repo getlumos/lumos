@@ -141,7 +141,10 @@ mod tests {
         "#;
 
         let diagnostics = handler.analyze(text);
-        assert!(diagnostics.is_empty(), "Valid schema should have no diagnostics");
+        assert!(
+            diagnostics.is_empty(),
+            "Valid schema should have no diagnostics"
+        );
     }
 
     #[test]
@@ -154,7 +157,10 @@ mod tests {
         "#;
 
         let diagnostics = handler.analyze(text);
-        assert!(!diagnostics.is_empty(), "Syntax error should produce diagnostics");
+        assert!(
+            !diagnostics.is_empty(),
+            "Syntax error should produce diagnostics"
+        );
         assert_eq!(diagnostics[0].severity, Some(DiagnosticSeverity::ERROR));
     }
 
@@ -169,7 +175,10 @@ mod tests {
         "#;
 
         let diagnostics = handler.analyze(text);
-        assert!(!diagnostics.is_empty(), "Undefined type should produce diagnostics");
+        assert!(
+            !diagnostics.is_empty(),
+            "Undefined type should produce diagnostics"
+        );
     }
 
     #[test]

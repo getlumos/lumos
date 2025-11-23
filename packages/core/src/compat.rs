@@ -84,12 +84,7 @@ impl CompatibilityIssue {
     }
 
     /// Create a new info issue
-    pub fn info(
-        type_name: String,
-        message: String,
-        reason: String,
-        change: SchemaChange,
-    ) -> Self {
+    pub fn info(type_name: String, message: String, reason: String, change: SchemaChange) -> Self {
         Self {
             level: IssueLevel::Info,
             type_name,
@@ -200,10 +195,8 @@ impl CompatibilityChecker {
         // Compute schema diff
         let diff = SchemaDiff::compute(&self.old_schema, &self.new_schema)?;
 
-        let mut report = CompatibilityReport::new(
-            diff.from_version.clone(),
-            diff.to_version.clone(),
-        );
+        let mut report =
+            CompatibilityReport::new(diff.from_version.clone(), diff.to_version.clone());
 
         // Analyze each change for compatibility
         for change in diff.changes.iter() {
@@ -221,7 +214,10 @@ impl CompatibilityChecker {
                     diff.type_name.clone(),
                     "Invalid version bump".to_string(),
                     msg,
-                    Some("Bump major version for breaking changes, minor for new features".to_string()),
+                    Some(
+                        "Bump major version for breaking changes, minor for new features"
+                            .to_string(),
+                    ),
                     SchemaChange::FieldAdded {
                         name: String::new(),
                         type_info: crate::ir::TypeInfo::Primitive("bool".to_string()),
@@ -235,19 +231,20 @@ impl CompatibilityChecker {
     }
 
     /// Analyze a single schema change for compatibility
-    fn analyze_change(
-        &self,
-        type_name: &str,
-        change: &SchemaChange,
-    ) -> Option<CompatibilityIssue> {
+    fn analyze_change(&self, type_name: &str, change: &SchemaChange) -> Option<CompatibilityIssue> {
         match change {
-            SchemaChange::FieldAdded { name, type_info, optional } => {
+            SchemaChange::FieldAdded {
+                name,
+                type_info,
+                optional,
+            } => {
                 if *optional {
                     // Adding optional fields is safe
                     Some(CompatibilityIssue::info(
                         type_name.to_string(),
                         format!("Added optional field: {}", name),
-                        "Old data will deserialize successfully with this field as None".to_string(),
+                        "Old data will deserialize successfully with this field as None"
+                            .to_string(),
                         change.clone(),
                     ))
                 } else {
@@ -256,7 +253,7 @@ impl CompatibilityChecker {
                         type_name.to_string(),
                         format!("Added required field: {} ({:?})", name, type_info),
                         "Old account data lacks this field, deserialization will fail".to_string(),
-                        Some(format!("Make field optional or provide migration code")),
+                        Some("Make field optional or provide migration code".to_string()),
                         change.clone(),
                     ))
                 }
@@ -273,22 +270,36 @@ impl CompatibilityChecker {
                 ))
             }
 
-            SchemaChange::FieldTypeChanged { name, old_type, new_type } => {
+            SchemaChange::FieldTypeChanged {
+                name,
+                old_type,
+                new_type,
+            } => {
                 // Type changes are breaking
                 Some(CompatibilityIssue::breaking(
                     type_name.to_string(),
-                    format!("Changed type of '{}': {:?} → {:?}", name, old_type, new_type),
+                    format!(
+                        "Changed type of '{}': {:?} → {:?}",
+                        name, old_type, new_type
+                    ),
                     "Borsh deserialization will fail due to type mismatch".to_string(),
                     Some("Create a migration function or use a new field name".to_string()),
                     change.clone(),
                 ))
             }
 
-            SchemaChange::FieldReordered { name, old_position, new_position } => {
+            SchemaChange::FieldReordered {
+                name,
+                old_position,
+                new_position,
+            } => {
                 // Field reordering is safe in Borsh (position-based serialization)
                 Some(CompatibilityIssue::info(
                     type_name.to_string(),
-                    format!("Reordered field '{}': position {} → {}", name, old_position, new_position),
+                    format!(
+                        "Reordered field '{}': position {} → {}",
+                        name, old_position, new_position
+                    ),
                     "Borsh uses field order for serialization, so this is safe".to_string(),
                     change.clone(),
                 ))
@@ -299,7 +310,8 @@ impl CompatibilityChecker {
                 Some(CompatibilityIssue::info(
                     type_name.to_string(),
                     format!("Added enum variant: {}", name),
-                    "Old data won't use this variant, so deserialization remains compatible".to_string(),
+                    "Old data won't use this variant, so deserialization remains compatible"
+                        .to_string(),
                     change.clone(),
                 ))
             }
@@ -309,7 +321,8 @@ impl CompatibilityChecker {
                 Some(CompatibilityIssue::breaking(
                     type_name.to_string(),
                     format!("Removed enum variant: {}", name),
-                    "Old data may contain this variant, causing deserialization failure".to_string(),
+                    "Old data may contain this variant, causing deserialization failure"
+                        .to_string(),
                     Some("Mark variant as deprecated instead of removing".to_string()),
                     change.clone(),
                 ))
@@ -387,10 +400,8 @@ mod tests {
     #[test]
     fn test_version_bump_validation() {
         // Test helper to create a report with breaking changes
-        let mut report_with_breaking = CompatibilityReport::new(
-            Some("1.0.0".to_string()),
-            Some("2.0.0".to_string()),
-        );
+        let mut report_with_breaking =
+            CompatibilityReport::new(Some("1.0.0".to_string()), Some("2.0.0".to_string()));
         report_with_breaking.add_issue(CompatibilityIssue::breaking(
             "Test".to_string(),
             "Test breaking".to_string(),
@@ -407,10 +418,8 @@ mod tests {
         assert!(validate_version_bump("1.0.0", "1.1.0", &report_with_breaking).is_err());
 
         // Non-breaking changes can use minor or patch bump
-        let report_no_breaking = CompatibilityReport::new(
-            Some("1.0.0".to_string()),
-            Some("1.1.0".to_string()),
-        );
+        let report_no_breaking =
+            CompatibilityReport::new(Some("1.0.0".to_string()), Some("1.1.0".to_string()));
         assert!(validate_version_bump("1.0.0", "1.1.0", &report_no_breaking).is_ok());
         assert!(validate_version_bump("1.0.0", "1.0.1", &report_no_breaking).is_ok());
     }

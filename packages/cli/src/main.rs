@@ -2212,7 +2212,10 @@ fn run_migrate(
     dry_run: bool,
     force: bool,
 ) -> Result<()> {
-    println!("{:>12} migration from schemas...", "Generating".cyan().bold());
+    println!(
+        "{:>12} migration from schemas...",
+        "Generating".cyan().bold()
+    );
     println!("  From: {}", from_schema_path.display());
     println!("  To:   {}", to_schema_path.display());
     println!();
@@ -2267,7 +2270,11 @@ fn run_migrate(
 
                     // Skip if no changes
                     if diff.changes.is_empty() {
-                        println!("{} No migration needed for {}", "✓".green().bold(), type_name);
+                        println!(
+                            "{} No migration needed for {}",
+                            "✓".green().bold(),
+                            type_name
+                        );
                         continue;
                     }
 
@@ -2287,7 +2294,12 @@ fn run_migrate(
                     migrations_generated += 1;
                 }
                 Err(e) => {
-                    println!("{} Failed to compute diff for {}: {}", "✗".red().bold(), type_name, e);
+                    println!(
+                        "{} Failed to compute diff for {}: {}",
+                        "✗".red().bold(),
+                        type_name,
+                        e
+                    );
                 }
             }
         }
@@ -2300,7 +2312,10 @@ fn run_migrate(
 
     // Output migration code
     if dry_run {
-        println!("\n{} Dry run mode - showing generated code:", "ℹ".cyan().bold());
+        println!(
+            "\n{} Dry run mode - showing generated code:",
+            "ℹ".cyan().bold()
+        );
         println!();
 
         if language == "rust" || language == "both" {
@@ -2323,9 +2338,17 @@ fn run_migrate(
                 } else {
                     output_path.to_path_buf()
                 };
-                fs::write(&rust_output, &rust_code)
-                    .with_context(|| format!("Failed to write Rust migration code to: {}", rust_output.display()))?;
-                println!("{} Generated: {}", "✓".green().bold(), rust_output.display());
+                fs::write(&rust_output, &rust_code).with_context(|| {
+                    format!(
+                        "Failed to write Rust migration code to: {}",
+                        rust_output.display()
+                    )
+                })?;
+                println!(
+                    "{} Generated: {}",
+                    "✓".green().bold(),
+                    rust_output.display()
+                );
             }
 
             if language == "typescript" || language == "both" {
@@ -2334,8 +2357,12 @@ fn run_migrate(
                 } else {
                     output_path.to_path_buf()
                 };
-                fs::write(&ts_output, &typescript_code)
-                    .with_context(|| format!("Failed to write TypeScript migration code to: {}", ts_output.display()))?;
+                fs::write(&ts_output, &typescript_code).with_context(|| {
+                    format!(
+                        "Failed to write TypeScript migration code to: {}",
+                        ts_output.display()
+                    )
+                })?;
                 println!("{} Generated: {}", "✓".green().bold(), ts_output.display());
             }
         } else {
@@ -2440,7 +2467,7 @@ fn run_check_compat(
         println!();
 
         // Show version info if available
-        if let Some(ref report) = all_reports.first() {
+        if let Some(report) = all_reports.first() {
             if let (Some(ref from_ver), Some(ref to_ver)) =
                 (&report.from_version, &report.to_version)
             {
@@ -2509,10 +2536,7 @@ fn run_check_compat(
 
         // Version bump validation
         if !all_reports.iter().all(|r| r.version_bump_valid) {
-            println!(
-                "\n{} Version bump validation failed",
-                "✗".red().bold()
-            );
+            println!("\n{} Version bump validation failed", "✗".red().bold());
             println!("  Breaking changes require a major version bump");
         }
     }
