@@ -75,7 +75,7 @@ pub struct FieldDefinition {
 }
 
 /// Type information
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TypeInfo {
     /// Primitive types (u64, string, etc.)
     Primitive(String),

@@ -1,0 +1,16 @@
+// Licensed under either of Apache License, Version 2.0 or MIT license at your option.
+// Copyright 2025 RECTOR-LABS
+
+//! Example: Schema Migration v1 → v2
+//!
+//! This is the v1 schema (initial version)
+
+#[solana]
+#[version = "1.0.0"]
+#[account]
+struct PlayerAccount {
+    wallet: PublicKey,
+    username: String,
+    level: u16,
+    score: u64,
+}

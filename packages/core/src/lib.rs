@@ -101,6 +101,9 @@ pub mod fuzz_generator;
 /// Corpus generator for fuzz testing
 pub mod corpus_generator;
 
+/// Schema migration code generation
+pub mod migration;
+
 /// WASM bindings for browser playground
 #[cfg(feature = "wasm")]
 pub mod wasm;
