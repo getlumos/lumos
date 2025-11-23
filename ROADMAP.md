@@ -26,7 +26,7 @@ LUMOS continues rapid evolution with IDE integration and schema versioning:
 - ✅ **Performance benchmarks** - Comprehensive Borsh comparison suite
 
 **Completed**: Phase 5.1 (Schema Evolution - 100%), Phase 6.3 (Security & Validation - 100%)
-**Active**: Phase 5.2 (IDE Integration - 40%)
+**Active**: Phase 5.2 (IDE Integration - 60%)
 **Next**: Phase 5.3 (Advanced Type System), Phase 5.4 (Multi-Language Generation)
 
 ---
@@ -120,12 +120,12 @@ Transform from schema DSL → full programming language for type-safe Solana wor
 
 **Goal**: Multi-editor support beyond VSCode
 
-**Status**: 2/5 complete (40%)
+**Status**: 3/5 complete (60%)
 
 **Issues:**
 - [x] Implement Language Server Protocol (LSP) for LUMOS [#45] ✅ **COMPLETE**
 - [x] Create IntelliJ IDEA / Rust Rover plugin for LUMOS [#46] ✅ **COMPLETE**
-- [ ] Create Neovim plugin with Tree-sitter grammar for LUMOS [#47]
+- [x] Create Neovim plugin with Tree-sitter grammar for LUMOS [#47] ✅ **COMPLETE**
 - [ ] Create Emacs mode for LUMOS [#48]
 - [ ] Create Sublime Text package for LUMOS [#49]
 
@@ -144,7 +144,16 @@ Transform from schema DSL → full programming language for type-safe Solana wor
   - Documentation at docs-lumos/src/content/docs/editors/intellij.md
   - Supports IntelliJ IDEA, Rust Rover, CLion (2024.1+)
 
-**Success Metric**: LSP used by 3+ editors
+- #47 (Nov 23, 2025) - Neovim plugin with Tree-sitter grammar
+  - New repositories: getlumos/tree-sitter-lumos, getlumos/nvim-lumos
+  - Complete Tree-sitter grammar for .lumos syntax highlighting
+  - Full LSP integration with lumos-lsp server
+  - 6 comprehensive grammar test cases (all passing)
+  - Pre-configured keybindings (gd, K, gr, <leader>rn, <leader>ca, <leader>f)
+  - Support for lazy.nvim, packer.nvim, manual installation
+  - Comprehensive documentation with troubleshooting guide
+
+**Success Metric**: LSP used by 3+ editors ✅ **ACHIEVED** (VS Code, IntelliJ IDEA/Rust Rover, Neovim)
 
 ### 5.3 Advanced Type System
 
@@ -624,9 +633,10 @@ Core language free forever, monetize via cloud platform and premium extensions
 - [x] Deprecation warnings for schema fields (#43)
 - [x] Schema diff tool: `lumos diff` (#44)
 
-**5.2 IDE Integration (40% complete):**
+**5.2 IDE Integration (60% complete):**
 - [x] Language Server Protocol implementation (#45)
 - [x] IntelliJ IDEA / Rust Rover plugin (#46)
+- [x] Neovim plugin with Tree-sitter grammar (#47)
 
 **5.3 Advanced Type System (0% complete):**
 - No issues started yet
@@ -745,6 +755,7 @@ See an opportunity to help? Check our [Contributing Guide](CONTRIBUTING.md) or:
 **Last Updated**: November 23, 2025
 
 **Recent Updates**:
+- Nov 23, 2025: **Neovim plugin with Tree-sitter grammar COMPLETE** (#47) - Phase 5.2 at 60% 🎉
 - Nov 23, 2025: **Published @getlumos/cli v0.1.0 to npm** (#62) - Phase 6.2 at 50% 🎉
 - Nov 23, 2025: **Phase 5.1 Schema Evolution COMPLETE** 🎉 - All 5 issues closed (#40-#44)
 - Nov 23, 2025: Added schema diff tool (#44) - `lumos diff` CLI command
