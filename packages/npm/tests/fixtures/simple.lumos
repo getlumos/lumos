@@ -1,0 +1,6 @@
+#[solana]
+#[account]
+struct TestAccount {
+    wallet: PublicKey,
+    amount: u64,
+}
