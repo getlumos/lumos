@@ -55,11 +55,11 @@ Transform from schema DSL → full programming language for type-safe Solana wor
 
 **Goal**: Support schema changes without breaking deployed programs
 
-**Status**: 1/5 complete (20%)
+**Status**: 2/5 complete (40%)
 
 **Issues:**
 - [x] Add schema versioning syntax with `#[version = "1.0.0"]` attribute [#40] ✅ **COMPLETE**
-- [ ] Generate automatic migration code between schema versions [#41]
+- [x] Generate automatic migration code between schema versions [#41] ✅ **COMPLETE**
 - [ ] Validate backward compatibility between schema versions [#42]
 - [ ] Add deprecation warnings for old schema fields [#43]
 - [ ] Create schema diff tool: `lumos diff v1.lumos v2.lumos` [#44]
@@ -70,6 +70,16 @@ Transform from schema DSL → full programming language for type-safe Solana wor
   - Auto-generated version constants in Rust and TypeScript
   - Created comprehensive examples and documentation
   - 6 new unit tests, 2 integration tests
+
+- #41 (Nov 23, 2025) - Automatic migration code generation
+  - New migration module with SchemaDiff and SchemaChange types (724 lines)
+  - CLI command `lumos migrate` with full option support
+  - Generates both Rust and TypeScript migration code
+  - Migration safety classification (Safe vs Unsafe)
+  - Smart default values for all primitive and complex types
+  - Comprehensive examples in examples/migration/
+  - Full documentation at docs/schema-evolution/migrations.md
+  - 7 new unit tests for diff detection and code generation
 
 **Success Metric**: Zero-downtime schema upgrades
 
@@ -555,10 +565,11 @@ Core language free forever, monetize via cloud platform and premium extensions
 
 ### Phase 5: Advanced Features 🚧 (In Progress - Nov 2025)
 
-**Overall Progress**: 7/23 features complete (30%)
+**Overall Progress**: 8/23 features complete (35%)
 
-**5.1 Schema Evolution (20% complete):**
+**5.1 Schema Evolution (40% complete):**
 - [x] Schema versioning with #[version] attribute (#40)
+- [x] Automatic migration code generation (#41)
 
 **5.2 IDE Integration (20% complete):**
 - [x] Language Server Protocol implementation (#45)
@@ -680,6 +691,7 @@ See an opportunity to help? Check our [Contributing Guide](CONTRIBUTING.md) or:
 **Last Updated**: November 23, 2025
 
 **Recent Updates**:
+- Nov 23, 2025: Added automatic migration code generation (#41) - Phase 5.1 at 40%
 - Nov 23, 2025: Added schema versioning (#40) - Phase 5.1 at 20%
 - Nov 22, 2025: Published LSP v0.1.1 (#45) - Phase 5.2 at 20%
 - Nov 2025: Completed Phase 6.3 Security & Validation (100%)
