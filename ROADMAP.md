@@ -4,17 +4,19 @@
 
 **For detailed vision**: See [docs/VISION.md](docs/VISION.md) (vertical expansion) and [docs/FUTURE.md](docs/FUTURE.md) (horizontal expansion)
 
-**Last Updated**: November 22, 2025
+**Last Updated**: November 23, 2025
 
 ---
 
 ## Current Status
 
-**Phase 4 Complete - Production Ready** 🎉
+**Phase 5 In Progress - Advanced Features** 🚀
 
-LUMOS is now a complete, production-ready schema language for Solana development:
+LUMOS continues rapid evolution with IDE integration and schema versioning:
 
-- ✅ **v0.1.1 released** - 129 tests, zero warnings, zero vulnerabilities
+- ✅ **v0.2.0 LSP released** - Multi-editor support via Language Server Protocol
+- ✅ **v0.1.1 released** - 146 tests, zero warnings, zero vulnerabilities
+- ✅ **Schema versioning** - #[version] attribute with semantic versioning support
 - ✅ **Security hardened** - Type validation, path protection, enhanced errors
 - ✅ **VSCode extension** - v0.5.0 published to marketplace
 - ✅ **5 community examples** - NFT, DeFi, DAO, Gaming, Vesting
@@ -22,7 +24,8 @@ LUMOS is now a complete, production-ready schema language for Solana development
 - ✅ **Interactive playground** - Live code generation at docs.lumos-lang.org/playground
 - ✅ **Performance benchmarks** - Comprehensive Borsh comparison suite
 
-**Next**: Phase 5 - Advanced Features (Q1 2026)
+**Active**: Phase 5.1 (Schema Evolution), Phase 5.2 (IDE Integration)
+**Next**: Phase 5.3 (Advanced Type System), Phase 5.4 (Multi-Language Generation)
 
 ---
 
@@ -52,12 +55,21 @@ Transform from schema DSL → full programming language for type-safe Solana wor
 
 **Goal**: Support schema changes without breaking deployed programs
 
-**Issues to create:**
-- [ ] Add schema versioning syntax with `#[version = "1.0.0"]` attribute [#40]
+**Status**: 1/5 complete (20%)
+
+**Issues:**
+- [x] Add schema versioning syntax with `#[version = "1.0.0"]` attribute [#40] ✅ **COMPLETE**
 - [ ] Generate automatic migration code between schema versions [#41]
 - [ ] Validate backward compatibility between schema versions [#42]
 - [ ] Add deprecation warnings for old schema fields [#43]
 - [ ] Create schema diff tool: `lumos diff v1.lumos v2.lumos` [#44]
+
+**Completed**:
+- #40 (Nov 23, 2025) - Schema versioning with semantic versioning support
+  - Added `#[version]` attribute parser and validation
+  - Auto-generated version constants in Rust and TypeScript
+  - Created comprehensive examples and documentation
+  - 6 new unit tests, 2 integration tests
 
 **Success Metric**: Zero-downtime schema upgrades
 
@@ -65,12 +77,21 @@ Transform from schema DSL → full programming language for type-safe Solana wor
 
 **Goal**: Multi-editor support beyond VSCode
 
-**Issues to create:**
-- [ ] Implement Language Server Protocol (LSP) for LUMOS [#45] **HIGH PRIORITY**
+**Status**: 1/5 complete (20%)
+
+**Issues:**
+- [x] Implement Language Server Protocol (LSP) for LUMOS [#45] ✅ **COMPLETE**
 - [ ] Create IntelliJ IDEA / Rust Rover plugin for LUMOS [#46]
 - [ ] Create Neovim plugin with Tree-sitter grammar for LUMOS [#47]
 - [ ] Create Emacs mode for LUMOS [#48]
 - [ ] Create Sublime Text package for LUMOS [#49]
+
+**Completed**:
+- #45 (Nov 22, 2025) - Language Server Protocol implementation
+  - Full LSP server with diagnostics, completion, and hover
+  - Published lumos-lsp v0.1.1 to crates.io
+  - Multi-editor support (VS Code, Neovim, Emacs, Sublime, etc.)
+  - 13 new LSP-specific tests
 
 **Success Metric**: LSP used by 3+ editors
 
@@ -134,19 +155,55 @@ lumos generate schema.lumos --lang rust,typescript,python,go,ruby
 
 ### 6.2 Tooling Ecosystem
 
-**Issues to create:**
+**Status**: 1/4 complete (25%)
+
+**Issues:**
 - [ ] Create `cargo lumos` subcommand for Rust workflows [#59]
-- [ ] Create GitHub Action for CI/CD auto-generation [#60]
+- [x] Create GitHub Action for CI/CD auto-generation [#60] ✅ **COMPLETE**
 - [ ] Create pre-commit hook for schema validation [#61]
 - [ ] Create npm package for JavaScript/TypeScript projects [#62] **HIGH PRIORITY**
 
+**Completed**:
+- #60 (Nov 2025) - GitHub Action for automated validation and generation
+  - Published to GitHub Marketplace as `getlumos/lumos-action@v1`
+  - Auto-install CLI, validate schemas, generate code, drift detection
+  - Comprehensive CI/CD integration with PR comments
+  - Available at https://github.com/marketplace/actions/lumos-generate
+
 ### 6.3 Security & Validation
 
-**Issues to create:**
-- [ ] Add static analysis for common vulnerabilities
-- [ ] Add account size overflow detection
-- [ ] Create security audit checklist generator [#65]
-- [ ] Add fuzzing support for generated code testing [#66]
+**Status**: 4/4 complete (100%) ✅
+
+**Issues:**
+- [x] Add static analysis for common vulnerabilities ✅ **COMPLETE**
+- [x] Add account size overflow detection ✅ **COMPLETE**
+- [x] Create security audit checklist generator [#65] ✅ **COMPLETE**
+- [x] Add fuzzing support for generated code testing [#66] ✅ **COMPLETE**
+
+**Completed**:
+- Static Security Analysis (Nov 2025)
+  - Implemented security_analyzer.rs with 8 vulnerability patterns
+  - Detects missing signer checks, unchecked arithmetic, missing discriminators
+  - Strict mode for comprehensive analysis
+  - 5 unit tests for security patterns
+
+- Account Size Calculator (Nov 2025)
+  - Implemented size_calculator.rs with precise Borsh size calculation
+  - Detects potential account size overflows
+  - Includes discriminator in size calculations
+  - 5 unit tests for size validation
+
+- Security Audit Generator (Nov 2025)
+  - Implemented audit_generator.rs for automated checklist generation
+  - Priority-based sorting (High → Medium → Low)
+  - Covers account validation, arithmetic safety, signer checks
+  - 4 unit tests for audit generation
+
+- Fuzzing Support (Nov 2025)
+  - Implemented fuzz_generator.rs for cargo-fuzz integration
+  - Generates fuzz targets for round-trip testing
+  - Comprehensive corpus generation with edge cases
+  - 8 unit tests for fuzz target generation
 
 **Milestone**: 🎯 **DSL FEATURE COMPLETE** - LUMOS becomes the most comprehensive schema language for Solana
 
@@ -496,6 +553,35 @@ Core language free forever, monetize via cloud platform and premium extensions
 
 ## Completed Phases
 
+### Phase 5: Advanced Features 🚧 (In Progress - Nov 2025)
+
+**Overall Progress**: 7/23 features complete (30%)
+
+**5.1 Schema Evolution (20% complete):**
+- [x] Schema versioning with #[version] attribute (#40)
+
+**5.2 IDE Integration (20% complete):**
+- [x] Language Server Protocol implementation (#45)
+
+**5.3 Advanced Type System (0% complete):**
+- No issues started yet
+
+**5.4 Multi-Language Code Generation (0% complete):**
+- No issues started yet
+
+**6.2 Tooling Ecosystem (25% complete):**
+- [x] GitHub Action for CI/CD (#60)
+
+**6.3 Security & Validation (100% complete):**
+- [x] Static security analysis
+- [x] Account size overflow detection
+- [x] Security audit checklist generator
+- [x] Fuzzing support
+
+**Result**: Strong foundation for schema evolution and IDE support, complete security validation toolkit
+
+---
+
 ### Phase 4.3: Developer Experience ✅ (Completed Nov 2025)
 
 - [x] Migration guide from manual Borsh serialization (docs/MIGRATION.md - 295 lines)
@@ -591,4 +677,10 @@ See an opportunity to help? Check our [Contributing Guide](CONTRIBUTING.md) or:
 
 **This roadmap is a living document** - priorities may shift based on community feedback and ecosystem needs.
 
-**Last Updated**: November 22, 2025
+**Last Updated**: November 23, 2025
+
+**Recent Updates**:
+- Nov 23, 2025: Added schema versioning (#40) - Phase 5.1 at 20%
+- Nov 22, 2025: Published LSP v0.1.1 (#45) - Phase 5.2 at 20%
+- Nov 2025: Completed Phase 6.3 Security & Validation (100%)
+- Nov 2025: Published GitHub Action v1.0.0 (#60)
