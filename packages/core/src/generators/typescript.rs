@@ -108,6 +108,15 @@ fn generate_struct(struct_def: &StructDefinition) -> String {
         output.push('\n');
     }
 
+    // Generate version constant if version is specified
+    if let Some(version) = &struct_def.metadata.version {
+        output.push_str(&format!(
+            "export const {}_VERSION = \"{}\";\n\n",
+            struct_def.name.to_uppercase(),
+            version
+        ));
+    }
+
     // Generate interface
     output.push_str(&generate_struct_interface(struct_def));
     output.push('\n');
@@ -135,6 +144,15 @@ fn generate_enum(enum_def: &EnumDefinition) -> String {
             output.push_str(&format!("{};\n", import));
         }
         output.push('\n');
+    }
+
+    // Generate version constant if version is specified
+    if let Some(version) = &enum_def.metadata.version {
+        output.push_str(&format!(
+            "export const {}_VERSION = \"{}\";\n\n",
+            enum_def.name.to_uppercase(),
+            version
+        ));
     }
 
     // Generate discriminated union type
@@ -326,6 +344,15 @@ pub fn generate_module(type_defs: &[TypeDefinition]) -> String {
 
         match type_def {
             TypeDefinition::Struct(s) => {
+                // Generate version constant if present
+                if let Some(version) = &s.metadata.version {
+                    output.push_str(&format!(
+                        "export const {}_VERSION = \"{}\";\n\n",
+                        s.name.to_uppercase(),
+                        version
+                    ));
+                }
+
                 output.push_str(&generate_struct_interface(s));
 
                 // Add Borsh schema for Solana types
@@ -338,6 +365,15 @@ pub fn generate_module(type_defs: &[TypeDefinition]) -> String {
                 }
             }
             TypeDefinition::Enum(e) => {
+                // Generate version constant if present
+                if let Some(version) = &e.metadata.version {
+                    output.push_str(&format!(
+                        "export const {}_VERSION = \"{}\";\n\n",
+                        e.name.to_uppercase(),
+                        version
+                    ));
+                }
+
                 output.push_str(&generate_enum_type(e));
 
                 // Add Borsh schema for Solana types
@@ -727,6 +763,7 @@ mod tests {
             metadata: Metadata {
                 solana: true,
                 attributes: vec!["account".to_string()],
+                version: None,
             },
         });
 
@@ -771,6 +808,7 @@ mod tests {
             metadata: Metadata {
                 solana: true,
                 attributes: vec![],
+                version: None,
             },
         });
 
@@ -843,6 +881,7 @@ mod tests {
             metadata: Metadata {
                 solana: true,
                 attributes: vec![],
+                version: None,
             },
         });
 
@@ -878,6 +917,7 @@ mod tests {
             metadata: Metadata {
                 solana: true,
                 attributes: vec![],
+                version: None,
             },
         });
 
@@ -935,6 +975,7 @@ mod tests {
             metadata: Metadata {
                 solana: true,
                 attributes: vec![],
+                version: None,
             },
         });
 

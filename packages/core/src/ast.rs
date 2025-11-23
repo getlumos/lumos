@@ -38,6 +38,9 @@ pub struct StructDef {
     /// Fields in this struct
     pub fields: Vec<FieldDef>,
 
+    /// Optional semantic version (e.g., "1.0.0" from #[version = "1.0.0"])
+    pub version: Option<String>,
+
     /// Span information for error reporting
     #[serde(skip)]
     pub span: Option<proc_macro2::Span>,
@@ -54,6 +57,9 @@ pub struct EnumDef {
 
     /// Variants in this enum
     pub variants: Vec<EnumVariant>,
+
+    /// Optional semantic version (e.g., "1.0.0" from #[version = "1.0.0"])
+    pub version: Option<String>,
 
     /// Span information for error reporting
     #[serde(skip)]
@@ -270,6 +276,7 @@ mod tests {
                 },
             ],
             fields: vec![],
+            version: None,
             span: None,
         };
 
@@ -314,6 +321,7 @@ mod tests {
                 span: None,
             }],
             variants: vec![],
+            version: None,
             span: None,
         };
 
@@ -336,6 +344,7 @@ mod tests {
                     span: None,
                 },
             ],
+            version: None,
             span: None,
         };
 
@@ -355,6 +364,7 @@ mod tests {
                     span: None,
                 },
             ],
+            version: None,
             span: None,
         };
 
@@ -391,6 +401,7 @@ mod tests {
             attributes: vec![],
             variants: vec![],
             span: None,
+            version: None,
         };
 
         let item = Item::Enum(enum_def.clone());

@@ -234,3 +234,42 @@ fn test_type_mappings() {
 
     println!("Generated TypeScript code with all types:\n{}", ts_code);
 }
+
+#[test]
+fn test_generate_versioned_schema() {
+    // Test schema with version attribute
+    let schema = r#"
+        #[solana]
+        #[version = "1.0.0"]
+        #[account]
+        struct PlayerAccount {
+            wallet: PublicKey,
+            level: u16,
+            experience: u64,
+        }
+
+        #[solana]
+        #[version = "2.1.3"]
+        enum GameState {
+            Active,
+            Paused,
+            Finished,
+        }
+    "#;
+
+    let ast = parse_lumos_file(schema).expect("Failed to parse");
+    let ir = transform_to_ir(ast).expect("Failed to transform");
+    let ts_code = generate_module(&ir);
+
+    // Verify version constants are generated
+    assert!(ts_code.contains("export const PLAYERACCOUNT_VERSION = \"1.0.0\";"));
+    assert!(ts_code.contains("export const GAMESTATE_VERSION = \"2.1.3\";"));
+
+    // Verify interfaces and types are still generated correctly
+    assert!(ts_code.contains("export interface PlayerAccount"));
+    assert!(ts_code.contains("export type GameState"));
+    assert!(ts_code.contains("borsh.struct"));
+    assert!(ts_code.contains("borsh.rustEnum"));
+
+    println!("Generated TypeScript code with versions:\n{}", ts_code);
+}

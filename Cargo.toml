@@ -37,6 +37,7 @@ thiserror = "1.0"
 # Utilities
 tracing = "0.1"
 tracing-subscriber = "0.3"
+semver = "1.0"
 
 [profile.release]
 opt-level = 3

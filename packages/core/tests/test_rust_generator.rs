@@ -167,3 +167,44 @@ fn test_generate_dao_governance_schema() {
 
     println!("Generated Rust code for DAO Governance:\n{}", rust_code);
 }
+
+#[test]
+fn test_generate_versioned_schema() {
+    // Test schema with version attribute
+    let schema = r#"
+        #[solana]
+        #[version = "1.0.0"]
+        #[account]
+        struct PlayerAccount {
+            wallet: PublicKey,
+            level: u16,
+            experience: u64,
+        }
+
+        #[solana]
+        #[version = "2.1.3"]
+        enum GameState {
+            Active,
+            Paused,
+            Finished,
+        }
+    "#;
+
+    let ast = parse_lumos_file(schema).expect("Failed to parse");
+    let ir = transform_to_ir(ast).expect("Failed to transform");
+    let rust_code = generate_module(&ir);
+
+    // Debug: Print generated code
+    println!("Generated Rust code:\n{}", rust_code);
+
+    // Verify version constants are generated
+    assert!(rust_code.contains("pub const PLAYERACCOUNT_VERSION: &str = \"1.0.0\";"));
+    assert!(rust_code.contains("pub const GAMESTATE_VERSION: &str = \"2.1.3\";"));
+
+    // Verify structs and enums are still generated correctly
+    assert!(rust_code.contains("pub struct PlayerAccount"));
+    assert!(rust_code.contains("pub enum GameState"));
+    assert!(rust_code.contains("#[account]"));
+
+    println!("Generated Rust code with versions:\n{}", rust_code);
+}

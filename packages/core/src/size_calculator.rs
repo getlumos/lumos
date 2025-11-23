@@ -435,6 +435,7 @@ mod tests {
             metadata: Metadata {
                 solana: true,
                 attributes: vec!["account".to_string()],
+                version: None,
             },
         })];
 

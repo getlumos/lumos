@@ -137,6 +137,9 @@ fn parse_struct(item: syn::ItemStruct) -> Result<StructDef> {
     // Extract attributes
     let attributes = parse_attributes(&item.attrs)?;
 
+    // Extract version from attributes
+    let version = extract_version_attribute(&attributes)?.map(|v| v.to_string());
+
     // Extract fields
     let fields = match item.fields {
         syn::Fields::Named(fields_named) => {
@@ -159,6 +162,7 @@ fn parse_struct(item: syn::ItemStruct) -> Result<StructDef> {
         name,
         attributes,
         fields,
+        version,
         span,
     })
 }
@@ -170,6 +174,9 @@ fn parse_enum(item: syn::ItemEnum) -> Result<EnumDef> {
 
     // Extract attributes
     let attributes = parse_attributes(&item.attrs)?;
+
+    // Extract version from attributes
+    let version = extract_version_attribute(&attributes)?.map(|v| v.to_string());
 
     // Extract variants
     let mut variants = Vec::new();
@@ -189,6 +196,7 @@ fn parse_enum(item: syn::ItemEnum) -> Result<EnumDef> {
         name,
         attributes,
         variants,
+        version,
         span,
     })
 }
@@ -287,9 +295,38 @@ fn parse_attributes(attrs: &[syn::Attribute]) -> Result<Vec<Attribute>> {
                 });
             }
 
-            // Name-value attribute: #[key = "value"]
-            Meta::NameValue(_) => {
-                // Not commonly used in LUMOS, but we could support it
+            // Name-value attribute: #[version = "1.0.0"]
+            Meta::NameValue(meta_name_value) => {
+                let name = meta_name_value
+                    .path
+                    .get_ident()
+                    .ok_or_else(|| LumosError::SchemaParse("Invalid attribute".to_string(), None))?
+                    .to_string();
+
+                // Extract the value (e.g., "1.0.0" from #[version = "1.0.0"])
+                let value_str = match &meta_name_value.value {
+                    syn::Expr::Lit(expr_lit) => match &expr_lit.lit {
+                        syn::Lit::Str(lit_str) => lit_str.value(),
+                        _ => {
+                            return Err(LumosError::SchemaParse(
+                                format!("Attribute '{}' must have a string value", name),
+                                None,
+                            ))
+                        }
+                    },
+                    _ => {
+                        return Err(LumosError::SchemaParse(
+                            format!("Attribute '{}' must have a literal value", name),
+                            None,
+                        ))
+                    }
+                };
+
+                attributes.push(Attribute {
+                    name,
+                    value: Some(AttributeValue::String(value_str)),
+                    span: Some(meta_name_value.path.get_ident().unwrap().span()),
+                });
             }
         }
     }
@@ -370,6 +407,70 @@ fn parse_type(ty: &Type) -> Result<(TypeSpec, bool)> {
             format!("Unsupported type: {:?}", ty),
             None,
         )),
+    }
+}
+
+/// Extract and validate version attribute from a list of attributes
+///
+/// Searches for `#[version = "X.Y.Z"]` attribute and validates it as semantic version.
+///
+/// # Arguments
+///
+/// * `attributes` - List of parsed attributes
+///
+/// # Returns
+///
+/// * `Ok(Some(Version))` - Valid semantic version found
+/// * `Ok(None)` - No version attribute present
+/// * `Err(LumosError)` - Invalid version format
+///
+/// # Examples
+///
+/// ```ignore
+/// let attributes = vec![
+///     Attribute { name: "solana".to_string(), value: None, span: None },
+///     Attribute { name: "version".to_string(), value: Some(AttributeValue::String("1.0.0".to_string())), span: None },
+/// ];
+/// let version = extract_version_attribute(&attributes)?;
+/// assert!(version.is_some());
+/// assert_eq!(version.unwrap().to_string(), "1.0.0");
+/// ```
+pub fn extract_version_attribute(attributes: &[Attribute]) -> Result<Option<semver::Version>> {
+    // Find version attribute
+    let version_attr = attributes.iter().find(|attr| attr.name == "version");
+
+    if let Some(attr) = version_attr {
+        // Extract version string
+        let version_str = match &attr.value {
+            Some(AttributeValue::String(s)) => s,
+            Some(_) => {
+                return Err(LumosError::SchemaParse(
+                    "Version attribute must be a string (e.g., #[version = \"1.0.0\"])".to_string(),
+                    None,
+                ))
+            }
+            None => {
+                return Err(LumosError::SchemaParse(
+                    "Version attribute must have a value (e.g., #[version = \"1.0.0\"])".to_string(),
+                    None,
+                ))
+            }
+        };
+
+        // Parse and validate semantic version
+        match semver::Version::parse(version_str) {
+            Ok(version) => Ok(Some(version)),
+            Err(e) => Err(LumosError::SchemaParse(
+                format!(
+                    "Invalid semantic version '{}': {}. Expected format: MAJOR.MINOR.PATCH (e.g., \"1.0.0\")",
+                    version_str, e
+                ),
+                None,
+            )),
+        }
+    } else {
+        // No version attribute found
+        Ok(None)
     }
 }
 
@@ -469,6 +570,136 @@ mod tests {
             AstItem::Struct(struct_def) => {
                 let field = &struct_def.fields[0];
                 assert!(field.type_spec.is_array());
+            }
+            _ => panic!("Expected struct item"),
+        }
+    }
+
+    #[test]
+    fn test_parse_struct_with_version() {
+        let input = r#"
+            #[solana]
+            #[version = "1.0.0"]
+            struct PlayerAccount {
+                wallet: PublicKey,
+                level: u16,
+            }
+        "#;
+
+        let result = parse_lumos_file(input);
+        assert!(result.is_ok());
+
+        let file = result.unwrap();
+        match &file.items[0] {
+            AstItem::Struct(struct_def) => {
+                assert_eq!(struct_def.version, Some("1.0.0".to_string()));
+            }
+            _ => panic!("Expected struct item"),
+        }
+    }
+
+    #[test]
+    fn test_parse_enum_with_version() {
+        let input = r#"
+            #[solana]
+            #[version = "2.1.3"]
+            enum GameState {
+                Active,
+                Paused,
+                Finished,
+            }
+        "#;
+
+        let result = parse_lumos_file(input);
+        assert!(result.is_ok());
+
+        let file = result.unwrap();
+        match &file.items[0] {
+            AstItem::Enum(enum_def) => {
+                assert_eq!(enum_def.version, Some("2.1.3".to_string()));
+            }
+            _ => panic!("Expected enum item"),
+        }
+    }
+
+    #[test]
+    fn test_parse_struct_without_version() {
+        let input = r#"
+            #[solana]
+            struct Account {
+                owner: PublicKey,
+            }
+        "#;
+
+        let result = parse_lumos_file(input);
+        assert!(result.is_ok());
+
+        let file = result.unwrap();
+        match &file.items[0] {
+            AstItem::Struct(struct_def) => {
+                assert_eq!(struct_def.version, None);
+            }
+            _ => panic!("Expected struct item"),
+        }
+    }
+
+    #[test]
+    fn test_parse_invalid_version_format() {
+        let input = r#"
+            #[solana]
+            #[version = "1.0"]
+            struct Account {
+                owner: PublicKey,
+            }
+        "#;
+
+        let result = parse_lumos_file(input);
+        assert!(result.is_err());
+
+        if let Err(e) = result {
+            assert!(e.to_string().contains("Invalid semantic version"));
+        }
+    }
+
+    #[test]
+    fn test_parse_version_with_prerelease() {
+        let input = r#"
+            #[solana]
+            #[version = "1.0.0-beta.1"]
+            struct Account {
+                owner: PublicKey,
+            }
+        "#;
+
+        let result = parse_lumos_file(input);
+        assert!(result.is_ok());
+
+        let file = result.unwrap();
+        match &file.items[0] {
+            AstItem::Struct(struct_def) => {
+                assert_eq!(struct_def.version, Some("1.0.0-beta.1".to_string()));
+            }
+            _ => panic!("Expected struct item"),
+        }
+    }
+
+    #[test]
+    fn test_parse_version_with_build_metadata() {
+        let input = r#"
+            #[solana]
+            #[version = "1.0.0+build.123"]
+            struct Account {
+                owner: PublicKey,
+            }
+        "#;
+
+        let result = parse_lumos_file(input);
+        assert!(result.is_ok());
+
+        let file = result.unwrap();
+        match &file.items[0] {
+            AstItem::Struct(struct_def) => {
+                assert_eq!(struct_def.version, Some("1.0.0+build.123".to_string()));
             }
             _ => panic!("Expected struct item"),
         }

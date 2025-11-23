@@ -320,6 +320,7 @@ fn extract_struct_metadata(struct_def: &AstStruct) -> Metadata {
             .iter()
             .map(|attr| attr.name.clone())
             .collect(),
+        version: struct_def.version.clone(),
     }
 }
 
@@ -332,6 +333,7 @@ fn extract_enum_metadata(enum_def: &AstEnum) -> Metadata {
             .iter()
             .map(|attr| attr.name.clone())
             .collect(),
+        version: enum_def.version.clone(),
     }
 }
 

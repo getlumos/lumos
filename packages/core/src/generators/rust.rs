@@ -96,6 +96,15 @@ fn generate_struct(struct_def: &StructDefinition) -> String {
         output.push('\n');
     }
 
+    // Generate version constant if version is specified
+    if let Some(version) = &struct_def.metadata.version {
+        output.push_str(&format!(
+            "pub const {}_VERSION: &str = \"{}\";\n\n",
+            struct_def.name.to_uppercase(),
+            version
+        ));
+    }
+
     // Generate derives using context-aware function
     let derives = generate_struct_derives_with_context(struct_def, use_anchor);
     if !derives.is_empty() {
@@ -143,6 +152,15 @@ fn generate_enum(enum_def: &EnumDefinition) -> String {
             output.push_str(&format!("use {};\n", import));
         }
         output.push('\n');
+    }
+
+    // Generate version constant if version is specified
+    if let Some(version) = &enum_def.metadata.version {
+        output.push_str(&format!(
+            "pub const {}_VERSION: &str = \"{}\";\n\n",
+            enum_def.name.to_uppercase(),
+            version
+        ));
     }
 
     // Generate derives using context-aware function
@@ -432,6 +450,15 @@ fn check_needs_solana_types(type_info: &TypeInfo, needs_pubkey: &mut bool) {
 fn generate_enum_with_context(enum_def: &EnumDefinition, use_anchor: bool) -> String {
     let mut output = String::new();
 
+    // Generate version constant if present
+    if let Some(version) = &enum_def.metadata.version {
+        output.push_str(&format!(
+            "pub const {}_VERSION: &str = \"{}\";\n\n",
+            enum_def.name.to_uppercase(),
+            version
+        ));
+    }
+
     // Generate derives (only if there are any)
     let derives = generate_enum_derives_with_context(enum_def, use_anchor);
     if !derives.is_empty() {
@@ -480,6 +507,15 @@ fn generate_enum_with_context(enum_def: &EnumDefinition, use_anchor: bool) -> St
 /// Generate struct with context (e.g., whether module uses Anchor)
 fn generate_struct_with_context(struct_def: &StructDefinition, use_anchor: bool) -> String {
     let mut output = String::new();
+
+    // Generate version constant if present
+    if let Some(version) = &struct_def.metadata.version {
+        output.push_str(&format!(
+            "pub const {}_VERSION: &str = \"{}\";\n\n",
+            struct_def.name.to_uppercase(),
+            version
+        ));
+    }
 
     // Generate derives (only if there are any)
     let derives = generate_struct_derives_with_context(struct_def, use_anchor);
@@ -764,6 +800,7 @@ mod tests {
             metadata: Metadata {
                 solana: true,
                 attributes: vec!["account".to_string()],
+                version: None,
             },
         });
 
@@ -843,6 +880,7 @@ mod tests {
             metadata: Metadata {
                 solana: true,
                 attributes: vec![],
+                version: None,
             },
         });
 
@@ -868,6 +906,7 @@ mod tests {
             metadata: Metadata {
                 solana: true,
                 attributes: vec![],
+                version: None,
             },
         });
 
@@ -900,6 +939,7 @@ mod tests {
             metadata: Metadata {
                 solana: true,
                 attributes: vec![],
+                version: None,
             },
         });
 
@@ -955,6 +995,7 @@ mod tests {
             metadata: Metadata {
                 solana: true,
                 attributes: vec![],
+                version: None,
             },
         });
 

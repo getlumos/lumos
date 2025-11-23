@@ -98,6 +98,9 @@ pub struct Metadata {
 
     /// Additional attributes
     pub attributes: Vec<String>,
+
+    /// Optional semantic version (e.g., "1.0.0")
+    pub version: Option<String>,
 }
 
 impl TypeDefinition {
