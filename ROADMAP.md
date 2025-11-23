@@ -16,7 +16,7 @@ LUMOS continues rapid evolution with IDE integration and schema versioning:
 
 - ✅ **v0.2.0 LSP released** - Multi-editor support via Language Server Protocol
 - ✅ **v0.1.1 released** - 146 tests, zero warnings, zero vulnerabilities
-- ✅ **Schema versioning** - #[version] attribute with semantic versioning support
+- ✅ **Schema evolution complete** - Versioning, migration, compatibility, deprecation, diff tool
 - ✅ **Security hardened** - Type validation, path protection, enhanced errors
 - ✅ **VSCode extension** - v0.5.0 published to marketplace
 - ✅ **5 community examples** - NFT, DeFi, DAO, Gaming, Vesting
@@ -24,7 +24,8 @@ LUMOS continues rapid evolution with IDE integration and schema versioning:
 - ✅ **Interactive playground** - Live code generation at docs.lumos-lang.org/playground
 - ✅ **Performance benchmarks** - Comprehensive Borsh comparison suite
 
-**Active**: Phase 5.1 (Schema Evolution), Phase 5.2 (IDE Integration)
+**Completed**: Phase 5.1 (Schema Evolution - 100%), Phase 6.3 (Security & Validation - 100%)
+**Active**: Phase 5.2 (IDE Integration - 20%)
 **Next**: Phase 5.3 (Advanced Type System), Phase 5.4 (Multi-Language Generation)
 
 ---
@@ -55,14 +56,14 @@ Transform from schema DSL → full programming language for type-safe Solana wor
 
 **Goal**: Support schema changes without breaking deployed programs
 
-**Status**: 3/5 complete (60%)
+**Status**: 5/5 complete (100%) ✅
 
 **Issues:**
 - [x] Add schema versioning syntax with `#[version = "1.0.0"]` attribute [#40] ✅ **COMPLETE**
 - [x] Generate automatic migration code between schema versions [#41] ✅ **COMPLETE**
 - [x] Validate backward compatibility between schema versions [#42] ✅ **COMPLETE**
-- [ ] Add deprecation warnings for old schema fields [#43]
-- [ ] Create schema diff tool: `lumos diff v1.lumos v2.lumos` [#44]
+- [x] Add deprecation warnings for old schema fields [#43] ✅ **COMPLETE**
+- [x] Create schema diff tool: `lumos diff v1.lumos v2.lumos` [#44] ✅ **COMPLETE**
 
 **Completed**:
 - #40 (Nov 23, 2025) - Schema versioning with semantic versioning support
@@ -93,7 +94,26 @@ Transform from schema DSL → full programming language for type-safe Solana wor
   - CLI reference at docs/cli/check-compat.md
   - 13 new comprehensive tests (168 total tests passing)
 
-**Success Metric**: Zero-downtime schema upgrades
+- #43 (Nov 23, 2025) - Deprecation warnings for schema fields
+  - Added `#[deprecated]` attribute parser with message support
+  - Generates Rust `#[deprecated]` attributes in output
+  - Generates TypeScript `@deprecated` JSDoc comments
+  - Compile-time warnings for deprecated field usage
+  - IDE support (strikethrough, warnings in VS Code)
+  - Documentation at docs/schema-evolution/deprecation.md
+
+- #44 (Nov 23, 2025) - Schema diff tool
+  - New CLI command `lumos diff` for comparing schemas
+  - Detects added, removed, and modified fields
+  - Color-coded terminal output with visual indicators
+  - JSON and Markdown output formats
+  - Breaking change detection
+  - Filter by specific types, statistics mode
+  - Git integration support for commit comparisons
+
+**Success Metric**: Zero-downtime schema upgrades ✅ **ACHIEVED**
+
+**Milestone**: 🎯 **PHASE 5.1 COMPLETE** - Full schema evolution toolkit with versioning, migration, compatibility checking, deprecation warnings, and visual diff tool
 
 ### 5.2 IDE Integration
 
@@ -177,13 +197,13 @@ lumos generate schema.lumos --lang rust,typescript,python,go,ruby
 
 ### 6.2 Tooling Ecosystem
 
-**Status**: 1/4 complete (25%)
+**Status**: 2/4 complete (50%)
 
 **Issues:**
 - [ ] Create `cargo lumos` subcommand for Rust workflows [#59]
 - [x] Create GitHub Action for CI/CD auto-generation [#60] ✅ **COMPLETE**
 - [ ] Create pre-commit hook for schema validation [#61]
-- [ ] Create npm package for JavaScript/TypeScript projects [#62] **HIGH PRIORITY**
+- [x] Create npm package for JavaScript/TypeScript projects [#62] ✅ **COMPLETE**
 
 **Completed**:
 - #60 (Nov 2025) - GitHub Action for automated validation and generation
@@ -191,6 +211,15 @@ lumos generate schema.lumos --lang rust,typescript,python,go,ruby
   - Auto-install CLI, validate schemas, generate code, drift detection
   - Comprehensive CI/CD integration with PR comments
   - Available at https://github.com/marketplace/actions/lumos-generate
+
+- #62 (Nov 23, 2025) - npm package for JavaScript/TypeScript projects
+  - Published `@getlumos/cli` to npm registry
+  - WebAssembly-based (~750 KB optimized binary)
+  - No Rust toolchain required for JS/TS developers
+  - CLI commands: generate, validate
+  - Programmatic API for Node.js/TypeScript integration
+  - Comprehensive documentation with examples
+  - Build tool integration guides (Vite, Webpack, CI/CD)
 
 ### 6.3 Security & Validation
 
@@ -577,12 +606,14 @@ Core language free forever, monetize via cloud platform and premium extensions
 
 ### Phase 5: Advanced Features 🚧 (In Progress - Nov 2025)
 
-**Overall Progress**: 9/23 features complete (39%)
+**Overall Progress**: 11/23 features complete (48%)
 
-**5.1 Schema Evolution (60% complete):**
+**5.1 Schema Evolution (100% complete) ✅:**
 - [x] Schema versioning with #[version] attribute (#40)
 - [x] Automatic migration code generation (#41)
 - [x] Backward compatibility validation (#42)
+- [x] Deprecation warnings for schema fields (#43)
+- [x] Schema diff tool: `lumos diff` (#44)
 
 **5.2 IDE Integration (20% complete):**
 - [x] Language Server Protocol implementation (#45)
@@ -704,9 +735,13 @@ See an opportunity to help? Check our [Contributing Guide](CONTRIBUTING.md) or:
 **Last Updated**: November 23, 2025
 
 **Recent Updates**:
-- Nov 23, 2025: Added backward compatibility validation (#42) - Phase 5.1 at 60%
-- Nov 23, 2025: Added automatic migration code generation (#41) - Phase 5.1 at 40%
-- Nov 23, 2025: Added schema versioning (#40) - Phase 5.1 at 20%
+- Nov 23, 2025: **Published @getlumos/cli v0.1.0 to npm** (#62) - Phase 6.2 at 50% 🎉
+- Nov 23, 2025: **Phase 5.1 Schema Evolution COMPLETE** 🎉 - All 5 issues closed (#40-#44)
+- Nov 23, 2025: Added schema diff tool (#44) - `lumos diff` CLI command
+- Nov 23, 2025: Added deprecation warnings (#43) - `#[deprecated]` attribute support
+- Nov 23, 2025: Added backward compatibility validation (#42)
+- Nov 23, 2025: Added automatic migration code generation (#41)
+- Nov 23, 2025: Added schema versioning (#40)
 - Nov 22, 2025: Published LSP v0.1.1 (#45) - Phase 5.2 at 20%
 - Nov 2025: Completed Phase 6.3 Security & Validation (100%)
 - Nov 2025: Published GitHub Action v1.0.0 (#60)
