@@ -22,22 +22,34 @@
 │  • Published to crates.io (lumos-core, lumos-cli, lumos-lsp)        │
 └─────────────────┬───────────────────────────────────────────────────┘
                   │
-    ┌─────────────┼──────────────┬──────────────┬───────────────┬─────────────┐
-    │             │              │              │               │             │
-    v             v              v              v               v             v
-┌──────────┐ ┌──────────┐ ┌────────────┐ ┌──────────┐ ┌──────────────┐ ┌─────────────┐
-│ vscode-  │ │intellij- │ │  awesome-  │ │  docs-   │ │  npm package │ │   lumos-    │
-│  lumos   │ │  lumos   │ │   lumos    │ │  lumos   │ │(@getlumos/cli│ │   action    │
-│          │ │          │ │            │ │          │ │)             │ │             │
-│ VSCode   │ │IntelliJ  │ │ Community  │ │ Official │ │ WASM CLI for │ │ GitHub      │
-│extension │ │IDEA &    │ │ examples & │ │ docs &   │ │ JS/TS devs   │ │ Action for  │
-│(syntax,  │ │Rust Rover│ │ full-stack │ │ website  │ │ (no Rust     │ │ CI/CD auto  │
-│IntelliS, │ │plugin via│ │ templates  │ │VitePress │ │ required)    │ │ validation  │
-│commands) │ │LSP client│ │5 examples  │ │ guides   │ │ 0.1.0        │ │ & generate  │
-│v0.5.0    │ │v0.1.0    │ │            │ │          │ │              │ │ v1.0.0      │
-└──────────┘ └──────────┘ └────────────┘ └──────────┘ └──────────────┘ └─────────────┘
+    ┌─────────────┼──────────────┬──────────────┬───────────────┬─────────────┬─────────────┐
+    │             │              │              │               │             │             │
+    v             v              v              v               v             v             v
+┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────────┐ ┌──────────┐ ┌──────────────┐ ┌─────────────┐
+│ vscode-  │ │intellij- │ │ nvim-    │ │  awesome-  │ │  docs-   │ │  npm package │ │   lumos-    │
+│  lumos   │ │  lumos   │ │  lumos   │ │   lumos    │ │  lumos   │ │(@getlumos/cli│ │   action    │
+│          │ │          │ │          │ │            │ │          │ │)             │ │             │
+│ VSCode   │ │IntelliJ  │ │ Neovim   │ │ Community  │ │ Official │ │ WASM CLI for │ │ GitHub      │
+│extension │ │IDEA &    │ │ plugin + │ │ examples & │ │ docs &   │ │ JS/TS devs   │ │ Action for  │
+│(syntax,  │ │Rust Rover│ │Tree-sitter│ │ full-stack │ │ website  │ │ (no Rust     │ │ CI/CD auto  │
+│IntelliS, │ │plugin via│ │ grammar  │ │ templates  │ │VitePress │ │ required)    │ │ validation  │
+│commands) │ │LSP client│ │LSP client│ │5 examples  │ │ guides   │ │ 0.1.0        │ │ & generate  │
+│v0.5.0    │ │v0.1.0    │ │v0.1.0    │ │            │ │          │ │              │ │ v1.0.0      │
+└──────────┘ └──────────┘ └────┬─────┘ └────────────┘ └──────────┘ └──────────────┘ └─────────────┘
+                                │
+                                v
+                         ┌─────────────┐
+                         │tree-sitter- │
+                         │   lumos     │
+                         │             │
+                         │ Tree-sitter │
+                         │  grammar    │
+                         │ for syntax  │
+                         │highlighting │
+                         │   v0.1.0    │
+                         └─────────────┘
 
-Future: Neovim plugin, Emacs mode, Sublime package, cargo subcommand
+Future: Emacs mode, Sublime package, cargo subcommand
 ```
 
 **Organization Mission:** Become the standard schema language for type-safe Solana development
@@ -160,7 +172,79 @@ vsce publish         # Publish to marketplace
 
 ---
 
-### 4. awesome-lumos
+### 4. tree-sitter-lumos
+
+**Purpose:** Tree-sitter grammar for LUMOS syntax highlighting
+**Tech Stack:** JavaScript, Tree-sitter, npm
+**Key Commands:**
+```bash
+npm install              # Install dependencies
+npm test                # Run grammar tests
+tree-sitter generate    # Generate parser from grammar.js
+tree-sitter parse file.lumos  # Test parsing
+```
+**Key Files:**
+- `grammar.js` - Tree-sitter grammar definition (120 lines)
+- `queries/highlights.scm` - Syntax highlighting queries
+- `test/corpus/struct.txt` - Struct test cases
+- `test/corpus/enum.txt` - Enum test cases
+
+**Grammar Coverage:**
+- Structs with fields and attributes
+- Enums (unit, tuple, struct variants)
+- All LUMOS types (primitives, Solana types, Vec, Option, arrays)
+- Attributes (`#[solana]`, `#[account]`, `#[deprecated]`)
+- Comments (line and block)
+
+**Test Results:** 6/6 tests passing
+**Status:** v0.1.0 development
+**Repository:** https://github.com/getlumos/tree-sitter-lumos
+
+---
+
+### 5. nvim-lumos
+
+**Purpose:** Neovim plugin for LUMOS with LSP and Tree-sitter support
+**Tech Stack:** Lua, Neovim API, nvim-lspconfig, nvim-treesitter
+**Installation:**
+```lua
+-- Using lazy.nvim
+{
+  "getlumos/nvim-lumos",
+  dependencies = {
+    "nvim-treesitter/nvim-treesitter",
+    "neovim/nvim-lspconfig",
+  },
+  config = function()
+    require("lumos").setup()
+  end,
+}
+```
+**Key Files:**
+- `ftdetect/lumos.lua` - File type detection
+- `lua/lumos/init.lua` - Plugin entry point
+- `lua/lumos/lsp.lua` - LSP configuration with keybindings
+- `queries/lumos/highlights.scm` - Syntax highlighting queries
+
+**Features:**
+- Automatic file type detection for `.lumos` files
+- Full LSP integration with lumos-lsp server
+- Tree-sitter syntax highlighting via tree-sitter-lumos
+- Pre-configured keybindings:
+  - `gd` - Go to definition
+  - `K` - Hover documentation
+  - `gr` - Find references
+  - `<leader>rn` - Rename symbol
+  - `<leader>ca` - Code actions
+  - `<leader>f` - Format document
+
+**Dependencies:** Neovim 0.9+, lumos-lsp, nvim-treesitter, nvim-lspconfig
+**Status:** v0.1.0 development
+**Repository:** https://github.com/getlumos/nvim-lumos
+
+---
+
+### 6. awesome-lumos
 
 **Purpose:** Production-ready examples and community projects
 **Tech Stack:** Anchor, TypeScript, Solana web3.js
@@ -178,7 +262,7 @@ examples/[project-name]/
 
 ---
 
-### 5. docs-lumos
+### 7. docs-lumos
 
 **Purpose:** Official documentation website
 **Tech Stack:** VitePress, Markdown, Vue
@@ -194,7 +278,7 @@ npm run docs:build   # Build for production
 
 ---
 
-### 6. lumos-action
+### 8. lumos-action
 
 **Purpose:** GitHub Action for automated schema validation and code generation
 **Tech Stack:** Composite Action (Bash, GitHub Actions)
@@ -217,18 +301,25 @@ npm run docs:build   # Build for production
 
 **Active Development Areas:**
 
-1. **Phase 5.1 - Schema Evolution** (Q2 2026)
-   - Versioning with `#[version]` attribute (#40)
-   - Automatic migration code generation (#41)
-   - Backward compatibility validation (#42)
+1. **Phase 5.1 - Schema Evolution** (Q2 2026) - COMPLETE ✅
+   - Versioning with `#[version]` attribute (#40) ✅
+   - Automatic migration code generation (#41) ✅
+   - Backward compatibility validation (#42) ✅
+   - Deprecation warnings (#43) ✅
+   - Schema diff tool (#44) ✅
 
-2. **Phase 5.2 - IDE Integration** (Q2 2026)
-   - Language Server Protocol implementation (#45) - COMPLETE ✅
-   - Multi-editor support (VS Code, Neovim, Emacs, Sublime)
+2. **Phase 5.2 - IDE Integration** (Q2 2026) - 60% COMPLETE
+   - Language Server Protocol implementation (#45) ✅
+   - IntelliJ IDEA / Rust Rover plugin (#46) ✅
+   - Neovim plugin with Tree-sitter grammar (#47) ✅
+   - Emacs mode (#48) - PENDING
+   - Sublime Text package (#49) - PENDING
 
 3. **Phase 6.2 - Tooling Ecosystem**
-   - npm package for JavaScript/TypeScript projects (#62) - HIGH PRIORITY
-   - cargo subcommand integration (#59)
+   - npm package for JavaScript/TypeScript projects (#62) ✅
+   - GitHub Action for CI/CD (#60) ✅
+   - cargo subcommand integration (#59) - PENDING
+   - pre-commit hook (#61) - PENDING
 
 **Cross-Repo Initiatives:**
 - Hybrid CLAUDE.md architecture (reducing token usage) - COMPLETE ✅
@@ -236,8 +327,11 @@ npm run docs:build   # Build for production
 - Consistent CI/CD patterns
 
 **Recent Changes Affecting Multiple Repos:**
-- v0.2.0 Language Server Protocol implementation (#45) - NEW ✨
-- v1.0.0 GitHub Action published to marketplace (#72)
+- Neovim plugin with Tree-sitter grammar (#47) - NEW ✨
+- npm package @getlumos/cli v0.1.0 published (#62) - NEW ✨
+- v0.2.0 Language Server Protocol implementation (#45) ✅
+- v1.0.0 GitHub Action published to marketplace (#60) ✅
+- IntelliJ IDEA / Rust Rover plugin (#46) ✅
 - Hybrid CLAUDE.md architecture deployed (21.6% token reduction) (#36)
 - v0.1.1 security improvements (affects all repos using CLI)
 - VSCode extension v0.5.0 with quick fixes (vscode-lumos)
