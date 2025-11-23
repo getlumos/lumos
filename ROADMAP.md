@@ -55,12 +55,12 @@ Transform from schema DSL → full programming language for type-safe Solana wor
 
 **Goal**: Support schema changes without breaking deployed programs
 
-**Status**: 2/5 complete (40%)
+**Status**: 3/5 complete (60%)
 
 **Issues:**
 - [x] Add schema versioning syntax with `#[version = "1.0.0"]` attribute [#40] ✅ **COMPLETE**
 - [x] Generate automatic migration code between schema versions [#41] ✅ **COMPLETE**
-- [ ] Validate backward compatibility between schema versions [#42]
+- [x] Validate backward compatibility between schema versions [#42] ✅ **COMPLETE**
 - [ ] Add deprecation warnings for old schema fields [#43]
 - [ ] Create schema diff tool: `lumos diff v1.lumos v2.lumos` [#44]
 
@@ -80,6 +80,18 @@ Transform from schema DSL → full programming language for type-safe Solana wor
   - Comprehensive examples in examples/migration/
   - Full documentation at docs/schema-evolution/migrations.md
   - 7 new unit tests for diff detection and code generation
+
+- #42 (Nov 23, 2025) - Backward compatibility validation
+  - New compat module with CompatibilityChecker (434 lines)
+  - CLI command `lumos check-compat` with text/JSON output
+  - Breaking vs compatible change classification
+  - SemVer version bump validation
+  - Verbose mode with detailed explanations
+  - Strict mode (fail on warnings)
+  - Exit codes: 0 (compatible), 1 (breaking), 2 (warnings)
+  - Complete documentation at docs/schema-evolution/compatibility.md
+  - CLI reference at docs/cli/check-compat.md
+  - 13 new comprehensive tests (168 total tests passing)
 
 **Success Metric**: Zero-downtime schema upgrades
 
@@ -565,11 +577,12 @@ Core language free forever, monetize via cloud platform and premium extensions
 
 ### Phase 5: Advanced Features 🚧 (In Progress - Nov 2025)
 
-**Overall Progress**: 8/23 features complete (35%)
+**Overall Progress**: 9/23 features complete (39%)
 
-**5.1 Schema Evolution (40% complete):**
+**5.1 Schema Evolution (60% complete):**
 - [x] Schema versioning with #[version] attribute (#40)
 - [x] Automatic migration code generation (#41)
+- [x] Backward compatibility validation (#42)
 
 **5.2 IDE Integration (20% complete):**
 - [x] Language Server Protocol implementation (#45)
@@ -691,6 +704,7 @@ See an opportunity to help? Check our [Contributing Guide](CONTRIBUTING.md) or:
 **Last Updated**: November 23, 2025
 
 **Recent Updates**:
+- Nov 23, 2025: Added backward compatibility validation (#42) - Phase 5.1 at 60%
 - Nov 23, 2025: Added automatic migration code generation (#41) - Phase 5.1 at 40%
 - Nov 23, 2025: Added schema versioning (#40) - Phase 5.1 at 20%
 - Nov 22, 2025: Published LSP v0.1.1 (#45) - Phase 5.2 at 20%
