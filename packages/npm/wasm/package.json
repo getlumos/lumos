@@ -1,0 +1,20 @@
+{
+  "name": "lumos-core",
+  "collaborators": [
+    "RECTOR <rz1989s@gmail.com>"
+  ],
+  "description": "Core schema parsing and code generation for LUMOS",
+  "version": "0.1.1",
+  "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/getlumos/lumos"
+  },
+  "files": [
+    "lumos_core_bg.wasm",
+    "lumos_core.js",
+    "lumos_core.d.ts"
+  ],
+  "main": "lumos_core.js",
+  "types": "lumos_core.d.ts"
+}

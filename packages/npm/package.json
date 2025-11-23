@@ -20,10 +20,12 @@
   },
   "files": [
     "dist/",
-    "wasm/",
+    "wasm/lumos_core_bg.wasm",
+    "wasm/lumos_core.js",
+    "wasm/lumos_core.d.ts",
+    "wasm/lumos_core_bg.wasm.d.ts",
     "README.md",
-    "LICENSE-MIT",
-    "LICENSE-APACHE"
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build:wasm": "cd ../core && wasm-pack build --target nodejs --out-dir ../npm/wasm --features wasm",

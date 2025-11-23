@@ -1,5 +1,5 @@
 node_modules/
 dist/
-wasm/
+# wasm/ - Don't ignore, needed for npm package
 *.log
 .DS_Store
