@@ -15,6 +15,7 @@
 LUMOS continues rapid evolution with IDE integration and schema versioning:
 
 - ✅ **v0.2.0 LSP released** - Multi-editor support via Language Server Protocol
+- ✅ **IntelliJ plugin** - Full LSP integration for IntelliJ IDEA, Rust Rover, CLion
 - ✅ **v0.1.1 released** - 146 tests, zero warnings, zero vulnerabilities
 - ✅ **Schema evolution complete** - Versioning, migration, compatibility, deprecation, diff tool
 - ✅ **Security hardened** - Type validation, path protection, enhanced errors
@@ -25,7 +26,7 @@ LUMOS continues rapid evolution with IDE integration and schema versioning:
 - ✅ **Performance benchmarks** - Comprehensive Borsh comparison suite
 
 **Completed**: Phase 5.1 (Schema Evolution - 100%), Phase 6.3 (Security & Validation - 100%)
-**Active**: Phase 5.2 (IDE Integration - 20%)
+**Active**: Phase 5.2 (IDE Integration - 40%)
 **Next**: Phase 5.3 (Advanced Type System), Phase 5.4 (Multi-Language Generation)
 
 ---
@@ -119,11 +120,11 @@ Transform from schema DSL → full programming language for type-safe Solana wor
 
 **Goal**: Multi-editor support beyond VSCode
 
-**Status**: 1/5 complete (20%)
+**Status**: 2/5 complete (40%)
 
 **Issues:**
 - [x] Implement Language Server Protocol (LSP) for LUMOS [#45] ✅ **COMPLETE**
-- [ ] Create IntelliJ IDEA / Rust Rover plugin for LUMOS [#46]
+- [x] Create IntelliJ IDEA / Rust Rover plugin for LUMOS [#46] ✅ **COMPLETE**
 - [ ] Create Neovim plugin with Tree-sitter grammar for LUMOS [#47]
 - [ ] Create Emacs mode for LUMOS [#48]
 - [ ] Create Sublime Text package for LUMOS [#49]
@@ -134,6 +135,14 @@ Transform from schema DSL → full programming language for type-safe Solana wor
   - Published lumos-lsp v0.1.1 to crates.io
   - Multi-editor support (VS Code, Neovim, Emacs, Sublime, etc.)
   - 13 new LSP-specific tests
+
+- #46 (Nov 23, 2025) - IntelliJ IDEA / Rust Rover plugin
+  - New repository: getlumos/intellij-lumos
+  - LSP client integration with lumos-lsp server
+  - File type recognition for .lumos files
+  - Comprehensive test suite (39 tests across 5 test files)
+  - Documentation at docs-lumos/src/content/docs/editors/intellij.md
+  - Supports IntelliJ IDEA, Rust Rover, CLion (2024.1+)
 
 **Success Metric**: LSP used by 3+ editors
 
@@ -606,7 +615,7 @@ Core language free forever, monetize via cloud platform and premium extensions
 
 ### Phase 5: Advanced Features 🚧 (In Progress - Nov 2025)
 
-**Overall Progress**: 11/23 features complete (48%)
+**Overall Progress**: 12/23 features complete (52%)
 
 **5.1 Schema Evolution (100% complete) ✅:**
 - [x] Schema versioning with #[version] attribute (#40)
@@ -615,8 +624,9 @@ Core language free forever, monetize via cloud platform and premium extensions
 - [x] Deprecation warnings for schema fields (#43)
 - [x] Schema diff tool: `lumos diff` (#44)
 
-**5.2 IDE Integration (20% complete):**
+**5.2 IDE Integration (40% complete):**
 - [x] Language Server Protocol implementation (#45)
+- [x] IntelliJ IDEA / Rust Rover plugin (#46)
 
 **5.3 Advanced Type System (0% complete):**
 - No issues started yet
