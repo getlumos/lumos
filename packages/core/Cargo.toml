@@ -32,7 +32,7 @@ crate-type = ["cdylib", "rlib"]
 [package.metadata.wasm-pack.profile.release]
 # Enable wasm-opt for smaller bundle sizes (~50-100% reduction)
 # Note: Adds ~30-60s to build time, but significantly improves load performance
-wasm-opt = ["-O3", "-Os"]  # Optimize for size while maintaining good performance
+wasm-opt = ["-O3", "-Os", "--enable-bulk-memory"]  # Optimize for size with bulk memory support
 
 [dev-dependencies]
 tempfile = "3.8"

@@ -1,0 +1,59 @@
+{
+  "name": "@getlumos/cli",
+  "version": "0.1.0",
+  "description": "LUMOS schema language CLI for JavaScript/TypeScript - Generate type-safe Rust and TypeScript code for Solana",
+  "keywords": [
+    "solana",
+    "borsh",
+    "schema",
+    "codegen",
+    "wasm",
+    "anchor",
+    "blockchain",
+    "typescript",
+    "rust"
+  ],
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "lumos": "dist/cli.js"
+  },
+  "files": [
+    "dist/",
+    "wasm/",
+    "README.md",
+    "LICENSE-MIT",
+    "LICENSE-APACHE"
+  ],
+  "scripts": {
+    "build:wasm": "cd ../core && wasm-pack build --target nodejs --out-dir ../npm/wasm --features wasm",
+    "build:ts": "tsc",
+    "build": "npm run build:wasm && npm run build:ts && chmod +x dist/cli.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist wasm node_modules",
+    "prepublishOnly": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/getlumos/lumos.git",
+    "directory": "packages/npm"
+  },
+  "bugs": {
+    "url": "https://github.com/getlumos/lumos/issues"
+  },
+  "homepage": "https://lumos-lang.org",
+  "author": "RECTOR-LABS",
+  "license": "MIT OR Apache-2.0",
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  },
+  "dependencies": {
+    "commander": "^11.1.0"
+  }
+}
