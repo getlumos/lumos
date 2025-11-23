@@ -15,28 +15,29 @@
 ### How Repositories Relate
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  lumos (core)                                           │
-│  Schema language compiler + CLI                         │
-│  • Rust parser & code generator                         │
-│  • Published to crates.io                               │
-└────────────┬────────────────────────────────────────────┘
-             │
-    ┌────────┴────────┬──────────────┬─────────────┐
-    │                 │              │             │
-    v                 v              v             v
-┌──────────┐ ┌────────────┐ ┌──────────┐ ┌─────────────┐
-│ vscode-  │ │  awesome-  │ │  docs-   │ │   lumos-    │
-│  lumos   │ │   lumos    │ │  lumos   │ │   action    │
-│          │ │            │ │          │ │             │
-│ VSCode   │ │ Community  │ │ Official │ │ GitHub      │
-│extension │ │ examples & │ │ docs &   │ │ Action for  │
-│(syntax,  │ │ full-stack │ │ website  │ │ CI/CD auto  │
-│IntelliS, │ │ templates  │ │VitePress │ │ validation  │
-│commands) │ │5 examples  │ │ guides   │ │ & generate  │
-└──────────┘ └────────────┘ └──────────┘ └─────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│  lumos (core)                                                       │
+│  Schema language compiler + CLI + LSP server                        │
+│  • Rust parser & code generator                                     │
+│  • Published to crates.io (lumos-core, lumos-cli, lumos-lsp)        │
+└─────────────────┬───────────────────────────────────────────────────┘
+                  │
+    ┌─────────────┼──────────────┬──────────────┬───────────────┬─────────────┐
+    │             │              │              │               │             │
+    v             v              v              v               v             v
+┌──────────┐ ┌──────────┐ ┌────────────┐ ┌──────────┐ ┌──────────────┐ ┌─────────────┐
+│ vscode-  │ │intellij- │ │  awesome-  │ │  docs-   │ │  npm package │ │   lumos-    │
+│  lumos   │ │  lumos   │ │   lumos    │ │  lumos   │ │(@getlumos/cli│ │   action    │
+│          │ │          │ │            │ │          │ │)             │ │             │
+│ VSCode   │ │IntelliJ  │ │ Community  │ │ Official │ │ WASM CLI for │ │ GitHub      │
+│extension │ │IDEA &    │ │ examples & │ │ docs &   │ │ JS/TS devs   │ │ Action for  │
+│(syntax,  │ │Rust Rover│ │ full-stack │ │ website  │ │ (no Rust     │ │ CI/CD auto  │
+│IntelliS, │ │plugin via│ │ templates  │ │VitePress │ │ required)    │ │ validation  │
+│commands) │ │LSP client│ │5 examples  │ │ guides   │ │ 0.1.0        │ │ & generate  │
+│v0.5.0    │ │v0.1.0    │ │            │ │          │ │              │ │ v1.0.0      │
+└──────────┘ └──────────┘ └────────────┘ └──────────┘ └──────────────┘ └─────────────┘
 
-Future: LSP server, npm package, cargo subcommand, IDE plugins
+Future: Neovim plugin, Emacs mode, Sublime package, cargo subcommand
 ```
 
 **Organization Mission:** Become the standard schema language for type-safe Solana development
@@ -135,7 +136,31 @@ vsce publish         # Publish to marketplace
 
 ---
 
-### 3. awesome-lumos
+### 3. intellij-lumos
+
+**Purpose:** IntelliJ IDEA and Rust Rover plugin for `.lumos` files
+**Tech Stack:** Kotlin, IntelliJ Platform SDK, LSP client
+**Key Commands:**
+```bash
+./gradlew buildPlugin    # Build plugin
+./gradlew runIde        # Run in IDE sandbox
+./gradlew publishPlugin  # Publish to marketplace
+```
+**Key Files:**
+- `src/main/kotlin/com/lumos/LumosLspServerDescriptor.kt` - LSP integration
+- `src/main/kotlin/com/lumos/LumosFileType.kt` - File type registration
+- `src/main/resources/META-INF/plugin.xml` - Plugin manifest
+- `build.gradle.kts` - Gradle build configuration
+
+**Features:** File type recognition, LSP client for lumos-lsp server, syntax highlighting, auto-completion, diagnostics
+**Target IDEs:** IntelliJ IDEA, Rust Rover, CLion (2024.1+)
+**Dependencies:** lumos-lsp v0.1.1+, lsp4ij plugin
+**Status:** v0.1.0 development
+**CLAUDE.md:** [intellij-lumos/CLAUDE.md](https://github.com/getlumos/intellij-lumos/blob/main/CLAUDE.md)
+
+---
+
+### 4. awesome-lumos
 
 **Purpose:** Production-ready examples and community projects
 **Tech Stack:** Anchor, TypeScript, Solana web3.js
@@ -153,7 +178,7 @@ examples/[project-name]/
 
 ---
 
-### 4. docs-lumos
+### 5. docs-lumos
 
 **Purpose:** Official documentation website
 **Tech Stack:** VitePress, Markdown, Vue
@@ -169,7 +194,7 @@ npm run docs:build   # Build for production
 
 ---
 
-### 5. lumos-action
+### 6. lumos-action
 
 **Purpose:** GitHub Action for automated schema validation and code generation
 **Tech Stack:** Composite Action (Bash, GitHub Actions)
