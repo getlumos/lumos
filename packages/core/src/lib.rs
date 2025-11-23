@@ -104,6 +104,9 @@ pub mod corpus_generator;
 /// Schema migration code generation
 pub mod migration;
 
+/// Schema backward compatibility validation
+pub mod compat;
+
 /// WASM bindings for browser playground
 #[cfg(feature = "wasm")]
 pub mod wasm;

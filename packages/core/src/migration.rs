@@ -9,10 +9,11 @@
 use crate::ir::{
     EnumDefinition, FieldDefinition, StructDefinition, TypeDefinition, TypeInfo,
 };
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
 /// Represents a change between two schema versions
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum SchemaChange {
     /// A field was added
     FieldAdded {

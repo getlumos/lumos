@@ -75,7 +75,7 @@ pub struct FieldDefinition {
 }
 
 /// Type information
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum TypeInfo {
     /// Primitive types (u64, string, etc.)
     Primitive(String),
