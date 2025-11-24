@@ -23,6 +23,8 @@ vscode-lumos/*.vsix
 
 # Generated code
 /generated
+generated.rs
+generated.ts
 
 # Testing
 coverage/
@@ -35,3 +37,7 @@ coverage/
 .env
 .env.local
 packages/core/pkg/
+
+# npm package WASM build artifacts
+packages/npm/src/wasm/
+packages/npm/tests/wasm/
