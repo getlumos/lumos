@@ -182,13 +182,17 @@ Transform from schema DSL → full programming language for type-safe Solana wor
 
 **Goal**: Express complex Solana program constraints
 
-**Status**: 3/5 complete (60%)
+**Status**: 3.25/5 complete (65%)
 
 **Issues:**
 - [x] Add custom derive macros support to LUMOS [#50] ✅ **COMPLETE**
 - [x] Add const generics support for fixed-size arrays in LUMOS [#51] ✅ **COMPLETE**
 - [x] Add type aliases and imports to LUMOS [#52] ✅ **COMPLETE**
-- [ ] Add nested module support to LUMOS [#53]
+- [ ] Add nested module support to LUMOS [#53] 🚧 **IN PROGRESS** (15%)
+  - [x] #53a: AST foundations with visibility support [#113] ✅ **COMPLETE**
+  - [ ] #53b: Module resolution & hierarchical loading [#113] ⏳ **TODO**
+  - [ ] #53c: Generator updates for module output [#114] ⏳ **TODO**
+  - [ ] #53d: Tests & examples [#115] ⏳ **TODO**
 - [ ] Add generic struct/enum definitions to LUMOS [#54]
 
 **Completed**:
@@ -232,6 +236,20 @@ Transform from schema DSL → full programming language for type-safe Solana wor
   - Added 4 new file_resolver tests (single file, circular imports, multiple files, validation)
   - All 202 tests passing (including E2E compilation tests)
   - **Feature complete**: Single-file type aliases + multi-file imports with full validation
+
+- #53a (Nov 24, 2025) - AST foundations for module system
+  - Added `Module`, `UseStatement`, `ModulePath`, `PathSegment` structs to AST
+  - Added `Visibility` enum (Public/Private) for type definitions
+  - Extended `StructDef`, `EnumDef`, `TypeAlias` with `visibility` field
+  - Updated `Item` enum with `Module` and `Use` variants
+  - Implemented `parse_visibility()` to extract pub keyword from syn
+  - Added helper methods for `ModulePath` (is_absolute, final_ident, to_string)
+  - Updated Transform and FileResolver to handle new item types
+  - Fixed all compilation errors and non-exhaustive pattern matches
+  - Updated all test fixtures with visibility field
+  - All 120 tests passing (107 core + 13 LSP)
+  - **Sub-issues created**: #113 (resolution), #114 (generators), #115 (tests)
+  - **Foundation laid**: Ready for module resolution implementation
 
 **Success Metric**: Support 95% of Anchor program patterns
 
@@ -826,6 +844,7 @@ See an opportunity to help? Check our [Contributing Guide](CONTRIBUTING.md) or:
 **Last Updated**: November 24, 2025
 
 **Recent Updates**:
+- Nov 24, 2025: **Module system foundations COMPLETE** (#53a) - Phase 5.3 at 65% 🚧 - AST & visibility support, split into sub-issues (#113-115)
 - Nov 24, 2025: **Type aliases and imports COMPLETE** (#52) - Phase 5.3 at 60% 🎉 - Multi-file schemas with automatic import discovery
 - Nov 24, 2025: **Fixed-size arrays COMPLETE** (#51) - Phase 5.3 at 40% 🎉 - Const generics support for `[T; N]` syntax
 - Nov 24, 2025: **Custom derive macros support COMPLETE** (#50) - Phase 5.3 begins (20% complete) 🎉
