@@ -886,13 +886,13 @@ dependencies = [
 
 [[package]]
 name = "lumos-cli"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "chrono",
  "clap",
  "colored",
- "lumos-core 0.1.1",
+ "lumos-core",
  "notify",
  "serde",
  "serde_json",
@@ -901,7 +901,7 @@ dependencies = [
 
 [[package]]
 name = "lumos-core"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "borsh",
@@ -921,28 +921,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "lumos-core"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3df466e2986dfc776d4ab8185831df31467288591748d5d677691095e15613a6"
-dependencies = [
- "anyhow",
- "colored",
- "proc-macro2",
- "quote",
- "serde",
- "serde_json",
- "syn",
- "thiserror",
- "toml",
-]
-
-[[package]]
 name = "lumos-lsp"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "dashmap",
- "lumos-core 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lumos-core",
  "serde",
  "serde_json",
  "tokio",
