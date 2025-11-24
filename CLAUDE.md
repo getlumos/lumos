@@ -311,8 +311,9 @@ git clone https://github.com/getlumos/sublime-lumos.git LUMOS
 - Bracket matching and auto-pairing
 
 **Dependencies:** Sublime Text 4 (or 3 build 3103+), LSP package (optional), lumos-lsp server
-**Status:** v0.1.0 development
+**Status:** v0.1.0 development | Package Control PR #9251
 **Repository:** https://github.com/getlumos/sublime-lumos
+**Package Control PR:** https://github.com/wbond/package_control_channel/pull/9251
 **CLAUDE.md:** [sublime-lumos/CLAUDE.md](https://github.com/getlumos/sublime-lumos/blob/main/CLAUDE.md)
 
 ---

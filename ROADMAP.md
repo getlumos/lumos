@@ -165,15 +165,16 @@ Transform from schema DSL → full programming language for type-safe Solana wor
   - Comprehensive README with installation and configuration guide
 
 - #49 (Nov 24, 2025) - Sublime Text package for LUMOS
-  - New repository: getlumos/sublime-lumos
-  - YAML-based .sublime-syntax file with full syntax highlighting
+  - New repository: https://github.com/getlumos/sublime-lumos
+  - YAML-based .sublime-syntax file with full syntax highlighting (120 lines)
   - LSP integration via LSP-lumos.sublime-settings and LSP package
   - 6 snippets for common patterns (struct, enum variants, account, deprecated)
   - Package settings with 2-space indentation and auto-formatting
   - Comment toggling, bracket matching, and auto-indentation
   - Support for Sublime Text 4 and 3 (build 3103+)
-  - Comprehensive README with 3 installation methods
+  - Comprehensive README with 3 installation methods (270 lines)
   - Dual-licensed (MIT + Apache 2.0)
+  - Submitted to Package Control (PR #9251)
 
 **Success Metric**: LSP used by 3+ editors ✅ **ACHIEVED** (VS Code, IntelliJ IDEA/Rust Rover, Neovim, Emacs, Sublime Text)
 

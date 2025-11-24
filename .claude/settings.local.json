@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "additionalDirectories": [
+      "/Users/rz/local-dev/vscode-lumos/",
+      "/Users/rz/local-dev/awesome-lumos/",
+      "/Users/rz/local-dev/docs-lumos/",
+      "/Users/rz/local-dev/lumos-action/",
+      "/Users/rz/local-dev/intellij-lumos/",
+      "/Users/rz/local-dev/tree-sitter-lumos/",
+      "/Users/rz/local-dev/nvim-lumos/",
+      "/Users/rz/local-dev/lumos-mode/",
+      "/Users/rz/local-dev/sublime-lumos/"
+    ]
+  }
+}
