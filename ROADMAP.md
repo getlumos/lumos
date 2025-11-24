@@ -4,7 +4,7 @@
 
 **For detailed vision**: See [docs/VISION.md](docs/VISION.md) (vertical expansion) and [docs/FUTURE.md](docs/FUTURE.md) (horizontal expansion)
 
-**Last Updated**: November 24, 2025
+**Last Updated**: November 25, 2025
 
 ---
 
@@ -26,7 +26,7 @@ LUMOS continues rapid evolution with IDE integration and schema versioning:
 - ✅ **Performance benchmarks** - Comprehensive Borsh comparison suite
 
 **Completed**: Phase 5.1 (Schema Evolution - 100%), Phase 5.2 (IDE Integration - 100%), Phase 6.3 (Security & Validation - 100%)
-**Active**: Phase 5.3 (Advanced Type System - 60%)
+**Active**: Phase 5.3 (Advanced Type System - 80%)
 **Next**: Phase 5.4 (Multi-Language Generation), Phase 6.1 (Framework Integration)
 
 ---
@@ -182,17 +182,16 @@ Transform from schema DSL → full programming language for type-safe Solana wor
 
 **Goal**: Express complex Solana program constraints
 
-**Status**: 3.25/5 complete (65%)
+**Status**: 4/5 complete (80%)
 
 **Issues:**
 - [x] Add custom derive macros support to LUMOS [#50] ✅ **COMPLETE**
 - [x] Add const generics support for fixed-size arrays in LUMOS [#51] ✅ **COMPLETE**
 - [x] Add type aliases and imports to LUMOS [#52] ✅ **COMPLETE**
-- [ ] Add nested module support to LUMOS [#53] 🚧 **IN PROGRESS** (15%)
-  - [x] #53a: AST foundations with visibility support [#113] ✅ **COMPLETE**
-  - [ ] #53b: Module resolution & hierarchical loading [#113] ⏳ **TODO**
-  - [ ] #53c: Generator updates for module output [#114] ⏳ **TODO**
-  - [ ] #53d: Tests & examples [#115] ⏳ **TODO**
+- [x] Add nested module support to LUMOS [#53] ✅ **COMPLETE** [#113]
+  - [x] #53a: AST foundations with visibility support ✅ **COMPLETE**
+  - [x] #53b: Module resolution & hierarchical loading ✅ **COMPLETE**
+  - [x] #53c: Use statement validation & CLI integration ✅ **COMPLETE**
 - [ ] Add generic struct/enum definitions to LUMOS [#54]
 
 **Completed**:
@@ -250,6 +249,42 @@ Transform from schema DSL → full programming language for type-safe Solana wor
   - All 120 tests passing (107 core + 13 LSP)
   - **Sub-issues created**: #113 (resolution), #114 (generators), #115 (tests)
   - **Foundation laid**: Ready for module resolution implementation
+
+- #53 (Nov 25, 2025) - Complete hierarchical module system [#113]
+  - **Parser support**:
+    - Parse `mod name;` declarations (external modules only)
+    - Parse `use path::Type;` and `use path::Type as Alias;` statements
+    - Support visibility modifiers (`pub`) on all items
+    - Handle path keywords (crate::, super::, self::)
+    - Error handling for unsupported syntax (glob imports, grouped imports)
+    - Added 11 new parser tests (mod/use declarations, visibility, error cases)
+  - **Module resolution**:
+    - Created `ModuleResolver` with dual file resolution strategies
+    - Sibling file: `current_dir/name.lumos`
+    - Directory module: `current_dir/name/mod.lumos`
+    - Hierarchical module tree construction with parent-child tracking
+    - Circular dependency detection with clear error chains
+    - Recursive loading with caching to avoid duplicate parsing
+    - Integration with TypeAliasResolver for cross-module types
+    - Added 6 integration tests (single, sibling, directory, nested, circular, missing)
+  - **Use statement validation**:
+    - Path resolution for crate::, super::, self:: keywords
+    - Type existence checking in target modules
+    - Visibility enforcement (private types cannot be imported)
+    - Module tree traversal for nested paths (crate::models::User)
+    - Parent/child module tracking for super resolution
+    - Clear error messages with file paths
+    - Added 6 comprehensive validation tests
+  - **CLI integration**:
+    - Auto-detect module vs import resolution strategy
+    - ModuleResolver for `mod name;` declarations
+    - FileResolver for `import` statements (backward compatible)
+    - Single-file fallback for schemas without dependencies
+    - Unified `resolve_schema()` function
+    - Updated messaging to show file count
+    - Tested with multi-module project (verified Rust + TypeScript output)
+  - **Test coverage**: All 130 tests passing (+23 new tests)
+  - **Feature complete**: Full Rust-style module system with hierarchical organization
 
 **Success Metric**: Support 95% of Anchor program patterns
 
@@ -725,10 +760,11 @@ Core language free forever, monetize via cloud platform and premium extensions
 - [x] Emacs mode (#48)
 - [x] Sublime Text package (#49)
 
-**5.3 Advanced Type System (60% complete):**
+**5.3 Advanced Type System (80% complete):**
 - [x] Custom derive macros support (#50)
 - [x] Fixed-size arrays (const generics) (#51)
 - [x] Type aliases and imports (#52)
+- [x] Nested module support (#53)
 
 **5.4 Multi-Language Code Generation (0% complete):**
 - No issues started yet
