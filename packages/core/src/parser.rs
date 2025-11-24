@@ -34,11 +34,113 @@
 //! ```
 
 use crate::ast::{
-    Attribute, AttributeValue, EnumDef, EnumVariant, FieldDef, Item as AstItem, LumosFile,
-    StructDef, TypeSpec,
+    Attribute, AttributeValue, EnumDef, EnumVariant, FieldDef, Import, Item as AstItem,
+    LumosFile, StructDef, TypeAlias, TypeSpec,
 };
 use crate::error::{LumosError, Result};
+use regex::Regex;
 use syn::{Item, Meta, Type};
+
+/// Extract JavaScript-style import statements from source code
+///
+/// Parses `import { Item1, Item2 } from "./path.lumos";` statements and removes
+/// them from the source, returning both the parsed imports and the remaining code.
+///
+/// # Arguments
+///
+/// * `input` - Source code potentially containing import statements
+///
+/// # Returns
+///
+/// * `Ok((imports, remaining_code))` - Parsed imports and code without imports
+/// * `Err(LumosError)` - Invalid import syntax
+///
+/// # Example
+///
+/// ```ignore
+/// let source = r#"
+/// import { UserId, Timestamp } from "./types.lumos";
+///
+/// struct Player {
+///     id: UserId,
+/// }
+/// "#;
+/// let (imports, remaining) = extract_imports(source)?;
+/// assert_eq!(imports.len(), 1);
+/// assert_eq!(imports[0].items, vec!["UserId", "Timestamp"]);
+/// ```
+fn extract_imports(input: &str) -> Result<(Vec<Import>, String)> {
+    let mut imports = Vec::new();
+
+    // Multi-line regex: match import { ... } from "..." across multiple lines
+    // Note: Using (?s) flag is not supported in regex crate, so we handle newlines with [\s\S]
+    let import_regex = Regex::new(
+        r#"import\s*\{([^}]+)\}\s*from\s+["']([^"']+)["']\s*;?"#,
+    )
+    .map_err(|e| {
+        LumosError::SchemaParse(format!("Failed to compile import regex: {}", e), None)
+    })?;
+
+    let mut remaining = input.to_string();
+
+    // Find and extract all imports (including multi-line)
+    for capture in import_regex.captures_iter(input) {
+        // Extract imported items (e.g., "UserId, Timestamp" or "UserId,\n    Timestamp")
+        let items_str = capture.get(1).unwrap().as_str();
+        let items: Vec<String> = items_str
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
+
+        if items.is_empty() {
+            return Err(LumosError::SchemaParse(
+                "Empty import list".to_string(),
+                None,
+            ));
+        }
+
+        // Extract path (e.g., "./types.lumos")
+        let path = capture.get(2).unwrap().as_str().to_string();
+
+        imports.push(Import {
+            items,
+            path,
+            span: None, // No span info for regex-parsed imports
+        });
+    }
+
+    // Remove all import statements from the input
+    remaining = import_regex.replace_all(&remaining, "").to_string();
+
+    Ok((imports, remaining))
+}
+
+/// Parse a type alias definition
+///
+/// Converts `type UserId = PublicKey;` into a TypeAlias AST node.
+///
+/// # Arguments
+///
+/// * `item` - syn ItemType node representing a type alias
+///
+/// # Returns
+///
+/// * `Ok(TypeAlias)` - Successfully parsed type alias
+/// * `Err(LumosError)` - Invalid type syntax
+fn parse_type_alias(item: syn::ItemType) -> Result<TypeAlias> {
+    let name = item.ident.to_string();
+    let span = Some(item.ident.span());
+
+    // Parse the target type
+    let (target, _optional) = parse_type(&item.ty)?;
+
+    Ok(TypeAlias {
+        name,
+        target,
+        span,
+    })
+}
 
 /// Parse a `.lumos` file into an Abstract Syntax Tree.
 ///
@@ -51,11 +153,13 @@ use syn::{Item, Meta, Type};
 ///
 /// # Returns
 ///
-/// * `Ok(LumosFile)` - Successfully parsed AST with all structs and enums
+/// * `Ok(LumosFile)` - Successfully parsed AST with all structs, enums, and type aliases
 /// * `Err(LumosError)` - Syntax error or no type definitions found
 ///
 /// # Supported Syntax
 ///
+/// - **Imports**: `import { Type1, Type2 } from "./path.lumos";`
+/// - **Type Aliases**: `type UserId = PublicKey;`
 /// - **Structs**: `struct Name { field: Type, ... }`
 /// - **Enums**: `enum Name { Variant, Variant(Type), Variant { field: Type } }`
 /// - **Attributes**: `#[solana]`, `#[account]`, `#[max(n)]`, `#[key]`
@@ -67,24 +171,22 @@ use syn::{Item, Meta, Type};
 /// use lumos_core::parser::parse_lumos_file;
 ///
 /// let source = r#"
+///     import { Timestamp } from "./common.lumos";
+///
+///     type UserId = PublicKey;
+///
 ///     #[solana]
 ///     #[account]
 ///     struct UserAccount {
-///         wallet: PublicKey,
+///         id: UserId,
+///         created_at: Timestamp,
 ///         balance: u64,
-///         items: [PublicKey],
-///     }
-///
-///     #[solana]
-///     enum GameState {
-///         Active,
-///         Paused,
-///         Finished,
 ///     }
 /// "#;
 ///
 /// let ast = parse_lumos_file(source)?;
-/// assert_eq!(ast.items.len(), 2); // 1 struct + 1 enum
+/// assert_eq!(ast.imports.len(), 1);
+/// assert_eq!(ast.items.len(), 2); // 1 type alias + 1 struct
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
 ///
@@ -92,17 +194,20 @@ use syn::{Item, Meta, Type};
 ///
 /// Returns [`LumosError::SchemaParse`] if:
 /// - Syntax is invalid (not valid Rust-style code)
-/// - No struct or enum definitions found
+/// - Invalid import syntax
 /// - Unsupported type syntax encountered
 pub fn parse_lumos_file(input: &str) -> Result<LumosFile> {
     let mut items = Vec::new();
 
-    // Parse the file as Rust code using syn
-    let file = syn::parse_file(input).map_err(|e| {
+    // Extract imports first (JavaScript-style imports are not valid Rust syntax)
+    let (imports, remaining_input) = extract_imports(input)?;
+
+    // Parse the remaining file as Rust code using syn
+    let file = syn::parse_file(&remaining_input).map_err(|e| {
         LumosError::SchemaParse(format!("Failed to parse .lumos file: {}", e), None)
     })?;
 
-    // Extract struct and enum definitions
+    // Extract struct, enum, and type alias definitions
     for item in file.items {
         match item {
             Item::Struct(item_struct) => {
@@ -113,20 +218,24 @@ pub fn parse_lumos_file(input: &str) -> Result<LumosFile> {
                 let enum_def = parse_enum(item_enum)?;
                 items.push(AstItem::Enum(enum_def));
             }
+            Item::Type(item_type) => {
+                let type_alias = parse_type_alias(item_type)?;
+                items.push(AstItem::TypeAlias(type_alias));
+            }
             _ => {
                 // Ignore other items (functions, impls, etc.)
             }
         }
     }
 
-    if items.is_empty() {
+    if items.is_empty() && imports.is_empty() {
         return Err(LumosError::SchemaParse(
-            "No type definitions found in .lumos file".to_string(),
+            "No type definitions or imports found in .lumos file".to_string(),
             None,
         ));
     }
 
-    Ok(LumosFile { items })
+    Ok(LumosFile { imports, items })
 }
 
 /// Parse a struct definition
@@ -277,7 +386,7 @@ fn parse_attributes(attrs: &[syn::Attribute]) -> Result<Vec<Attribute>> {
                 }
             }
 
-            // List attribute: #[max(100)]
+            // List attribute: #[max(100)] or #[derive(Debug, Clone)]
             Meta::List(meta_list) => {
                 let name = meta_list
                     .path
@@ -285,8 +394,13 @@ fn parse_attributes(attrs: &[syn::Attribute]) -> Result<Vec<Attribute>> {
                     .ok_or_else(|| LumosError::SchemaParse("Invalid attribute".to_string(), None))?
                     .to_string();
 
-                // Parse the value inside parentheses
-                let value = parse_attribute_value(&meta_list.tokens.to_string())?;
+                // Special handling for #[derive(...)] - contains comma-separated list of macros
+                let value = if name == "derive" {
+                    parse_derive_list(&meta_list.tokens.to_string())?
+                } else {
+                    // Parse the value inside parentheses for other list attributes
+                    parse_attribute_value(&meta_list.tokens.to_string())?
+                };
 
                 attributes.push(Attribute {
                     name,
@@ -361,6 +475,45 @@ fn parse_attribute_value(tokens: &str) -> Result<AttributeValue> {
     Ok(AttributeValue::String(tokens_trimmed.to_string()))
 }
 
+/// Parse derive list from token stream
+///
+/// Parses comma-separated derive macro names from `#[derive(Debug, Clone, PartialEq)]`.
+///
+/// # Arguments
+///
+/// * `tokens` - Token stream containing derive macro names (e.g., "Debug, Clone, PartialEq")
+///
+/// # Returns
+///
+/// * `Ok(AttributeValue::List)` - List of derive macro names
+/// * `Err(LumosError)` - Empty derive list or invalid syntax
+///
+/// # Example
+///
+/// ```ignore
+/// // Input: "Debug, Clone, PartialEq"
+/// // Output: AttributeValue::List(vec!["Debug", "Clone", "PartialEq"])
+/// ```
+fn parse_derive_list(tokens: &str) -> Result<AttributeValue> {
+    let tokens_trimmed = tokens.trim();
+
+    // Split by commas and trim whitespace
+    let derives: Vec<String> = tokens_trimmed
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+
+    if derives.is_empty() {
+        return Err(LumosError::SchemaParse(
+            "derive attribute must have at least one macro".to_string(),
+            None,
+        ));
+    }
+
+    Ok(AttributeValue::List(derives))
+}
+
 /// Parse a type specification
 fn parse_type(ty: &Type) -> Result<(TypeSpec, bool)> {
     match ty {
@@ -391,13 +544,26 @@ fn parse_type(ty: &Type) -> Result<(TypeSpec, bool)> {
             Ok((TypeSpec::Primitive(type_name), false))
         }
 
-        // Array type: [T]
+        // Fixed-size array type: [T; N]
         Type::Array(type_array) => {
             let (inner_type_spec, _) = parse_type(&type_array.elem)?;
-            Ok((TypeSpec::Array(Box::new(inner_type_spec)), false))
+
+            // Extract array size from length expression
+            let size = parse_array_size(&type_array.len)?;
+
+            // Validate size constraints
+            validate_array_size(size)?;
+
+            Ok((
+                TypeSpec::FixedArray {
+                    element: Box::new(inner_type_spec),
+                    size,
+                },
+                false,
+            ))
         }
 
-        // Slice type: [T] (also treated as array)
+        // Slice type: [T] (dynamic array/Vec)
         Type::Slice(type_slice) => {
             let (inner_type_spec, _) = parse_type(&type_slice.elem)?;
             Ok((TypeSpec::Array(Box::new(inner_type_spec)), false))
@@ -408,6 +574,85 @@ fn parse_type(ty: &Type) -> Result<(TypeSpec, bool)> {
             None,
         )),
     }
+}
+
+/// Parse array size from expression (must be literal integer)
+///
+/// # Arguments
+///
+/// * `expr` - Expression representing array size (e.g., `32` in `[u8; 32]`)
+///
+/// # Returns
+///
+/// * `Ok(usize)` - Successfully parsed array size
+/// * `Err(LumosError)` - Non-literal or invalid size expression
+///
+/// # Examples
+///
+/// ```ignore
+/// // Valid: [u8; 32]
+/// let size = parse_array_size(&lit_expr)?;
+/// assert_eq!(size, 32);
+/// ```
+fn parse_array_size(expr: &syn::Expr) -> Result<usize> {
+    match expr {
+        syn::Expr::Lit(expr_lit) => match &expr_lit.lit {
+            syn::Lit::Int(lit_int) => {
+                lit_int.base10_parse::<usize>().map_err(|e| {
+                    LumosError::SchemaParse(
+                        format!("Invalid array size (must be valid usize): {}", e),
+                        None,
+                    )
+                })
+            }
+            _ => Err(LumosError::SchemaParse(
+                "Array size must be an integer literal".to_string(),
+                None,
+            )),
+        },
+        _ => Err(LumosError::SchemaParse(
+            "Array size must be a literal integer (const generics not yet supported)".to_string(),
+            None,
+        )),
+    }
+}
+
+/// Validate array size constraints
+///
+/// Ensures array size is within reasonable bounds for Solana programs.
+///
+/// # Constraints
+///
+/// * Size must be > 0 (zero-sized arrays are invalid)
+/// * Size must be ≤ 1024 (practical limit for most use cases)
+///
+/// # Arguments
+///
+/// * `size` - Array size to validate
+///
+/// # Returns
+///
+/// * `Ok(())` - Size is valid
+/// * `Err(LumosError)` - Size is out of bounds
+fn validate_array_size(size: usize) -> Result<()> {
+    if size == 0 {
+        return Err(LumosError::SchemaParse(
+            "Array size must be greater than 0".to_string(),
+            None,
+        ));
+    }
+
+    if size > 1024 {
+        return Err(LumosError::SchemaParse(
+            format!(
+                "Array size {} exceeds maximum of 1024 elements (consider using Vec for dynamic arrays)",
+                size
+            ),
+            None,
+        ));
+    }
+
+    Ok(())
 }
 
 /// Extract and validate version attribute from a list of attributes
@@ -701,6 +946,167 @@ mod tests {
         match &file.items[0] {
             AstItem::Struct(struct_def) => {
                 assert_eq!(struct_def.version, Some("1.0.0+build.123".to_string()));
+            }
+            _ => panic!("Expected struct item"),
+        }
+    }
+
+    #[test]
+    fn test_parse_single_derive() {
+        let input = r#"
+            #[derive(Debug)]
+            struct Account {
+                balance: u64,
+            }
+        "#;
+
+        let result = parse_lumos_file(input);
+        assert!(result.is_ok());
+
+        let file = result.unwrap();
+        match &file.items[0] {
+            AstItem::Struct(struct_def) => {
+                let derive_attr = struct_def.get_attribute("derive");
+                assert!(derive_attr.is_some());
+
+                if let Some(AttributeValue::List(derives)) = &derive_attr.unwrap().value {
+                    assert_eq!(derives.len(), 1);
+                    assert_eq!(derives[0], "Debug");
+                } else {
+                    panic!("Expected List attribute value");
+                }
+            }
+            _ => panic!("Expected struct item"),
+        }
+    }
+
+    #[test]
+    fn test_parse_multiple_derives() {
+        let input = r#"
+            #[derive(Debug, Clone, PartialEq)]
+            struct Account {
+                balance: u64,
+            }
+        "#;
+
+        let result = parse_lumos_file(input);
+        assert!(result.is_ok());
+
+        let file = result.unwrap();
+        match &file.items[0] {
+            AstItem::Struct(struct_def) => {
+                let derive_attr = struct_def.get_attribute("derive");
+                assert!(derive_attr.is_some());
+
+                if let Some(AttributeValue::List(derives)) = &derive_attr.unwrap().value {
+                    assert_eq!(derives.len(), 3);
+                    assert_eq!(derives[0], "Debug");
+                    assert_eq!(derives[1], "Clone");
+                    assert_eq!(derives[2], "PartialEq");
+                } else {
+                    panic!("Expected List attribute value");
+                }
+            }
+            _ => panic!("Expected struct item"),
+        }
+    }
+
+    #[test]
+    fn test_parse_derive_with_whitespace() {
+        let input = r#"
+            #[derive(  Debug  ,  Clone  ,  PartialEq  )]
+            struct Account {
+                balance: u64,
+            }
+        "#;
+
+        let result = parse_lumos_file(input);
+        assert!(result.is_ok());
+
+        let file = result.unwrap();
+        match &file.items[0] {
+            AstItem::Struct(struct_def) => {
+                let derive_attr = struct_def.get_attribute("derive");
+                assert!(derive_attr.is_some());
+
+                if let Some(AttributeValue::List(derives)) = &derive_attr.unwrap().value {
+                    assert_eq!(derives.len(), 3);
+                    // Whitespace should be trimmed
+                    assert_eq!(derives[0], "Debug");
+                    assert_eq!(derives[1], "Clone");
+                    assert_eq!(derives[2], "PartialEq");
+                } else {
+                    panic!("Expected List attribute value");
+                }
+            }
+            _ => panic!("Expected struct item"),
+        }
+    }
+
+    #[test]
+    fn test_parse_derive_on_enum() {
+        let input = r#"
+            #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+            enum GameState {
+                Active,
+                Paused,
+            }
+        "#;
+
+        let result = parse_lumos_file(input);
+        assert!(result.is_ok());
+
+        let file = result.unwrap();
+        match &file.items[0] {
+            AstItem::Enum(enum_def) => {
+                let derive_attr = enum_def.get_attribute("derive");
+                assert!(derive_attr.is_some());
+
+                if let Some(AttributeValue::List(derives)) = &derive_attr.unwrap().value {
+                    assert_eq!(derives.len(), 5);
+                    assert_eq!(derives[0], "Debug");
+                    assert_eq!(derives[1], "Clone");
+                    assert_eq!(derives[2], "PartialEq");
+                    assert_eq!(derives[3], "Eq");
+                    assert_eq!(derives[4], "Hash");
+                } else {
+                    panic!("Expected List attribute value");
+                }
+            }
+            _ => panic!("Expected enum item"),
+        }
+    }
+
+    #[test]
+    fn test_parse_derive_with_solana_attributes() {
+        let input = r#"
+            #[solana]
+            #[account]
+            #[derive(PartialEq, Eq)]
+            struct UserAccount {
+                wallet: PublicKey,
+                balance: u64,
+            }
+        "#;
+
+        let result = parse_lumos_file(input);
+        assert!(result.is_ok());
+
+        let file = result.unwrap();
+        match &file.items[0] {
+            AstItem::Struct(struct_def) => {
+                assert!(struct_def.has_attribute("solana"));
+                assert!(struct_def.has_attribute("account"));
+                assert!(struct_def.has_attribute("derive"));
+
+                let derive_attr = struct_def.get_attribute("derive");
+                if let Some(AttributeValue::List(derives)) = &derive_attr.unwrap().value {
+                    assert_eq!(derives.len(), 2);
+                    assert_eq!(derives[0], "PartialEq");
+                    assert_eq!(derives[1], "Eq");
+                } else {
+                    panic!("Expected List attribute value");
+                }
             }
             _ => panic!("Expected struct item"),
         }

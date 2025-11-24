@@ -29,6 +29,7 @@ fn create_struct(
             solana: true,
             attributes: vec!["account".to_string()],
             version: version.map(|s| s.to_string()),
+            custom_derives: vec![],
         },
     })
 }

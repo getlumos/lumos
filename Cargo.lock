@@ -909,6 +909,7 @@ dependencies = [
  "criterion",
  "proc-macro2",
  "quote",
+ "regex",
  "semver",
  "serde",
  "serde_json",

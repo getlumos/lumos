@@ -11,6 +11,7 @@ use std::path::{Path, PathBuf};
 
 use lumos_core::audit_generator::AuditGenerator;
 use lumos_core::corpus_generator::CorpusGenerator;
+use lumos_core::file_resolver::FileResolver;
 use lumos_core::fuzz_generator::FuzzGenerator;
 use lumos_core::generators::{rust, typescript};
 use lumos_core::migration::{generate_rust_migration, generate_typescript_migration, SchemaDiff};
@@ -359,24 +360,26 @@ fn run_generate(
         );
     }
 
-    // Read schema file
+    // Resolve imports and load all files
     if !dry_run {
         println!("{:>12} {}", "Reading".cyan().bold(), schema_path.display());
+        println!("{:>12} imports and type aliases", "Resolving".cyan().bold());
     }
 
-    let content = fs::read_to_string(schema_path)
-        .with_context(|| format!("Failed to read schema file: {}", schema_path.display()))?;
+    let mut resolver = FileResolver::new();
+    let ir = resolver
+        .resolve_imports(schema_path)
+        .with_context(|| format!("Failed to resolve imports from: {}", schema_path.display()))?;
 
-    // Parse schema
-    if !dry_run {
-        println!("{:>12} schema", "Parsing".cyan().bold());
+    // Report loaded files if multiple
+    let loaded_files = resolver.loaded_files();
+    if loaded_files.len() > 1 && !dry_run {
+        println!(
+            "{:>12} {} files (including imports)",
+            "Loaded".green().bold(),
+            loaded_files.len()
+        );
     }
-
-    let ast = parse_lumos_file(&content)
-        .with_context(|| format!("Failed to parse schema: {}", schema_path.display()))?;
-
-    // Transform to IR
-    let ir = transform_to_ir(ast).with_context(|| "Failed to transform AST to IR")?;
 
     if ir.is_empty() {
         eprintln!(
@@ -1855,11 +1858,26 @@ fn compare_types(
         (TypeDefinition::Enum(e1), TypeDefinition::Enum(e2)) => {
             compare_enums(e1, e2, &mut changes);
         }
+        (TypeDefinition::TypeAlias(_), TypeDefinition::TypeAlias(_)) => {
+            changes.push("Type alias target may have changed".to_string());
+        }
         (TypeDefinition::Struct(_), TypeDefinition::Enum(_)) => {
             changes.push("Type changed from struct to enum".to_string());
         }
+        (TypeDefinition::Struct(_), TypeDefinition::TypeAlias(_)) => {
+            changes.push("Type changed from struct to type alias".to_string());
+        }
         (TypeDefinition::Enum(_), TypeDefinition::Struct(_)) => {
             changes.push("Type changed from enum to struct".to_string());
+        }
+        (TypeDefinition::Enum(_), TypeDefinition::TypeAlias(_)) => {
+            changes.push("Type changed from enum to type alias".to_string());
+        }
+        (TypeDefinition::TypeAlias(_), TypeDefinition::Struct(_)) => {
+            changes.push("Type changed from type alias to struct".to_string());
+        }
+        (TypeDefinition::TypeAlias(_), TypeDefinition::Enum(_)) => {
+            changes.push("Type changed from type alias to enum".to_string());
         }
     }
 
@@ -2018,6 +2036,9 @@ fn format_type(type_info: &lumos_core::ir::TypeInfo) -> String {
         TypeInfo::Primitive(p) => p.clone(),
         TypeInfo::UserDefined(u) => u.clone(),
         TypeInfo::Array(inner) => format!("Vec<{}>", format_type(inner)),
+        TypeInfo::FixedArray { element, size } => {
+            format!("[{}; {}]", format_type(element), size)
+        }
         TypeInfo::Option(inner) => format!("Option<{}>", format_type(inner)),
     }
 }

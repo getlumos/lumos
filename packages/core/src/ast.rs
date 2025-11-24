@@ -12,11 +12,42 @@ use serde::{Deserialize, Serialize};
 /// A complete LUMOS file (can contain multiple items)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LumosFile {
-    /// All items (structs and enums) in this file
+    /// Import statements at the top of the file
+    pub imports: Vec<Import>,
+
+    /// All items (structs, enums, type aliases) in this file
     pub items: Vec<Item>,
 }
 
-/// An item in a LUMOS file (struct or enum)
+/// An import statement
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Import {
+    /// Items being imported (e.g., ["UserId", "Timestamp"])
+    pub items: Vec<String>,
+
+    /// Path to the file being imported (e.g., "./types.lumos")
+    pub path: String,
+
+    /// Span information for error reporting
+    #[serde(skip)]
+    pub span: Option<proc_macro2::Span>,
+}
+
+/// A type alias definition
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TypeAlias {
+    /// Alias name (e.g., "UserId")
+    pub name: String,
+
+    /// Target type (e.g., PublicKey)
+    pub target: TypeSpec,
+
+    /// Span information for error reporting
+    #[serde(skip)]
+    pub span: Option<proc_macro2::Span>,
+}
+
+/// An item in a LUMOS file (struct, enum, or type alias)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Item {
     /// Struct definition
@@ -24,6 +55,9 @@ pub enum Item {
 
     /// Enum definition
     Enum(EnumDef),
+
+    /// Type alias definition
+    TypeAlias(TypeAlias),
 }
 
 /// A struct definition
@@ -119,8 +153,11 @@ pub enum TypeSpec {
     /// Primitive type (e.g., u64, string, bool)
     Primitive(String),
 
-    /// Array type (e.g., `Vec<PublicKey>` in Rust)
+    /// Dynamic array type (e.g., `Vec<PublicKey>` in Rust, `[T]` in LUMOS)
     Array(Box<TypeSpec>),
+
+    /// Fixed-size array type (e.g., `[u8; 32]` in Rust and LUMOS)
+    FixedArray { element: Box<TypeSpec>, size: usize },
 
     /// User-defined type (e.g., Address, CustomStruct)
     UserDefined(String),
@@ -151,6 +188,9 @@ pub enum AttributeValue {
 
     /// Boolean value
     Bool(bool),
+
+    /// List of values (e.g., derive macros: `#[derive(Debug, Clone)]`)
+    List(Vec<String>),
 }
 
 impl StructDef {
@@ -226,15 +266,16 @@ impl FieldDef {
 }
 
 impl TypeSpec {
-    /// Check if this is an array type
+    /// Check if this is an array type (dynamic or fixed)
     pub fn is_array(&self) -> bool {
-        matches!(self, TypeSpec::Array(_))
+        matches!(self, TypeSpec::Array(_) | TypeSpec::FixedArray { .. })
     }
 
     /// Get the inner type if this is an array
     pub fn array_inner(&self) -> Option<&TypeSpec> {
         match self {
             TypeSpec::Array(inner) => Some(inner),
+            TypeSpec::FixedArray { element, .. } => Some(element),
             _ => None,
         }
     }
@@ -244,6 +285,9 @@ impl TypeSpec {
         match self {
             TypeSpec::Primitive(name) => name.clone(),
             TypeSpec::Array(inner) => format!("[{}]", inner.as_string()),
+            TypeSpec::FixedArray { element, size } => {
+                format!("[{}; {}]", element.as_string(), size)
+            }
             TypeSpec::UserDefined(name) => name.clone(),
         }
     }
@@ -252,6 +296,30 @@ impl TypeSpec {
 impl std::fmt::Display for TypeSpec {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.as_string())
+    }
+}
+
+impl TypeAlias {
+    /// Get the alias name
+    pub fn alias_name(&self) -> &str {
+        &self.name
+    }
+
+    /// Get the target type
+    pub fn target_type(&self) -> &TypeSpec {
+        &self.target
+    }
+}
+
+impl Import {
+    /// Get the imported items
+    pub fn imported_items(&self) -> &[String] {
+        &self.items
+    }
+
+    /// Get the import path
+    pub fn import_path(&self) -> &str {
+        &self.path
     }
 }
 

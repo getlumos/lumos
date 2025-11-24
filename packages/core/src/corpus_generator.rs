@@ -50,6 +50,9 @@ impl<'a> CorpusGenerator<'a> {
                 TypeDefinition::Enum(e) => {
                     files.extend(self.generate_enum_corpus(e));
                 }
+                TypeDefinition::TypeAlias(_) => {
+                    // Type aliases don't generate corpus files (they're resolved)
+                }
             }
         }
 
@@ -338,6 +341,14 @@ impl<'a> CorpusGenerator<'a> {
                 // Empty vec (length = 0)
                 vec![0, 0, 0, 0]
             }
+            TypeInfo::FixedArray { element, size } => {
+                // Fixed array: serialize size * element minimal values (no length prefix!)
+                let mut data = Vec::new();
+                for _ in 0..*size {
+                    data.extend(self.serialize_minimal_value(element, false));
+                }
+                data
+            }
             TypeInfo::Option(_) => {
                 // None
                 vec![0]
@@ -359,6 +370,14 @@ impl<'a> CorpusGenerator<'a> {
                 let mut data = vec![10, 0, 0, 0]; // length = 10
                 for _ in 0..10 {
                     data.extend(self.serialize_minimal_value(inner, false));
+                }
+                data
+            }
+            TypeInfo::FixedArray { element, size } => {
+                // Fixed array: serialize size * element maximal values (no length prefix!)
+                let mut data = Vec::new();
+                for _ in 0..*size {
+                    data.extend(self.serialize_maximal_value(element, false));
                 }
                 data
             }
@@ -496,6 +515,7 @@ mod tests {
                 solana: true,
                 attributes: vec!["account".to_string()],
                 version: None,
+                custom_derives: vec![],
             },
         })];
 

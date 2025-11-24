@@ -51,6 +51,9 @@ impl<'a> FuzzGenerator<'a> {
                 TypeDefinition::Enum(e) => {
                     targets.push(self.generate_enum_target(e));
                 }
+                TypeDefinition::TypeAlias(_) => {
+                    // Type aliases don't generate fuzz targets (they're resolved)
+                }
             }
         }
 
@@ -302,9 +305,10 @@ impl<'a> FuzzGenerator<'a> {
     pub fn get_type_names(&self) -> Vec<String> {
         self.type_defs
             .iter()
-            .map(|type_def| match type_def {
-                TypeDefinition::Struct(s) => s.name.clone(),
-                TypeDefinition::Enum(e) => e.name.clone(),
+            .filter_map(|type_def| match type_def {
+                TypeDefinition::Struct(s) => Some(s.name.clone()),
+                TypeDefinition::Enum(e) => Some(e.name.clone()),
+                TypeDefinition::TypeAlias(_) => None, // Type aliases are resolved, not fuzzed
             })
             .collect()
     }
@@ -314,6 +318,7 @@ impl<'a> FuzzGenerator<'a> {
         self.type_defs.iter().any(|type_def| match type_def {
             TypeDefinition::Struct(s) => s.name == type_name,
             TypeDefinition::Enum(e) => e.name == type_name,
+            TypeDefinition::TypeAlias(a) => a.name == type_name,
         })
     }
 }
@@ -364,6 +369,7 @@ mod tests {
                 solana: true,
                 attributes: vec!["account".to_string()],
                 version: None,
+                custom_derives: vec![],
             },
         })];
 

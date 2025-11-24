@@ -65,13 +65,156 @@
 
 use crate::ast::{
     Attribute, AttributeValue, EnumDef as AstEnum, EnumVariant as AstEnumVariant,
-    FieldDef as AstField, Item as AstItem, LumosFile, StructDef as AstStruct, TypeSpec as AstType,
+    FieldDef as AstField, Item as AstItem, LumosFile, StructDef as AstStruct,
+    TypeAlias as AstTypeAlias, TypeSpec as AstType,
 };
-use crate::error::Result;
+use crate::error::{LumosError, Result};
 use crate::ir::{
     EnumDefinition, EnumVariantDefinition, FieldDefinition, Metadata, StructDefinition,
-    TypeDefinition, TypeInfo,
+    TypeAliasDefinition, TypeDefinition, TypeInfo,
 };
+use std::collections::{HashMap, HashSet};
+
+/// Type alias resolver
+///
+/// Resolves type aliases recursively and detects circular references.
+/// Maintains a map of alias names to their resolved target types.
+#[derive(Debug, Clone)]
+pub struct TypeAliasResolver {
+    /// Map of alias names to their AST type specs (unresolved)
+    aliases: HashMap<String, AstType>,
+
+    /// Map of alias names to their resolved TypeInfo (after resolution)
+    resolved: HashMap<String, TypeInfo>,
+}
+
+impl TypeAliasResolver {
+    /// Create a new empty resolver
+    pub fn new() -> Self {
+        Self {
+            aliases: HashMap::new(),
+            resolved: HashMap::new(),
+        }
+    }
+
+    /// Add a type alias to the resolver
+    pub fn add_alias(&mut self, name: String, target: AstType) -> Result<()> {
+        if self.aliases.contains_key(&name) {
+            return Err(LumosError::Transform(
+                format!("Duplicate type alias definition: {}", name),
+                None,
+            ));
+        }
+        self.aliases.insert(name, target);
+        Ok(())
+    }
+
+    /// Resolve all aliases and detect circular references
+    pub fn resolve_all_aliases(&mut self) -> Result<()> {
+        for alias_name in self.aliases.keys().cloned().collect::<Vec<_>>() {
+            let mut visited = HashSet::new();
+            self.resolve_alias(&alias_name, &mut visited)?;
+        }
+        Ok(())
+    }
+
+    /// Resolve a single alias recursively
+    fn resolve_alias(&mut self, name: &str, visited: &mut HashSet<String>) -> Result<TypeInfo> {
+        // Check if already resolved
+        if let Some(resolved) = self.resolved.get(name) {
+            return Ok(resolved.clone());
+        }
+
+        // Check for circular reference
+        if visited.contains(name) {
+            return Err(LumosError::Transform(
+                format!("Circular type alias detected: {}", name),
+                None,
+            ));
+        }
+
+        visited.insert(name.to_string());
+
+        // Get the target type
+        let target = self
+            .aliases
+            .get(name)
+            .ok_or_else(|| {
+                LumosError::Transform(format!("Unknown type alias: {}", name), None)
+            })?
+            .clone();
+
+        // Transform the target, resolving any nested aliases
+        let resolved = self.transform_type_with_resolver(target, false, visited)?;
+
+        // Cache the resolved type
+        self.resolved.insert(name.to_string(), resolved.clone());
+
+        visited.remove(name);
+
+        Ok(resolved)
+    }
+
+    /// Transform a type spec, resolving any aliases it contains
+    fn transform_type_with_resolver(
+        &mut self,
+        type_spec: AstType,
+        optional: bool,
+        visited: &mut HashSet<String>,
+    ) -> Result<TypeInfo> {
+        let base_type = match type_spec {
+            AstType::Primitive(name) => {
+                // Check if it's a known primitive type
+                if is_valid_primitive_type(&name) {
+                    // Map TypeScript-friendly aliases to Rust types
+                    let rust_type = map_type_alias(&name);
+                    TypeInfo::Primitive(rust_type)
+                } else if self.aliases.contains_key(&name) {
+                    // It's a type alias, resolve it
+                    self.resolve_alias(&name, visited)?
+                } else {
+                    // Treat as user-defined type (enum or struct)
+                    TypeInfo::UserDefined(name)
+                }
+            }
+
+            AstType::Array(inner) => {
+                let inner_type = self.transform_type_with_resolver(*inner, false, visited)?;
+                TypeInfo::Array(Box::new(inner_type))
+            }
+
+            AstType::FixedArray { element, size } => {
+                let element_type = self.transform_type_with_resolver(*element, false, visited)?;
+                TypeInfo::FixedArray {
+                    element: Box::new(element_type),
+                    size,
+                }
+            }
+
+            AstType::UserDefined(name) => {
+                // Check if it's an alias
+                if self.aliases.contains_key(&name) {
+                    self.resolve_alias(&name, visited)?
+                } else {
+                    // User-defined type (struct/enum)
+                    TypeInfo::UserDefined(name)
+                }
+            }
+        };
+
+        // Wrap in Option if optional
+        if optional {
+            Ok(TypeInfo::Option(Box::new(base_type)))
+        } else {
+            Ok(base_type)
+        }
+    }
+
+    /// Get resolved type for an alias (after resolve_all_aliases)
+    fn get_resolved(&self, name: &str) -> Option<&TypeInfo> {
+        self.resolved.get(name)
+    }
+}
 
 /// Transform a parsed LUMOS file (AST) into Intermediate Representation (IR).
 ///
@@ -124,15 +267,32 @@ use crate::ir::{
 pub fn transform_to_ir(file: LumosFile) -> Result<Vec<TypeDefinition>> {
     let mut type_defs = Vec::new();
 
+    // First pass: Build type alias resolver
+    let mut alias_resolver = TypeAliasResolver::new();
+
+    for item in &file.items {
+        if let AstItem::TypeAlias(alias_def) = item {
+            alias_resolver.add_alias(alias_def.name.clone(), alias_def.target.clone())?;
+        }
+    }
+
+    // Resolve all aliases recursively and check for cycles
+    alias_resolver.resolve_all_aliases()?;
+
+    // Second pass: Transform all items (structs, enums, type aliases)
     for item in file.items {
         match item {
             AstItem::Struct(struct_def) => {
-                let type_def = transform_struct(struct_def)?;
+                let type_def = transform_struct(struct_def, &alias_resolver)?;
                 type_defs.push(TypeDefinition::Struct(type_def));
             }
             AstItem::Enum(enum_def) => {
-                let type_def = transform_enum(enum_def)?;
+                let type_def = transform_enum(enum_def, &alias_resolver)?;
                 type_defs.push(TypeDefinition::Enum(type_def));
+            }
+            AstItem::TypeAlias(alias_def) => {
+                let type_def = transform_type_alias(alias_def, &alias_resolver)?;
+                type_defs.push(TypeDefinition::TypeAlias(type_def));
             }
         }
     }
@@ -146,8 +306,110 @@ pub fn transform_to_ir(file: LumosFile) -> Result<Vec<TypeDefinition>> {
     Ok(type_defs)
 }
 
+/// Transform AST to IR with a pre-populated type alias resolver
+///
+/// This is useful when resolving imports across multiple files,
+/// where type aliases from all files need to be available.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use lumos_core::{transform::TypeAliasResolver, parser};
+///
+/// let mut resolver = TypeAliasResolver::new();
+///
+/// // Load type aliases from all files
+/// for file in &all_files {
+///     let ast = parser::parse_lumos_file(file)?;
+///     for item in &ast.items {
+///         if let Item::TypeAlias(alias) = item {
+///             resolver.add_alias(alias.name.clone(), alias.target.clone())?;
+///         }
+///     }
+/// }
+///
+/// // Resolve all aliases once
+/// resolver.resolve_all_aliases()?;
+///
+/// // Transform all files with shared resolver
+/// for file in all_files {
+///     let ir = transform_to_ir_with_resolver(file, &resolver)?;
+/// }
+/// ```
+pub fn transform_to_ir_with_resolver(
+    file: LumosFile,
+    resolver: &TypeAliasResolver,
+) -> Result<Vec<TypeDefinition>> {
+    transform_to_ir_with_resolver_impl(file, resolver, true)
+}
+
+/// Transform with optional validation skip (for multi-file scenarios)
+pub fn transform_to_ir_with_resolver_no_validation(
+    file: LumosFile,
+    resolver: &TypeAliasResolver,
+) -> Result<Vec<TypeDefinition>> {
+    transform_to_ir_with_resolver_impl(file, resolver, false)
+}
+
+fn transform_to_ir_with_resolver_impl(
+    file: LumosFile,
+    resolver: &TypeAliasResolver,
+    validate: bool,
+) -> Result<Vec<TypeDefinition>> {
+    let mut type_defs = Vec::new();
+
+    // Transform all items using the provided resolver
+    for item in file.items {
+        match item {
+            AstItem::Struct(struct_def) => {
+                let type_def = transform_struct(struct_def, resolver)?;
+                type_defs.push(TypeDefinition::Struct(type_def));
+            }
+            AstItem::Enum(enum_def) => {
+                let type_def = transform_enum(enum_def, resolver)?;
+                type_defs.push(TypeDefinition::Enum(type_def));
+            }
+            AstItem::TypeAlias(alias_def) => {
+                let type_def = transform_type_alias(alias_def, resolver)?;
+                type_defs.push(TypeDefinition::TypeAlias(type_def));
+            }
+        }
+    }
+
+    // Validate user-defined type references (skip for multi-file scenarios)
+    if validate {
+        validate_user_defined_types(&type_defs)?;
+    }
+
+    // Emit deprecation warnings
+    emit_deprecation_warnings(&type_defs);
+
+    Ok(type_defs)
+}
+
+/// Transform a type alias definition
+fn transform_type_alias(
+    alias_def: AstTypeAlias,
+    resolver: &TypeAliasResolver,
+) -> Result<TypeAliasDefinition> {
+    let name = alias_def.name;
+
+    // Get the resolved target type from the resolver
+    let target = resolver
+        .get_resolved(&name)
+        .ok_or_else(|| {
+            LumosError::Transform(
+                format!("Type alias '{}' was not resolved", name),
+                None,
+            )
+        })?
+        .clone();
+
+    Ok(TypeAliasDefinition { name, target })
+}
+
 /// Transform a single struct definition
-fn transform_struct(struct_def: AstStruct) -> Result<StructDefinition> {
+fn transform_struct(struct_def: AstStruct, resolver: &TypeAliasResolver) -> Result<StructDefinition> {
     // Extract metadata from attributes BEFORE consuming struct
     let metadata = extract_struct_metadata(&struct_def);
 
@@ -157,7 +419,7 @@ fn transform_struct(struct_def: AstStruct) -> Result<StructDefinition> {
     let fields = struct_def
         .fields
         .into_iter()
-        .map(transform_field)
+        .map(|f| transform_field(f, resolver))
         .collect::<Result<Vec<_>>>()?;
 
     Ok(StructDefinition {
@@ -168,7 +430,7 @@ fn transform_struct(struct_def: AstStruct) -> Result<StructDefinition> {
 }
 
 /// Transform a single enum definition
-fn transform_enum(enum_def: AstEnum) -> Result<EnumDefinition> {
+fn transform_enum(enum_def: AstEnum, resolver: &TypeAliasResolver) -> Result<EnumDefinition> {
     // Extract metadata from attributes BEFORE consuming enum
     let metadata = extract_enum_metadata(&enum_def);
 
@@ -178,7 +440,7 @@ fn transform_enum(enum_def: AstEnum) -> Result<EnumDefinition> {
     let variants = enum_def
         .variants
         .into_iter()
-        .map(transform_enum_variant)
+        .map(|v| transform_enum_variant(v, resolver))
         .collect::<Result<Vec<_>>>()?;
 
     Ok(EnumDefinition {
@@ -189,14 +451,14 @@ fn transform_enum(enum_def: AstEnum) -> Result<EnumDefinition> {
 }
 
 /// Transform an enum variant
-fn transform_enum_variant(variant: AstEnumVariant) -> Result<EnumVariantDefinition> {
+fn transform_enum_variant(variant: AstEnumVariant, resolver: &TypeAliasResolver) -> Result<EnumVariantDefinition> {
     match variant {
         AstEnumVariant::Unit { name, .. } => Ok(EnumVariantDefinition::Unit { name }),
 
         AstEnumVariant::Tuple { name, types, .. } => {
             let transformed_types = types
                 .into_iter()
-                .map(|t| transform_type(t, false))
+                .map(|t| transform_type(t, false, resolver))
                 .collect::<Result<Vec<_>>>()?;
 
             Ok(EnumVariantDefinition::Tuple {
@@ -208,7 +470,7 @@ fn transform_enum_variant(variant: AstEnumVariant) -> Result<EnumVariantDefiniti
         AstEnumVariant::Struct { name, fields, .. } => {
             let transformed_fields = fields
                 .into_iter()
-                .map(transform_field)
+                .map(|f| transform_field(f, resolver))
                 .collect::<Result<Vec<_>>>()?;
 
             Ok(EnumVariantDefinition::Struct {
@@ -220,15 +482,15 @@ fn transform_enum_variant(variant: AstEnumVariant) -> Result<EnumVariantDefiniti
 }
 
 /// Transform a field definition
-fn transform_field(field: AstField) -> Result<FieldDefinition> {
+fn transform_field(field: AstField, resolver: &TypeAliasResolver) -> Result<FieldDefinition> {
     let name = field.name;
     let optional = field.optional;
 
     // Extract deprecation info from attributes
     let deprecated = extract_deprecation(&field.attributes);
 
-    // Transform type
-    let type_info = transform_type(field.type_spec, optional)?;
+    // Transform type using the alias resolver
+    let type_info = transform_type(field.type_spec, optional, resolver)?;
 
     Ok(FieldDefinition {
         name,
@@ -238,8 +500,8 @@ fn transform_field(field: AstField) -> Result<FieldDefinition> {
     })
 }
 
-/// Transform type specification
-fn transform_type(type_spec: AstType, optional: bool) -> Result<TypeInfo> {
+/// Transform type specification with alias resolution
+fn transform_type(type_spec: AstType, optional: bool, resolver: &TypeAliasResolver) -> Result<TypeInfo> {
     let base_type = match type_spec {
         AstType::Primitive(name) => {
             // Check if it's a known primitive type
@@ -247,6 +509,9 @@ fn transform_type(type_spec: AstType, optional: bool) -> Result<TypeInfo> {
                 // Map TypeScript-friendly aliases to Rust types
                 let rust_type = map_type_alias(&name);
                 TypeInfo::Primitive(rust_type)
+            } else if let Some(resolved) = resolver.get_resolved(&name) {
+                // It's a type alias, use the resolved type
+                resolved.clone()
             } else {
                 // Treat as user-defined type (enum or struct defined in schema)
                 // Validation of whether the type actually exists happens in a later phase
@@ -255,14 +520,27 @@ fn transform_type(type_spec: AstType, optional: bool) -> Result<TypeInfo> {
         }
 
         AstType::Array(inner) => {
-            let inner_type = transform_type(*inner, false)?;
+            let inner_type = transform_type(*inner, false, resolver)?;
             TypeInfo::Array(Box::new(inner_type))
         }
 
+        AstType::FixedArray { element, size } => {
+            let element_type = transform_type(*element, false, resolver)?;
+            TypeInfo::FixedArray {
+                element: Box::new(element_type),
+                size,
+            }
+        }
+
         AstType::UserDefined(name) => {
-            // User-defined types are validated after full transformation
-            // See validate_user_defined_types() called in transform_to_ir()
-            TypeInfo::UserDefined(name)
+            // Check if it's a type alias first
+            if let Some(resolved) = resolver.get_resolved(&name) {
+                resolved.clone()
+            } else {
+                // User-defined type (struct/enum)
+                // Validated after full transformation via validate_user_defined_types()
+                TypeInfo::UserDefined(name)
+            }
         }
     };
 
@@ -321,6 +599,7 @@ fn extract_struct_metadata(struct_def: &AstStruct) -> Metadata {
             .map(|attr| attr.name.clone())
             .collect(),
         version: struct_def.version.clone(),
+        custom_derives: extract_custom_derives(&struct_def.attributes),
     }
 }
 
@@ -334,6 +613,7 @@ fn extract_enum_metadata(enum_def: &AstEnum) -> Metadata {
             .map(|attr| attr.name.clone())
             .collect(),
         version: enum_def.version.clone(),
+        custom_derives: extract_custom_derives(&enum_def.attributes),
     }
 }
 
@@ -357,6 +637,40 @@ fn extract_deprecation(attributes: &[Attribute]) -> Option<String> {
                 "This field is deprecated".to_string()
             }
         })
+}
+
+/// Extract custom derive macros from attributes
+///
+/// Returns a vector of derive macro names from `#[derive(...)]` attribute,
+/// or an empty vector if no derive attribute is present.
+///
+/// # Arguments
+///
+/// * `attributes` - List of attributes to search
+///
+/// # Returns
+///
+/// Vector of derive macro names (e.g., `vec!["PartialEq", "Eq", "Hash"]`)
+///
+/// # Example
+///
+/// ```ignore
+/// // Attribute: #[derive(PartialEq, Eq, Hash)]
+/// // Returns: vec!["PartialEq", "Eq", "Hash"]
+/// ```
+fn extract_custom_derives(attributes: &[Attribute]) -> Vec<String> {
+    attributes
+        .iter()
+        .find(|attr| attr.name == "derive")
+        .and_then(|attr| {
+            // Extract list of derive macros if present
+            if let Some(AttributeValue::List(derives)) = &attr.value {
+                Some(derives.clone())
+            } else {
+                None
+            }
+        })
+        .unwrap_or_default()
 }
 
 /// Emit deprecation warnings for all deprecated fields in the schema
@@ -401,6 +715,9 @@ fn emit_deprecation_warnings(type_defs: &[TypeDefinition]) {
                     }
                 }
             }
+            TypeDefinition::TypeAlias(_) => {
+                // Type aliases don't have fields that can be deprecated
+            }
         }
     }
 }
@@ -427,7 +744,7 @@ fn emit_deprecation_warnings(type_defs: &[TypeDefinition]) {
 ///     inventory: UndefinedType  // Error: UndefinedType not found
 /// }
 /// ```
-fn validate_user_defined_types(type_defs: &[TypeDefinition]) -> Result<()> {
+pub fn validate_user_defined_types(type_defs: &[TypeDefinition]) -> Result<()> {
     use std::collections::HashSet;
 
     // Collect all defined type names
@@ -470,6 +787,10 @@ fn validate_user_defined_types(type_defs: &[TypeDefinition]) -> Result<()> {
                         }
                     }
                 }
+            }
+            TypeDefinition::TypeAlias(a) => {
+                // Type aliases are already resolved - validate their target type
+                validate_type_info(&a.target, &defined_types, &a.name, "")?;
             }
         }
     }
@@ -519,6 +840,10 @@ fn validate_type_info(
         TypeInfo::Array(inner) => {
             // Recursively validate array element type
             validate_type_info(inner, defined_types, parent_context, field_name)
+        }
+        TypeInfo::FixedArray { element, .. } => {
+            // Recursively validate fixed array element type
+            validate_type_info(element, defined_types, parent_context, field_name)
         }
         TypeInfo::Option(inner) => {
             // Recursively validate optional type
@@ -1014,6 +1339,98 @@ mod tests {
             }
         } else {
             panic!("Expected enum definition");
+        }
+    }
+
+    #[test]
+    fn test_custom_derives_on_struct() {
+        let input = r#"
+            #[derive(PartialEq, Eq, Hash)]
+            struct Account {
+                balance: u64,
+            }
+        "#;
+
+        let ast = parse_lumos_file(input).unwrap();
+        let ir = transform_to_ir(ast).unwrap();
+
+        // Check that custom derives are extracted
+        if let TypeDefinition::Struct(s) = &ir[0] {
+            assert_eq!(s.metadata.custom_derives.len(), 3);
+            assert_eq!(s.metadata.custom_derives[0], "PartialEq");
+            assert_eq!(s.metadata.custom_derives[1], "Eq");
+            assert_eq!(s.metadata.custom_derives[2], "Hash");
+        } else {
+            panic!("Expected struct definition");
+        }
+    }
+
+    #[test]
+    fn test_custom_derives_on_enum() {
+        let input = r#"
+            #[derive(PartialEq, Eq)]
+            enum GameState {
+                Active,
+                Paused,
+            }
+        "#;
+
+        let ast = parse_lumos_file(input).unwrap();
+        let ir = transform_to_ir(ast).unwrap();
+
+        // Check that custom derives are extracted
+        if let TypeDefinition::Enum(e) = &ir[0] {
+            assert_eq!(e.metadata.custom_derives.len(), 2);
+            assert_eq!(e.metadata.custom_derives[0], "PartialEq");
+            assert_eq!(e.metadata.custom_derives[1], "Eq");
+        } else {
+            panic!("Expected enum definition");
+        }
+    }
+
+    #[test]
+    fn test_custom_derives_with_solana_attrs() {
+        let input = r#"
+            #[solana]
+            #[derive(PartialEq, Eq, Hash)]
+            struct UserAccount {
+                wallet: PublicKey,
+                balance: u64,
+            }
+        "#;
+
+        let ast = parse_lumos_file(input).unwrap();
+        let ir = transform_to_ir(ast).unwrap();
+
+        // Check that both solana attr and custom derives are present
+        if let TypeDefinition::Struct(s) = &ir[0] {
+            assert!(s.metadata.solana);
+            assert_eq!(s.metadata.custom_derives.len(), 3);
+            assert_eq!(s.metadata.custom_derives[0], "PartialEq");
+            assert_eq!(s.metadata.custom_derives[1], "Eq");
+            assert_eq!(s.metadata.custom_derives[2], "Hash");
+        } else {
+            panic!("Expected struct definition");
+        }
+    }
+
+    #[test]
+    fn test_no_custom_derives() {
+        let input = r#"
+            #[solana]
+            struct Account {
+                balance: u64,
+            }
+        "#;
+
+        let ast = parse_lumos_file(input).unwrap();
+        let ir = transform_to_ir(ast).unwrap();
+
+        // Check that custom_derives is empty when no derive attribute present
+        if let TypeDefinition::Struct(s) = &ir[0] {
+            assert_eq!(s.metadata.custom_derives.len(), 0);
+        } else {
+            panic!("Expected struct definition");
         }
     }
 }

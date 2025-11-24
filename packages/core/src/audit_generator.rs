@@ -73,6 +73,9 @@ impl<'a> AuditGenerator<'a> {
                 TypeDefinition::Enum(_) => {
                     // Enums have fewer security concerns
                 }
+                TypeDefinition::TypeAlias(_) => {
+                    // Type aliases don't need auditing (they're resolved)
+                }
             }
         }
 
@@ -338,6 +341,7 @@ mod tests {
                 solana: true,
                 attributes: vec!["account".to_string()],
                 version: None,
+                custom_derives: vec![],
             },
         })];
 
@@ -364,6 +368,7 @@ mod tests {
                 solana: true,
                 attributes: vec!["account".to_string()],
                 version: None,
+                custom_derives: vec![],
             },
         })];
 
@@ -420,6 +425,7 @@ mod tests {
                 solana: true,
                 attributes: vec!["account".to_string()],
                 version: None,
+                custom_derives: vec![],
             },
         })];
 

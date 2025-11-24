@@ -25,9 +25,9 @@ LUMOS continues rapid evolution with IDE integration and schema versioning:
 - ✅ **Interactive playground** - Live code generation at docs.lumos-lang.org/playground
 - ✅ **Performance benchmarks** - Comprehensive Borsh comparison suite
 
-**Completed**: Phase 5.1 (Schema Evolution - 100%), Phase 6.3 (Security & Validation - 100%)
-**Active**: Phase 5.2 (IDE Integration - 80%)
-**Next**: Phase 5.3 (Advanced Type System), Phase 5.4 (Multi-Language Generation)
+**Completed**: Phase 5.1 (Schema Evolution - 100%), Phase 5.2 (IDE Integration - 100%), Phase 6.3 (Security & Validation - 100%)
+**Active**: Phase 5.3 (Advanced Type System - 60%)
+**Next**: Phase 5.4 (Multi-Language Generation), Phase 6.1 (Framework Integration)
 
 ---
 
@@ -182,12 +182,56 @@ Transform from schema DSL → full programming language for type-safe Solana wor
 
 **Goal**: Express complex Solana program constraints
 
-**Issues to create:**
-- [ ] Add custom derive macros support to LUMOS [#50]
-- [ ] Add const generics support for fixed-size arrays in LUMOS [#51]
-- [ ] Add type aliases and imports to LUMOS [#52]
+**Status**: 3/5 complete (60%)
+
+**Issues:**
+- [x] Add custom derive macros support to LUMOS [#50] ✅ **COMPLETE**
+- [x] Add const generics support for fixed-size arrays in LUMOS [#51] ✅ **COMPLETE**
+- [x] Add type aliases and imports to LUMOS [#52] ✅ **COMPLETE**
 - [ ] Add nested module support to LUMOS [#53]
 - [ ] Add generic struct/enum definitions to LUMOS [#54]
+
+**Completed**:
+- #50 (Nov 24, 2025) - Custom derive macros support
+  - Extended `AttributeValue` enum with `List(Vec<String>)` variant
+  - Added `#[derive(...)]` parser with comma-separated list support
+  - Added `custom_derives` field to IR `Metadata` struct
+  - Implemented intelligent derive deduplication with `merge_derives()`
+  - Context-aware generation: Anchor accounts get only custom derives
+  - Created comprehensive example at examples/custom_derives.lumos
+  - 17 new tests (parser, transform, generator, end-to-end)
+  - All 196 tests passing
+  - Future enhancement: TypeScript derive equivalents (#107)
+
+- #51 (Nov 24, 2025) - Fixed-size arrays (const generics)
+  - Added `FixedArray { element, size }` variant to AST and IR
+  - Parser extracts size from `[T; N]` syntax with validation (1-1024)
+  - Generates Rust `[T; N]` format correctly
+  - Generates TypeScript `T[]` with `borsh.array(element, size)` (no length prefix!)
+  - Size calculation: `element_size * count` (no 4-byte Vec prefix)
+  - Supports nested arrays: `[[u8; 10]; 10]`
+  - Example schema at examples/fixed_arrays.lumos
+  - Updated 10+ files across codebase (parser, transform, generators, CLI, etc.)
+  - All 116 tests passing
+  - Common Solana patterns now supported: `[u8; 32]` for hashes, `[PublicKey; N]` for authority lists
+
+- #52 (Nov 24, 2025) - Type aliases and imports
+  - Added `Import` and `TypeAlias` structs to AST with span tracking
+  - Implemented JavaScript-style import parser: `import { Type1, Type2 } from "./file.lumos"`
+  - Implemented Rust-style type alias parser: `type UserId = PublicKey`
+  - Added `TypeAliasDefinition` to IR and `TypeAlias` variant to `TypeDefinition`
+  - Created `TypeAliasResolver` with recursive alias resolution and circular reference detection
+  - Implemented multi-file `FileResolver` with automatic import discovery and circular import detection
+  - Three-pass validation: collect aliases → resolve recursively → transform → validate across all files
+  - Updated all generators to handle type aliases (Rust `pub type`, TypeScript `export type`)
+  - Fixed 15+ non-exhaustive pattern matches across codebase
+  - Updated CLI to use FileResolver for multi-file schema generation
+  - Added regex dependency for import parsing (multi-line support)
+  - Created comprehensive examples: `examples/type_aliases.lumos` (200+ lines, 23 types)
+  - Created multi-file import examples: `examples/imports/{types,accounts,instructions}.lumos`
+  - Added 4 new file_resolver tests (single file, circular imports, multiple files, validation)
+  - All 202 tests passing (including E2E compilation tests)
+  - **Feature complete**: Single-file type aliases + multi-file imports with full validation
 
 **Success Metric**: Support 95% of Anchor program patterns
 
@@ -647,7 +691,7 @@ Core language free forever, monetize via cloud platform and premium extensions
 
 ### Phase 5: Advanced Features 🚧 (In Progress - Nov 2025)
 
-**Overall Progress**: 12/23 features complete (52%)
+**Overall Progress**: 13/23 features complete (57%)
 
 **5.1 Schema Evolution (100% complete) ✅:**
 - [x] Schema versioning with #[version] attribute (#40)
@@ -656,14 +700,17 @@ Core language free forever, monetize via cloud platform and premium extensions
 - [x] Deprecation warnings for schema fields (#43)
 - [x] Schema diff tool: `lumos diff` (#44)
 
-**5.2 IDE Integration (80% complete):**
+**5.2 IDE Integration (100% complete) ✅:**
 - [x] Language Server Protocol implementation (#45)
 - [x] IntelliJ IDEA / Rust Rover plugin (#46)
 - [x] Neovim plugin with Tree-sitter grammar (#47)
 - [x] Emacs mode (#48)
+- [x] Sublime Text package (#49)
 
-**5.3 Advanced Type System (0% complete):**
-- No issues started yet
+**5.3 Advanced Type System (60% complete):**
+- [x] Custom derive macros support (#50)
+- [x] Fixed-size arrays (const generics) (#51)
+- [x] Type aliases and imports (#52)
 
 **5.4 Multi-Language Code Generation (0% complete):**
 - No issues started yet
@@ -779,6 +826,9 @@ See an opportunity to help? Check our [Contributing Guide](CONTRIBUTING.md) or:
 **Last Updated**: November 24, 2025
 
 **Recent Updates**:
+- Nov 24, 2025: **Type aliases and imports COMPLETE** (#52) - Phase 5.3 at 60% 🎉 - Multi-file schemas with automatic import discovery
+- Nov 24, 2025: **Fixed-size arrays COMPLETE** (#51) - Phase 5.3 at 40% 🎉 - Const generics support for `[T; N]` syntax
+- Nov 24, 2025: **Custom derive macros support COMPLETE** (#50) - Phase 5.3 begins (20% complete) 🎉
 - Nov 24, 2025: **PHASE 5.2 IDE INTEGRATION COMPLETE** 🎉🎉🎉 - All 5 editors supported!
 - Nov 24, 2025: **Sublime Text package COMPLETE** (#49) - Full syntax + LSP + snippets 🎉
 - Nov 24, 2025: **Emacs mode COMPLETE** (#48) - Phase 5.2 at 80% 🎉

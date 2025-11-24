@@ -78,9 +78,10 @@ impl<'a> SizeCalculator<'a> {
     pub fn calculate_all(&mut self) -> Vec<AccountSize> {
         self.type_defs
             .iter()
-            .map(|type_def| match type_def {
-                TypeDefinition::Struct(s) => self.calculate_struct_size(s),
-                TypeDefinition::Enum(e) => self.calculate_enum_size(e),
+            .filter_map(|type_def| match type_def {
+                TypeDefinition::Struct(s) => Some(self.calculate_struct_size(s)),
+                TypeDefinition::Enum(e) => Some(self.calculate_enum_size(e)),
+                TypeDefinition::TypeAlias(_) => None, // Type aliases don't have sizes (they're resolved)
             })
             .collect()
     }
@@ -279,6 +280,10 @@ impl<'a> SizeCalculator<'a> {
                             let account_size = self.calculate_enum_size(e);
                             account_size.total_bytes
                         }
+                        TypeDefinition::TypeAlias(a) => {
+                            // Type aliases are resolved - calculate the target type size
+                            self.calculate_type_size(&a.target)
+                        }
                     };
                     self.size_cache.insert(type_name.clone(), size.clone());
                     size
@@ -298,6 +303,20 @@ impl<'a> SizeCalculator<'a> {
                         "Vec length prefix + elements ({})",
                         self.describe_type(inner)
                     ),
+                }
+            }
+            TypeInfo::FixedArray { element, size } => {
+                // Fixed array [T; N] = element_size * N (no length prefix!)
+                let element_size = self.calculate_type_size(element);
+                match element_size {
+                    SizeInfo::Fixed(bytes) => SizeInfo::Fixed(bytes * size),
+                    SizeInfo::Variable { min, reason } => SizeInfo::Variable {
+                        min: min * size,
+                        reason: format!(
+                            "Fixed array[{}] with variable-sized elements ({})",
+                            size, reason
+                        ),
+                    },
                 }
             }
             TypeInfo::Option(inner) => {
@@ -354,6 +373,9 @@ impl<'a> SizeCalculator<'a> {
             },
             TypeInfo::UserDefined(name) => name.clone(),
             TypeInfo::Array(inner) => format!("Vec<{}>", self.describe_type(inner)),
+            TypeInfo::FixedArray { element, size } => {
+                format!("[{}; {}]", self.describe_type(element), size)
+            }
             TypeInfo::Option(inner) => format!("Option<{}>", self.describe_type(inner)),
         }
     }
@@ -436,6 +458,7 @@ mod tests {
                 solana: true,
                 attributes: vec!["account".to_string()],
                 version: None,
+                custom_derives: vec![],
             },
         })];
 

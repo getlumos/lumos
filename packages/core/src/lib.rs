@@ -107,6 +107,9 @@ pub mod migration;
 /// Schema backward compatibility validation
 pub mod compat;
 
+/// File resolver for multi-file schemas with imports
+pub mod file_resolver;
+
 /// WASM bindings for browser playground
 #[cfg(feature = "wasm")]
 pub mod wasm;

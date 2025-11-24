@@ -6,7 +6,7 @@
 //! The IR is a language-agnostic representation of type definitions
 //! that can be transformed into various target languages.
 
-/// Intermediate representation of a type definition (struct or enum)
+/// Intermediate representation of a type definition (struct, enum, or type alias)
 #[derive(Debug, Clone)]
 pub enum TypeDefinition {
     /// Struct definition
@@ -14,6 +14,19 @@ pub enum TypeDefinition {
 
     /// Enum definition
     Enum(EnumDefinition),
+
+    /// Type alias definition
+    TypeAlias(TypeAliasDefinition),
+}
+
+/// Type alias definition
+#[derive(Debug, Clone)]
+pub struct TypeAliasDefinition {
+    /// Alias name (e.g., "UserId")
+    pub name: String,
+
+    /// Target type (e.g., PublicKey)
+    pub target: TypeInfo,
 }
 
 /// Struct type definition
@@ -83,8 +96,11 @@ pub enum TypeInfo {
     /// User-defined types
     UserDefined(String),
 
-    /// Array types
+    /// Dynamic array types (Vec<T>)
     Array(Box<TypeInfo>),
+
+    /// Fixed-size array types ([T; N])
+    FixedArray { element: Box<TypeInfo>, size: usize },
 
     /// Option types
     Option(Box<TypeInfo>),
@@ -101,6 +117,10 @@ pub struct Metadata {
 
     /// Optional semantic version (e.g., "1.0.0")
     pub version: Option<String>,
+
+    /// Custom derive macros specified by user (e.g., PartialEq, Eq, Hash)
+    /// These are added on top of auto-generated derives
+    pub custom_derives: Vec<String>,
 }
 
 impl TypeDefinition {
@@ -109,20 +129,43 @@ impl TypeDefinition {
         match self {
             TypeDefinition::Struct(s) => &s.name,
             TypeDefinition::Enum(e) => &e.name,
+            TypeDefinition::TypeAlias(a) => &a.name,
         }
     }
 
-    /// Get the metadata for this type definition
-    pub fn metadata(&self) -> &Metadata {
+    /// Get the metadata for this type definition (not applicable to type aliases)
+    pub fn metadata(&self) -> Option<&Metadata> {
         match self {
-            TypeDefinition::Struct(s) => &s.metadata,
-            TypeDefinition::Enum(e) => &e.metadata,
+            TypeDefinition::Struct(s) => Some(&s.metadata),
+            TypeDefinition::Enum(e) => Some(&e.metadata),
+            TypeDefinition::TypeAlias(_) => None, // Type aliases don't have metadata
         }
     }
 
-    /// Check if this is a Solana type
+    /// Check if this is a Solana type (type aliases inherit from their target)
     pub fn is_solana(&self) -> bool {
-        self.metadata().solana
+        match self {
+            TypeDefinition::Struct(s) => s.metadata.solana,
+            TypeDefinition::Enum(e) => e.metadata.solana,
+            TypeDefinition::TypeAlias(_) => false, // Will be resolved based on target type
+        }
+    }
+
+    /// Check if this is a type alias
+    pub fn is_type_alias(&self) -> bool {
+        matches!(self, TypeDefinition::TypeAlias(_))
+    }
+}
+
+impl TypeAliasDefinition {
+    /// Get the alias name
+    pub fn alias_name(&self) -> &str {
+        &self.name
+    }
+
+    /// Get the target type
+    pub fn target_type(&self) -> &TypeInfo {
+        &self.target
     }
 }
 

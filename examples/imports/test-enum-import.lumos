@@ -1,0 +1,15 @@
+// Test enum import
+
+import {
+    UserId,
+    Lamports,
+    AccountStatus
+} from "./types.lumos";
+
+#[solana]
+#[account]
+struct TestAccount {
+    user: UserId,
+    balance: Lamports,
+    status: AccountStatus,
+}

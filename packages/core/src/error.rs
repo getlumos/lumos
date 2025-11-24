@@ -41,6 +41,10 @@ pub enum LumosError {
     #[error("{}{}", .0, .1.as_ref().map(|loc| format!(" (at {})", loc.format())).unwrap_or_default())]
     TypeValidation(String, Option<SourceLocation>),
 
+    /// Transformation error (AST to IR) with optional source location
+    #[error("{}{}", .0, .1.as_ref().map(|loc| format!(" (at {})", loc.format())).unwrap_or_default())]
+    Transform(String, Option<SourceLocation>),
+
     /// IO error
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),

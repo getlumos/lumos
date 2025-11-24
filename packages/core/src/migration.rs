@@ -346,6 +346,9 @@ fn type_info_display(type_info: &TypeInfo) -> String {
         TypeInfo::Primitive(name) => name.clone(),
         TypeInfo::UserDefined(name) => name.clone(),
         TypeInfo::Array(inner) => format!("[{}]", type_info_display(inner)),
+        TypeInfo::FixedArray { element, size } => {
+            format!("[{}; {}]", type_info_display(element), size)
+        }
         TypeInfo::Option(inner) => format!("Option<{}>", type_info_display(inner)),
     }
 }
@@ -357,6 +360,10 @@ pub fn generate_rust_migration(diff: &SchemaDiff, old_def: &TypeDefinition) -> S
         TypeDefinition::Enum(_) => {
             // Enum migrations are not yet fully supported
             format!("// TODO: Enum migration for {}\n", diff.type_name)
+        }
+        TypeDefinition::TypeAlias(_) => {
+            // Type aliases are resolved during transformation and don't need migrations
+            format!("// Type alias '{}' - no migration needed (resolved at compile time)\n", diff.type_name)
         }
     }
 }
@@ -486,6 +493,9 @@ fn map_type_to_rust(type_info: &TypeInfo, optional: bool) -> String {
         .to_string(),
         TypeInfo::UserDefined(name) => name.clone(),
         TypeInfo::Array(inner) => format!("Vec<{}>", map_type_to_rust(inner, false)),
+        TypeInfo::FixedArray { element, size } => {
+            format!("[{}; {}]", map_type_to_rust(element, false), size)
+        }
         TypeInfo::Option(inner) => return format!("Option<{}>", map_type_to_rust(inner, false)),
     };
 
@@ -530,6 +540,11 @@ fn get_default_value_for_type(type_info: &TypeInfo) -> String {
         .to_string(),
         TypeInfo::UserDefined(_) => "Default::default()".to_string(),
         TypeInfo::Array(_) => "Vec::new()".to_string(),
+        TypeInfo::FixedArray { element, size } => {
+            // For fixed arrays, generate [default(); size]
+            let elem_default = get_default_value_for_type(element);
+            format!("[{}; {}]", elem_default, size)
+        }
         TypeInfo::Option(_) => "None".to_string(),
     }
 }
@@ -543,6 +558,10 @@ pub fn generate_typescript_migration(diff: &SchemaDiff, old_def: &TypeDefinition
         TypeDefinition::Enum(_) => {
             // Enum migrations are not yet fully supported
             format!("// TODO: Enum migration for {}\n", diff.type_name)
+        }
+        TypeDefinition::TypeAlias(_) => {
+            // Type aliases are resolved during transformation and don't need migrations
+            format!("// Type alias '{}' - no migration needed (resolved at compile time)\n", diff.type_name)
         }
     }
 }
@@ -682,6 +701,9 @@ fn map_type_to_typescript(type_info: &TypeInfo, optional: bool) -> String {
         .to_string(),
         TypeInfo::UserDefined(name) => name.clone(),
         TypeInfo::Array(inner) => format!("{}[]", map_type_to_typescript(inner, false)),
+        TypeInfo::FixedArray { element, .. } => {
+            format!("{}[]", map_type_to_typescript(element, false))
+        }
         TypeInfo::Option(inner) => {
             return format!("{} | undefined", map_type_to_typescript(inner, false))
         }
@@ -731,6 +753,11 @@ fn get_typescript_default_value_for_type(type_info: &TypeInfo) -> String {
         .to_string(),
         TypeInfo::UserDefined(_) => "undefined".to_string(),
         TypeInfo::Array(_) => "[]".to_string(),
+        TypeInfo::FixedArray { element, size } => {
+            // For fixed arrays, generate an array of size filled with defaults
+            let elem_default = get_typescript_default_value_for_type(element);
+            format!("new Array({}).fill({})", size, elem_default)
+        }
         TypeInfo::Option(_) => "undefined".to_string(),
     }
 }

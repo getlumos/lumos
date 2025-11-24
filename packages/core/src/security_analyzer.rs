@@ -115,6 +115,9 @@ impl<'a> SecurityAnalyzer<'a> {
                     // Enums have fewer security concerns
                     // Future: Could check for sensitive data in variants
                 }
+                TypeDefinition::TypeAlias(_) => {
+                    // Type aliases don't introduce security concerns (they're just name mappings)
+                }
             }
         }
 
@@ -390,6 +393,7 @@ mod tests {
                 solana: true,
                 attributes: vec![], // Missing #[account]
                 version: None,
+                custom_derives: vec![],
             },
         })];
 
@@ -415,6 +419,7 @@ mod tests {
                 solana: true,
                 attributes: vec!["account".to_string()],
                 version: None,
+                custom_derives: vec![],
             },
         })];
 
@@ -451,6 +456,7 @@ mod tests {
                 solana: true,
                 attributes: vec!["account".to_string()],
                 version: None,
+                custom_derives: vec![],
             },
         })];
 

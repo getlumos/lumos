@@ -1,0 +1,284 @@
+// Instruction Definitions - Using imported types
+//
+// This demonstrates importing types for instruction enums
+
+// Import common types
+import {
+    UserId,
+    WalletAddress,
+    UnixTimestamp,
+    Lamports,
+    TokenAmount,
+    ShareAmount,
+    BasisPoints,
+    TokenMint,
+    OptionalOwner,
+    PermissionLevel
+} from "./types.lumos";
+
+// ============================================================================
+// TOKEN INSTRUCTIONS
+// ============================================================================
+
+// Token transfer and management instructions
+#[solana]
+enum TokenInstruction {
+    // Transfer tokens between accounts
+    Transfer {
+        from: WalletAddress,            // Imported: PublicKey
+        to: WalletAddress,              // Imported: PublicKey
+        amount: TokenAmount,            // Imported: u64
+    },
+
+    // Mint new tokens
+    Mint {
+        mint: TokenMint,                // Imported: PublicKey
+        to: WalletAddress,              // Imported: PublicKey
+        amount: TokenAmount,            // Imported: u64
+        authority: UserId,              // Imported: PublicKey
+    },
+
+    // Burn tokens
+    Burn {
+        from: WalletAddress,            // Imported: PublicKey
+        amount: TokenAmount,            // Imported: u64
+    },
+
+    // Approve spending
+    Approve {
+        owner: UserId,                  // Imported: PublicKey
+        delegate: UserId,               // Imported: PublicKey
+        amount: TokenAmount,            // Imported: u64
+    },
+}
+
+// ============================================================================
+// STAKING INSTRUCTIONS
+// ============================================================================
+
+// Staking pool instructions
+#[solana]
+enum StakingInstruction {
+    // Initialize staking pool
+    Initialize {
+        authority: UserId,              // Imported: PublicKey
+        token_mint: TokenMint,          // Imported: PublicKey
+        reward_rate: BasisPoints,       // Imported: u16
+    },
+
+    // Stake tokens
+    Stake {
+        user: UserId,                   // Imported: PublicKey
+        amount: TokenAmount,            // Imported: u64
+        duration: UnixTimestamp,        // Imported: i64
+    },
+
+    // Unstake tokens
+    Unstake {
+        user: UserId,                   // Imported: PublicKey
+        amount: ShareAmount,            // Imported: u64
+    },
+
+    // Claim rewards
+    ClaimRewards {
+        user: UserId,                   // Imported: PublicKey
+    },
+
+    // Update reward rate (admin only)
+    UpdateRewardRate {
+        authority: UserId,              // Imported: PublicKey
+        new_rate: BasisPoints,          // Imported: u16
+    },
+}
+
+// ============================================================================
+// DAO GOVERNANCE INSTRUCTIONS
+// ============================================================================
+
+// DAO governance instructions
+#[solana]
+enum GovernanceInstruction {
+    // Create a new proposal
+    CreateProposal {
+        proposer: UserId,               // Imported: PublicKey
+        description: String,
+        execution_delay: UnixTimestamp, // Imported: i64
+    },
+
+    // Vote on proposal
+    Vote {
+        voter: UserId,                  // Imported: PublicKey
+        proposal_id: u64,
+        voting_power: TokenAmount,      // Imported: u64
+        approve: bool,
+    },
+
+    // Execute approved proposal
+    Execute {
+        executor: UserId,               // Imported: PublicKey
+        proposal_id: u64,
+    },
+
+    // Cancel proposal
+    Cancel {
+        authority: UserId,              // Imported: PublicKey
+        proposal_id: u64,
+    },
+}
+
+// ============================================================================
+// VAULT INSTRUCTIONS
+// ============================================================================
+
+// Vault management instructions
+#[solana]
+enum VaultInstruction {
+    // Create new vault
+    CreateVault {
+        authority: UserId,              // Imported: PublicKey
+        token_mint: TokenMint,          // Imported: PublicKey
+        management_fee: BasisPoints,    // Imported: u16
+        performance_fee: BasisPoints,   // Imported: u16
+    },
+
+    // Deposit to vault
+    Deposit {
+        depositor: UserId,              // Imported: PublicKey
+        amount: TokenAmount,            // Imported: u64
+    },
+
+    // Withdraw from vault
+    Withdraw {
+        withdrawer: UserId,             // Imported: PublicKey
+        shares: ShareAmount,            // Imported: u64
+    },
+
+    // Compound rewards
+    Compound {
+        authority: UserId,              // Imported: PublicKey
+    },
+
+    // Update fees (admin only)
+    UpdateFees {
+        authority: UserId,              // Imported: PublicKey
+        management_fee: BasisPoints,    // Imported: u16
+        performance_fee: BasisPoints,   // Imported: u16
+    },
+}
+
+// ============================================================================
+// MULTI-SIG INSTRUCTIONS
+// ============================================================================
+
+// Multi-signature wallet instructions
+#[solana]
+enum MultiSigInstruction {
+    // Create multi-sig wallet
+    Create {
+        owners: [UserId],               // Imported: [PublicKey]
+        threshold: u8,
+    },
+
+    // Propose transaction
+    ProposeTransaction {
+        proposer: UserId,               // Imported: PublicKey
+        to: WalletAddress,              // Imported: PublicKey
+        amount: Lamports,               // Imported: u64
+        memo: String,
+    },
+
+    // Approve transaction
+    Approve {
+        signer: UserId,                 // Imported: PublicKey
+        transaction_id: u64,
+    },
+
+    // Execute approved transaction
+    Execute {
+        executor: UserId,               // Imported: PublicKey
+        transaction_id: u64,
+    },
+
+    // Add owner
+    AddOwner {
+        new_owner: UserId,              // Imported: PublicKey
+    },
+
+    // Remove owner
+    RemoveOwner {
+        owner: UserId,                  // Imported: PublicKey
+    },
+
+    // Change threshold
+    ChangeThreshold {
+        new_threshold: u8,
+    },
+}
+
+// ============================================================================
+// USER MANAGEMENT INSTRUCTIONS
+// ============================================================================
+
+// User account management
+#[solana]
+enum UserInstruction {
+    // Initialize user account
+    Initialize {
+        user: UserId,                   // Imported: PublicKey
+        initial_deposit: Lamports,      // Imported: u64
+    },
+
+    // Update permissions
+    UpdatePermissions {
+        user: UserId,                   // Imported: PublicKey
+        new_permission: PermissionLevel, // Imported: enum
+    },
+
+    // Close account
+    Close {
+        user: UserId,                   // Imported: PublicKey
+        recipient: OptionalOwner,       // Imported: Option<PublicKey>
+    },
+
+    // Transfer ownership
+    TransferOwnership {
+        current_owner: UserId,          // Imported: PublicKey
+        new_owner: UserId,              // Imported: PublicKey
+    },
+}
+
+// ============================================================================
+// NOTES
+// ============================================================================
+
+// Benefits of using imports for instructions:
+// 1. ✅ Consistent parameter types across all instructions
+// 2. ✅ Self-documenting instruction definitions
+// 3. ✅ Easy to understand what each parameter represents
+// 4. ✅ Type safety across entire program
+// 5. ✅ Refactor once in types.lumos, updates everywhere
+// 6. ✅ Generated Rust maintains same type aliases
+
+// Usage in Anchor program:
+// #[program]
+// pub mod my_program {
+//     use super::*;
+//
+//     pub fn transfer(
+//         ctx: Context<Transfer>,
+//         from: WalletAddress,     // = Pubkey
+//         to: WalletAddress,       // = Pubkey
+//         amount: TokenAmount,     // = u64
+//     ) -> Result<()> {
+//         // Implementation
+//     }
+// }
+
+// Client-side (TypeScript):
+// const instruction = {
+//   transfer: {
+//     from: walletAddress,    // PublicKey
+//     to: recipientAddress,   // PublicKey
+//     amount: tokenAmount,    // number
+//   }
+// };
