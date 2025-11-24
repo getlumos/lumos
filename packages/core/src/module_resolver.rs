@@ -79,6 +79,9 @@ impl ModuleResolver {
         // Load the root module and all its dependencies
         self.load_module_recursive(&entry_path, None)?;
 
+        // Validate all use statements
+        self.validate_use_statements()?;
+
         // First pass: Collect all type aliases from all modules
         let mut resolver = TypeAliasResolver::new();
         for module_node in self.modules.values() {
@@ -250,6 +253,222 @@ impl ModuleResolver {
     /// Get the module tree structure (for debugging/visualization)
     pub fn module_tree(&self) -> Option<&ModuleNode> {
         self.modules.get(&self.root_path)
+    }
+
+    /// Validate all use statements in all modules
+    ///
+    /// Checks that:
+    /// 1. The path can be resolved to a module
+    /// 2. The referenced type exists
+    /// 3. The type is accessible (visibility check)
+    pub fn validate_use_statements(&self) -> Result<()> {
+        for (module_path, module_node) in &self.modules {
+            for item in &module_node.ast.items {
+                if let AstItem::Use(use_stmt) = item {
+                    self.validate_use_statement(module_path, use_stmt)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Validate a single use statement
+    fn validate_use_statement(
+        &self,
+        current_module_path: &Path,
+        use_stmt: &crate::ast::UseStatement,
+    ) -> Result<()> {
+        use crate::ast::Visibility;
+
+        // Get the final identifier (the type being imported)
+        let type_name = use_stmt.path.final_ident().ok_or_else(|| {
+            LumosError::SchemaParse(
+                format!("Invalid use path: {}", use_stmt.path.to_string()),
+                None,
+            )
+        })?;
+
+        // Resolve the module path
+        let target_module_path =
+            self.resolve_use_path(current_module_path, &use_stmt.path.segments)?;
+
+        // Find the type in the target module
+        let target_module = self.modules.get(&target_module_path).ok_or_else(|| {
+            LumosError::SchemaParse(
+                format!(
+                    "Module not found for path: {}",
+                    use_stmt.path.to_string()
+                ),
+                None,
+            )
+        })?;
+
+        // Check if the type exists in the target module
+        let mut type_found = false;
+        let mut type_visibility = Visibility::Private;
+
+        for item in &target_module.ast.items {
+            let (name, visibility) = match item {
+                AstItem::Struct(s) => (Some(&s.name), &s.visibility),
+                AstItem::Enum(e) => (Some(&e.name), &e.visibility),
+                AstItem::TypeAlias(t) => (Some(&t.name), &t.visibility),
+                AstItem::Module(_) | AstItem::Use(_) => (None, &Visibility::Private),
+            };
+
+            if let Some(name) = name {
+                if name == type_name {
+                    type_found = true;
+                    type_visibility = visibility.clone();
+                    break;
+                }
+            }
+        }
+
+        if !type_found {
+            return Err(LumosError::SchemaParse(
+                format!(
+                    "Type '{}' not found in module '{}'",
+                    type_name,
+                    target_module_path.display()
+                ),
+                None,
+            ));
+        }
+
+        // Check visibility (type must be public if importing from different module)
+        if target_module_path != current_module_path
+            && type_visibility == Visibility::Private
+        {
+            return Err(LumosError::SchemaParse(
+                format!(
+                    "Type '{}' is private and cannot be imported from '{}'",
+                    type_name,
+                    target_module_path.display()
+                ),
+                None,
+            ));
+        }
+
+        Ok(())
+    }
+
+    /// Resolve a use path to an absolute module path
+    ///
+    /// Handles:
+    /// - `crate::models::User` → resolve from root
+    /// - `super::User` → resolve from parent
+    /// - `self::types::UserId` → resolve from current
+    /// - `models::User` → resolve from current (implicit self)
+    fn resolve_use_path(
+        &self,
+        current_module_path: &Path,
+        segments: &[crate::ast::PathSegment],
+    ) -> Result<PathBuf> {
+        use crate::ast::PathSegment;
+
+        if segments.is_empty() {
+            return Ok(current_module_path.to_path_buf());
+        }
+
+        let mut target_path = match &segments[0] {
+            PathSegment::Crate => {
+                // Absolute path from root
+                self.root_path.clone()
+            }
+            PathSegment::Super => {
+                // Relative to parent module
+                let current_module = self.modules.get(current_module_path).ok_or_else(|| {
+                    LumosError::SchemaParse(
+                        format!("Current module not found: {}", current_module_path.display()),
+                        None,
+                    )
+                })?;
+
+                current_module.parent.clone().ok_or_else(|| {
+                    LumosError::SchemaParse(
+                        "Cannot use 'super' in root module".to_string(),
+                        None,
+                    )
+                })?
+            }
+            PathSegment::SelfPath => {
+                // Relative to current module
+                current_module_path.to_path_buf()
+            }
+            PathSegment::Ident(name) => {
+                // Implicit self - relative to current module
+                let current_module = self.modules.get(current_module_path).ok_or_else(|| {
+                    LumosError::SchemaParse(
+                        format!("Current module not found: {}", current_module_path.display()),
+                        None,
+                    )
+                })?;
+
+                // Check if this is a child module
+                if let Some(child_path) = current_module.children.get(name) {
+                    return self.resolve_use_path(child_path, &segments[1..]);
+                } else {
+                    // If not a child module, the type should be in the current module
+                    return Ok(current_module_path.to_path_buf());
+                }
+            }
+        };
+
+        // Traverse the remaining path segments
+        for segment in &segments[1..] {
+            match segment {
+                PathSegment::Ident(name) => {
+                    let current_module = self.modules.get(&target_path).ok_or_else(|| {
+                        LumosError::SchemaParse(
+                            format!("Module not found: {}", target_path.display()),
+                            None,
+                        )
+                    })?;
+
+                    // Check if this is a child module
+                    if let Some(child_path) = current_module.children.get(name) {
+                        target_path = child_path.clone();
+                    } else {
+                        // Not a child module, so this must be the final type name
+                        // Return the current module path
+                        return Ok(target_path);
+                    }
+                }
+                PathSegment::Super => {
+                    let current_module = self.modules.get(&target_path).ok_or_else(|| {
+                        LumosError::SchemaParse(
+                            format!("Module not found: {}", target_path.display()),
+                            None,
+                        )
+                    })?;
+
+                    target_path = current_module.parent.clone().ok_or_else(|| {
+                        LumosError::SchemaParse(
+                            format!(
+                                "Cannot use 'super' - module '{}' has no parent",
+                                target_path.display()
+                            ),
+                            None,
+                        )
+                    })?;
+                }
+                PathSegment::Crate | PathSegment::SelfPath => {
+                    return Err(LumosError::SchemaParse(
+                        format!(
+                            "'{}' can only appear at the start of a path",
+                            if matches!(segment, PathSegment::Crate) {
+                                "crate"
+                            } else {
+                                "self"
+                            }
+                        ),
+                        None,
+                    ));
+                }
+            }
+        }
+
+        Ok(target_path)
     }
 }
 
@@ -446,5 +665,202 @@ mod models;
         }
         assert!(result.is_ok());
         assert_eq!(resolver.loaded_modules().len(), 4); // main, types, models/mod, models/user
+    }
+
+    #[test]
+    fn test_use_statement_valid() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Create types.lumos
+        let types_path = temp_dir.path().join("types.lumos");
+        fs::write(
+            &types_path,
+            r#"
+pub struct UserId { value: u64 }
+pub type Timestamp = i64;
+"#,
+        )
+        .unwrap();
+
+        // Create main.lumos that uses types from types module
+        let main_path = temp_dir.path().join("main.lumos");
+        fs::write(
+            &main_path,
+            r#"
+mod types;
+use types::UserId;
+use types::Timestamp;
+
+pub struct User {
+    id: UserId,
+    created: Timestamp,
+}
+"#,
+        )
+        .unwrap();
+
+        let mut resolver = ModuleResolver::new();
+        let result = resolver.resolve_modules(&main_path);
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_use_statement_with_crate() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Create types.lumos
+        let types_path = temp_dir.path().join("types.lumos");
+        fs::write(&types_path, "pub struct UserId { value: u64 }").unwrap();
+
+        // Create main.lumos
+        let main_path = temp_dir.path().join("main.lumos");
+        fs::write(
+            &main_path,
+            r#"
+mod types;
+use crate::types::UserId;
+
+pub struct User { id: UserId }
+"#,
+        )
+        .unwrap();
+
+        let mut resolver = ModuleResolver::new();
+        let result = resolver.resolve_modules(&main_path);
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_use_statement_type_not_found() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Create types.lumos without UserId
+        let types_path = temp_dir.path().join("types.lumos");
+        fs::write(&types_path, "pub type Timestamp = i64;").unwrap();
+
+        // Create main.lumos that tries to use non-existent UserId
+        let main_path = temp_dir.path().join("main.lumos");
+        fs::write(
+            &main_path,
+            r#"
+mod types;
+use types::UserId;
+"#,
+        )
+        .unwrap();
+
+        let mut resolver = ModuleResolver::new();
+        let result = resolver.resolve_modules(&main_path);
+
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("Type 'UserId' not found"));
+    }
+
+    #[test]
+    fn test_use_statement_private_type() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Create types.lumos with private UserId
+        let types_path = temp_dir.path().join("types.lumos");
+        fs::write(&types_path, "struct UserId { value: u64 }").unwrap(); // Not pub!
+
+        // Create main.lumos that tries to use private UserId
+        let main_path = temp_dir.path().join("main.lumos");
+        fs::write(
+            &main_path,
+            r#"
+mod types;
+use types::UserId;
+"#,
+        )
+        .unwrap();
+
+        let mut resolver = ModuleResolver::new();
+        let result = resolver.resolve_modules(&main_path);
+
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("is private and cannot be imported"));
+    }
+
+    #[test]
+    fn test_use_statement_with_super() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Create main.lumos
+        let main_path = temp_dir.path().join("main.lumos");
+        fs::write(
+            &main_path,
+            r#"
+pub struct Config { value: u64 }
+pub mod sub;
+"#,
+        )
+        .unwrap();
+
+        // Create sub.lumos that uses super::Config
+        let sub_path = temp_dir.path().join("sub.lumos");
+        fs::write(
+            &sub_path,
+            r#"
+use super::Config;
+
+pub struct App { config: Config }
+"#,
+        )
+        .unwrap();
+
+        let mut resolver = ModuleResolver::new();
+        let result = resolver.resolve_modules(&main_path);
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_use_statement_nested_modules() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Create types/mod.lumos
+        let types_dir = temp_dir.path().join("types");
+        fs::create_dir(&types_dir).unwrap();
+        let types_mod_path = types_dir.join("mod.lumos");
+        fs::write(
+            &types_mod_path,
+            r#"
+pub mod common;
+"#,
+        )
+        .unwrap();
+
+        // Create types/common.lumos
+        let common_path = types_dir.join("common.lumos");
+        fs::write(
+            &common_path,
+            r#"
+pub struct UserId { value: u64 }
+"#,
+        )
+        .unwrap();
+
+        // Create main.lumos
+        let main_path = temp_dir.path().join("main.lumos");
+        fs::write(
+            &main_path,
+            r#"
+mod types;
+use crate::types::common::UserId;
+
+pub struct User { id: UserId }
+"#,
+        )
+        .unwrap();
+
+        let mut resolver = ModuleResolver::new();
+        let result = resolver.resolve_modules(&main_path);
+
+        assert!(result.is_ok());
     }
 }

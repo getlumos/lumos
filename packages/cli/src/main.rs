@@ -9,12 +9,15 @@ use colored::*;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use lumos_core::ast::Item as AstItem;
 use lumos_core::audit_generator::AuditGenerator;
 use lumos_core::corpus_generator::CorpusGenerator;
 use lumos_core::file_resolver::FileResolver;
 use lumos_core::fuzz_generator::FuzzGenerator;
 use lumos_core::generators::{rust, typescript};
+use lumos_core::ir::TypeDefinition;
 use lumos_core::migration::{generate_rust_migration, generate_typescript_migration, SchemaDiff};
+use lumos_core::module_resolver::ModuleResolver;
 use lumos_core::parser::parse_lumos_file;
 use lumos_core::security_analyzer::SecurityAnalyzer;
 use lumos_core::size_calculator::SizeCalculator;
@@ -339,6 +342,50 @@ fn main() -> Result<()> {
     }
 }
 
+/// Resolve schema using module or import resolution strategy
+///
+/// Automatically detects whether to use:
+/// - ModuleResolver: if schema contains `mod` declarations (hierarchical modules)
+/// - FileResolver: if schema contains JS-style `import` statements (flat imports)
+/// - Single-file: if schema has neither
+fn resolve_schema(schema_path: &Path) -> Result<(Vec<TypeDefinition>, usize)> {
+    // Read the file to detect which resolution strategy to use
+    let content = fs::read_to_string(schema_path)
+        .with_context(|| format!("Failed to read schema: {}", schema_path.display()))?;
+
+    let ast = parse_lumos_file(&content)
+        .with_context(|| format!("Failed to parse schema: {}", schema_path.display()))?;
+
+    // Check if file has module declarations
+    let has_mod_declarations = ast.items.iter().any(|item| matches!(item, AstItem::Module(_)));
+
+    // Check if file has JS-style imports
+    let has_imports = !ast.imports.is_empty();
+
+    if has_mod_declarations {
+        // Use ModuleResolver for hierarchical module system
+        let mut resolver = ModuleResolver::new();
+        let ir = resolver
+            .resolve_modules(schema_path)
+            .with_context(|| format!("Failed to resolve modules from: {}", schema_path.display()))?;
+        let file_count = resolver.loaded_modules().len();
+        Ok((ir, file_count))
+    } else if has_imports {
+        // Use FileResolver for JS-style imports
+        let mut resolver = FileResolver::new();
+        let ir = resolver
+            .resolve_imports(schema_path)
+            .with_context(|| format!("Failed to resolve imports from: {}", schema_path.display()))?;
+        let file_count = resolver.loaded_files().len();
+        Ok((ir, file_count))
+    } else {
+        // Single file, no imports or modules
+        let ir = transform_to_ir(ast)
+            .with_context(|| format!("Failed to transform schema: {}", schema_path.display()))?;
+        Ok((ir, 1))
+    }
+}
+
 /// Generate Rust and TypeScript code from schema
 fn run_generate(
     schema_path: &Path,
@@ -360,24 +407,20 @@ fn run_generate(
         );
     }
 
-    // Resolve imports and load all files
+    // Resolve schema (auto-detects module vs import resolution)
     if !dry_run {
         println!("{:>12} {}", "Reading".cyan().bold(), schema_path.display());
-        println!("{:>12} imports and type aliases", "Resolving".cyan().bold());
+        println!("{:>12} schema and dependencies", "Resolving".cyan().bold());
     }
 
-    let mut resolver = FileResolver::new();
-    let ir = resolver
-        .resolve_imports(schema_path)
-        .with_context(|| format!("Failed to resolve imports from: {}", schema_path.display()))?;
+    let (ir, file_count) = resolve_schema(schema_path)?;
 
     // Report loaded files if multiple
-    let loaded_files = resolver.loaded_files();
-    if loaded_files.len() > 1 && !dry_run {
+    if file_count > 1 && !dry_run {
         println!(
-            "{:>12} {} files (including imports)",
+            "{:>12} {} files",
             "Loaded".green().bold(),
-            loaded_files.len()
+            file_count
         );
     }
 
