@@ -120,14 +120,14 @@ Transform from schema DSL → full programming language for type-safe Solana wor
 
 **Goal**: Multi-editor support beyond VSCode
 
-**Status**: 4/5 complete (80%)
+**Status**: 5/5 complete (100%) ✅
 
 **Issues:**
 - [x] Implement Language Server Protocol (LSP) for LUMOS [#45] ✅ **COMPLETE**
 - [x] Create IntelliJ IDEA / Rust Rover plugin for LUMOS [#46] ✅ **COMPLETE**
 - [x] Create Neovim plugin with Tree-sitter grammar for LUMOS [#47] ✅ **COMPLETE**
 - [x] Create Emacs mode for LUMOS [#48] ✅ **COMPLETE**
-- [ ] Create Sublime Text package for LUMOS [#49]
+- [x] Create Sublime Text package for LUMOS [#49] ✅ **COMPLETE**
 
 **Completed**:
 - #45 (Nov 22, 2025) - Language Server Protocol implementation
@@ -164,7 +164,18 @@ Transform from schema DSL → full programming language for type-safe Solana wor
   - Customizable variables (indent-offset, lsp-server-command)
   - Comprehensive README with installation and configuration guide
 
-**Success Metric**: LSP used by 3+ editors ✅ **ACHIEVED** (VS Code, IntelliJ IDEA/Rust Rover, Neovim, Emacs)
+- #49 (Nov 24, 2025) - Sublime Text package for LUMOS
+  - New repository: getlumos/sublime-lumos
+  - YAML-based .sublime-syntax file with full syntax highlighting
+  - LSP integration via LSP-lumos.sublime-settings and LSP package
+  - 6 snippets for common patterns (struct, enum variants, account, deprecated)
+  - Package settings with 2-space indentation and auto-formatting
+  - Comment toggling, bracket matching, and auto-indentation
+  - Support for Sublime Text 4 and 3 (build 3103+)
+  - Comprehensive README with 3 installation methods
+  - Dual-licensed (MIT + Apache 2.0)
+
+**Success Metric**: LSP used by 3+ editors ✅ **ACHIEVED** (VS Code, IntelliJ IDEA/Rust Rover, Neovim, Emacs, Sublime Text)
 
 ### 5.3 Advanced Type System
 
@@ -767,6 +778,8 @@ See an opportunity to help? Check our [Contributing Guide](CONTRIBUTING.md) or:
 **Last Updated**: November 24, 2025
 
 **Recent Updates**:
+- Nov 24, 2025: **PHASE 5.2 IDE INTEGRATION COMPLETE** 🎉🎉🎉 - All 5 editors supported!
+- Nov 24, 2025: **Sublime Text package COMPLETE** (#49) - Full syntax + LSP + snippets 🎉
 - Nov 24, 2025: **Emacs mode COMPLETE** (#48) - Phase 5.2 at 80% 🎉
 - Nov 23, 2025: **Neovim plugin with Tree-sitter grammar COMPLETE** (#47) - Phase 5.2 at 60% 🎉
 - Nov 23, 2025: **Published @getlumos/cli v0.1.0 to npm** (#62) - Phase 6.2 at 50% 🎉
