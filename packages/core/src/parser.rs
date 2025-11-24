@@ -35,11 +35,12 @@
 
 use crate::ast::{
     Attribute, AttributeValue, EnumDef, EnumVariant, FieldDef, Import, Item as AstItem,
-    LumosFile, StructDef, TypeAlias, TypeSpec, Visibility,
+    LumosFile, Module, ModulePath, PathSegment, StructDef, TypeAlias, TypeSpec, UseStatement,
+    Visibility,
 };
 use crate::error::{LumosError, Result};
 use regex::Regex;
-use syn::{Item, Meta, Type};
+use syn::{Item, Meta, Type, UseTree};
 
 /// Extract JavaScript-style import statements from source code
 ///
@@ -163,6 +164,138 @@ fn parse_type_alias(item: syn::ItemType) -> Result<TypeAlias> {
     })
 }
 
+/// Parse a module declaration
+///
+/// Converts `mod foo;` into a Module AST node. Only handles external module declarations,
+/// not inline module definitions (mod foo { ... }).
+///
+/// # Arguments
+///
+/// * `item` - syn ItemMod node representing a module declaration
+///
+/// # Returns
+///
+/// * `Ok(Module)` - Successfully parsed module declaration
+/// * `Err(LumosError)` - Inline module (not supported)
+fn parse_mod(item: syn::ItemMod) -> Result<Module> {
+    let name = item.ident.to_string();
+    let span = Some(item.ident.span());
+    let visibility = parse_visibility(&item.vis);
+
+    // Only support external module declarations (mod foo;), not inline modules (mod foo { ... })
+    if item.content.is_some() {
+        return Err(LumosError::SchemaParse(
+            format!(
+                "Inline module definitions are not supported. Use 'mod {};' and create a separate file.",
+                name
+            ),
+            None,
+        ));
+    }
+
+    Ok(Module {
+        name,
+        visibility,
+        span,
+    })
+}
+
+/// Parse a use statement
+///
+/// Converts `use path::Type;` or `use path::Type as Alias;` into a UseStatement AST node.
+///
+/// # Arguments
+///
+/// * `item` - syn ItemUse node representing a use statement
+///
+/// # Returns
+///
+/// * `Ok(UseStatement)` - Successfully parsed use statement
+/// * `Err(LumosError)` - Unsupported use syntax (glob imports, nested groups)
+fn parse_use(item: syn::ItemUse) -> Result<UseStatement> {
+    // Parse the use tree (supports simple paths and rename)
+    let (path, alias) = parse_use_tree(&item.tree)?;
+
+    Ok(UseStatement {
+        path,
+        alias,
+        span: None,
+    })
+}
+
+/// Parse a use tree into a module path and optional alias
+///
+/// Supports:
+/// - `use crate::models::User;` → (crate::models::User, None)
+/// - `use super::User;` → (super::User, None)
+/// - `use models::User as UserModel;` → (models::User, Some("UserModel"))
+///
+/// Does NOT support:
+/// - Glob imports: `use models::*;`
+/// - Nested groups: `use models::{User, Post};`
+fn parse_use_tree(tree: &UseTree) -> Result<(ModulePath, Option<String>)> {
+    match tree {
+        UseTree::Path(use_path) => {
+            // Recursively parse path segments
+            let ident = use_path.ident.to_string();
+            let segment = match ident.as_str() {
+                "crate" => PathSegment::Crate,
+                "super" => PathSegment::Super,
+                "self" => PathSegment::SelfPath,
+                _ => PathSegment::Ident(ident),
+            };
+
+            let (rest_path, alias) = parse_use_tree(&use_path.tree)?;
+            let mut segments = vec![segment];
+            segments.extend(rest_path.segments);
+
+            Ok((ModulePath { segments }, alias))
+        }
+        UseTree::Name(use_name) => {
+            // Final identifier in the path
+            let ident = use_name.ident.to_string();
+            let segment = match ident.as_str() {
+                "crate" => PathSegment::Crate,
+                "super" => PathSegment::Super,
+                "self" => PathSegment::SelfPath,
+                _ => PathSegment::Ident(ident),
+            };
+
+            Ok((
+                ModulePath {
+                    segments: vec![segment],
+                },
+                None,
+            ))
+        }
+        UseTree::Rename(use_rename) => {
+            // Type with alias (e.g., `User as UserModel`)
+            let ident = use_rename.ident.to_string();
+            let segment = match ident.as_str() {
+                "crate" => PathSegment::Crate,
+                "super" => PathSegment::Super,
+                "self" => PathSegment::SelfPath,
+                _ => PathSegment::Ident(ident),
+            };
+
+            Ok((
+                ModulePath {
+                    segments: vec![segment],
+                },
+                Some(use_rename.rename.to_string()),
+            ))
+        }
+        UseTree::Glob(_) => Err(LumosError::SchemaParse(
+            "Glob imports (use path::*) are not supported. Import types explicitly.".to_string(),
+            None,
+        )),
+        UseTree::Group(_) => Err(LumosError::SchemaParse(
+            "Grouped imports (use path::{A, B}) are not yet supported. Use separate import statements.".to_string(),
+            None,
+        )),
+    }
+}
+
 /// Parse a `.lumos` file into an Abstract Syntax Tree.
 ///
 /// This is the main entry point for parsing LUMOS schemas. It accepts source code
@@ -228,7 +361,7 @@ pub fn parse_lumos_file(input: &str) -> Result<LumosFile> {
         LumosError::SchemaParse(format!("Failed to parse .lumos file: {}", e), None)
     })?;
 
-    // Extract struct, enum, and type alias definitions
+    // Extract struct, enum, type alias, module, and use definitions
     for item in file.items {
         match item {
             Item::Struct(item_struct) => {
@@ -242,6 +375,14 @@ pub fn parse_lumos_file(input: &str) -> Result<LumosFile> {
             Item::Type(item_type) => {
                 let type_alias = parse_type_alias(item_type)?;
                 items.push(AstItem::TypeAlias(type_alias));
+            }
+            Item::Mod(item_mod) => {
+                let module = parse_mod(item_mod)?;
+                items.push(AstItem::Module(module));
+            }
+            Item::Use(item_use) => {
+                let use_stmt = parse_use(item_use)?;
+                items.push(AstItem::Use(use_stmt));
             }
             _ => {
                 // Ignore other items (functions, impls, etc.)
@@ -1134,6 +1275,207 @@ mod tests {
                 }
             }
             _ => panic!("Expected struct item"),
+        }
+    }
+
+    #[test]
+    fn test_parse_mod_declaration() {
+        let input = "mod models;";
+
+        let result = parse_lumos_file(input);
+        assert!(result.is_ok());
+
+        let file = result.unwrap();
+        assert_eq!(file.items.len(), 1);
+
+        match &file.items[0] {
+            AstItem::Module(module) => {
+                assert_eq!(module.name, "models");
+                assert_eq!(module.visibility, Visibility::Private);
+            }
+            _ => panic!("Expected module item"),
+        }
+    }
+
+    #[test]
+    fn test_parse_pub_mod_declaration() {
+        let input = "pub mod models;";
+
+        let result = parse_lumos_file(input);
+        assert!(result.is_ok());
+
+        let file = result.unwrap();
+        match &file.items[0] {
+            AstItem::Module(module) => {
+                assert_eq!(module.name, "models");
+                assert_eq!(module.visibility, Visibility::Public);
+            }
+            _ => panic!("Expected module item"),
+        }
+    }
+
+    #[test]
+    fn test_parse_inline_mod_fails() {
+        let input = "mod models { struct User {} }";
+
+        let result = parse_lumos_file(input);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Inline module definitions are not supported"));
+    }
+
+    #[test]
+    fn test_parse_use_simple() {
+        let input = "use models::User;";
+
+        let result = parse_lumos_file(input);
+        assert!(result.is_ok());
+
+        let file = result.unwrap();
+        assert_eq!(file.items.len(), 1);
+
+        match &file.items[0] {
+            AstItem::Use(use_stmt) => {
+                assert_eq!(use_stmt.path.to_string(), "models::User");
+                assert_eq!(use_stmt.alias, None);
+            }
+            _ => panic!("Expected use item"),
+        }
+    }
+
+    #[test]
+    fn test_parse_use_with_crate() {
+        let input = "use crate::models::User;";
+
+        let result = parse_lumos_file(input);
+        assert!(result.is_ok());
+
+        let file = result.unwrap();
+        match &file.items[0] {
+            AstItem::Use(use_stmt) => {
+                assert_eq!(use_stmt.path.to_string(), "crate::models::User");
+                assert!(use_stmt.path.is_absolute());
+            }
+            _ => panic!("Expected use item"),
+        }
+    }
+
+    #[test]
+    fn test_parse_use_with_super() {
+        let input = "use super::User;";
+
+        let result = parse_lumos_file(input);
+        assert!(result.is_ok());
+
+        let file = result.unwrap();
+        match &file.items[0] {
+            AstItem::Use(use_stmt) => {
+                assert_eq!(use_stmt.path.to_string(), "super::User");
+            }
+            _ => panic!("Expected use item"),
+        }
+    }
+
+    #[test]
+    fn test_parse_use_with_self() {
+        let input = "use self::User;";
+
+        let result = parse_lumos_file(input);
+        assert!(result.is_ok());
+
+        let file = result.unwrap();
+        match &file.items[0] {
+            AstItem::Use(use_stmt) => {
+                assert_eq!(use_stmt.path.to_string(), "self::User");
+            }
+            _ => panic!("Expected use item"),
+        }
+    }
+
+    #[test]
+    fn test_parse_use_with_alias() {
+        let input = "use models::User as UserModel;";
+
+        let result = parse_lumos_file(input);
+        assert!(result.is_ok());
+
+        let file = result.unwrap();
+        match &file.items[0] {
+            AstItem::Use(use_stmt) => {
+                assert_eq!(use_stmt.path.to_string(), "models::User");
+                assert_eq!(use_stmt.alias, Some("UserModel".to_string()));
+            }
+            _ => panic!("Expected use item"),
+        }
+    }
+
+    #[test]
+    fn test_parse_use_glob_fails() {
+        let input = "use models::*;";
+
+        let result = parse_lumos_file(input);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Glob imports (use path::*) are not supported"));
+    }
+
+    #[test]
+    fn test_parse_use_group_fails() {
+        let input = "use models::{User, Post};";
+
+        let result = parse_lumos_file(input);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Grouped imports (use path::{A, B}) are not yet supported"));
+    }
+
+    #[test]
+    fn test_parse_mixed_items() {
+        let input = r#"
+            mod models;
+            use crate::types::UserId;
+
+            type Timestamp = i64;
+
+            pub struct User {
+                id: UserId,
+                created_at: Timestamp,
+            }
+        "#;
+
+        let result = parse_lumos_file(input);
+        assert!(result.is_ok());
+
+        let file = result.unwrap();
+        assert_eq!(file.items.len(), 4);
+
+        match &file.items[0] {
+            AstItem::Module(m) => assert_eq!(m.name, "models"),
+            _ => panic!("Expected module"),
+        }
+
+        match &file.items[1] {
+            AstItem::Use(u) => assert_eq!(u.path.to_string(), "crate::types::UserId"),
+            _ => panic!("Expected use"),
+        }
+
+        match &file.items[2] {
+            AstItem::TypeAlias(t) => assert_eq!(t.name, "Timestamp"),
+            _ => panic!("Expected type alias"),
+        }
+
+        match &file.items[3] {
+            AstItem::Struct(s) => {
+                assert_eq!(s.name, "User");
+                assert_eq!(s.visibility, Visibility::Public);
+            }
+            _ => panic!("Expected struct"),
         }
     }
 }

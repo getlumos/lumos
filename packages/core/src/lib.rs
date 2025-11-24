@@ -110,6 +110,9 @@ pub mod compat;
 /// File resolver for multi-file schemas with imports
 pub mod file_resolver;
 
+/// Module resolver for hierarchical module structures
+pub mod module_resolver;
+
 /// WASM bindings for browser playground
 #[cfg(feature = "wasm")]
 pub mod wasm;
