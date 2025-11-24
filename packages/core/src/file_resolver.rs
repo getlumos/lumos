@@ -177,12 +177,17 @@ impl FileResolver {
         let mut defined_types = HashSet::new();
         for lumos_file in self.loaded_files.values() {
             for item in &lumos_file.items {
-                let name = match item {
-                    crate::ast::Item::Struct(s) => &s.name,
-                    crate::ast::Item::Enum(e) => &e.name,
-                    crate::ast::Item::TypeAlias(a) => &a.name,
+                let name_opt = match item {
+                    crate::ast::Item::Struct(s) => Some(&s.name),
+                    crate::ast::Item::Enum(e) => Some(&e.name),
+                    crate::ast::Item::TypeAlias(a) => Some(&a.name),
+                    crate::ast::Item::Module(m) => Some(&m.name),
+                    // Use statements don't define types, skip them
+                    crate::ast::Item::Use(_) => None,
                 };
-                defined_types.insert(name.clone());
+                if let Some(name) = name_opt {
+                    defined_types.insert(name.clone());
+                }
             }
         }
 

@@ -35,7 +35,7 @@
 
 use crate::ast::{
     Attribute, AttributeValue, EnumDef, EnumVariant, FieldDef, Import, Item as AstItem,
-    LumosFile, StructDef, TypeAlias, TypeSpec,
+    LumosFile, StructDef, TypeAlias, TypeSpec, Visibility,
 };
 use crate::error::{LumosError, Result};
 use regex::Regex;
@@ -116,6 +116,25 @@ fn extract_imports(input: &str) -> Result<(Vec<Import>, String)> {
     Ok((imports, remaining))
 }
 
+/// Parse visibility from syn::Visibility
+///
+/// Converts `pub` keyword to Visibility::Public, absence to Visibility::Private
+///
+/// # Arguments
+///
+/// * `vis` - syn Visibility node
+///
+/// # Returns
+///
+/// * `Visibility::Public` if `pub` keyword present
+/// * `Visibility::Private` otherwise
+fn parse_visibility(vis: &syn::Visibility) -> Visibility {
+    match vis {
+        syn::Visibility::Public(_) => Visibility::Public,
+        _ => Visibility::Private,
+    }
+}
+
 /// Parse a type alias definition
 ///
 /// Converts `type UserId = PublicKey;` into a TypeAlias AST node.
@@ -131,12 +150,14 @@ fn extract_imports(input: &str) -> Result<(Vec<Import>, String)> {
 fn parse_type_alias(item: syn::ItemType) -> Result<TypeAlias> {
     let name = item.ident.to_string();
     let span = Some(item.ident.span());
+    let visibility = parse_visibility(&item.vis);
 
     // Parse the target type
     let (target, _optional) = parse_type(&item.ty)?;
 
     Ok(TypeAlias {
         name,
+        visibility,
         target,
         span,
     })
@@ -242,6 +263,7 @@ pub fn parse_lumos_file(input: &str) -> Result<LumosFile> {
 fn parse_struct(item: syn::ItemStruct) -> Result<StructDef> {
     let name = item.ident.to_string();
     let span = Some(item.ident.span());
+    let visibility = parse_visibility(&item.vis);
 
     // Extract attributes
     let attributes = parse_attributes(&item.attrs)?;
@@ -269,6 +291,7 @@ fn parse_struct(item: syn::ItemStruct) -> Result<StructDef> {
 
     Ok(StructDef {
         name,
+        visibility,
         attributes,
         fields,
         version,
@@ -280,6 +303,7 @@ fn parse_struct(item: syn::ItemStruct) -> Result<StructDef> {
 fn parse_enum(item: syn::ItemEnum) -> Result<EnumDef> {
     let name = item.ident.to_string();
     let span = Some(item.ident.span());
+    let visibility = parse_visibility(&item.vis);
 
     // Extract attributes
     let attributes = parse_attributes(&item.attrs)?;
@@ -303,6 +327,7 @@ fn parse_enum(item: syn::ItemEnum) -> Result<EnumDef> {
 
     Ok(EnumDef {
         name,
+        visibility,
         attributes,
         variants,
         version,

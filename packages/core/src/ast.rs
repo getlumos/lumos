@@ -19,7 +19,7 @@ pub struct LumosFile {
     pub items: Vec<Item>,
 }
 
-/// An import statement
+/// An import statement (JavaScript-style, legacy)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Import {
     /// Items being imported (e.g., ["UserId", "Timestamp"])
@@ -33,11 +33,76 @@ pub struct Import {
     pub span: Option<proc_macro2::Span>,
 }
 
+/// A module declaration (Rust-style: `mod name;`)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Module {
+    /// Module name (e.g., "models")
+    pub name: String,
+
+    /// Visibility (pub or private)
+    pub visibility: Visibility,
+
+    /// Span information for error reporting
+    #[serde(skip)]
+    pub span: Option<proc_macro2::Span>,
+}
+
+/// A use statement (Rust-style: `use path::Type;`)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UseStatement {
+    /// Module path (e.g., crate::models::User)
+    pub path: ModulePath,
+
+    /// Optional alias (e.g., `use path::Type as Alias;`)
+    pub alias: Option<String>,
+
+    /// Span information for error reporting
+    #[serde(skip)]
+    pub span: Option<proc_macro2::Span>,
+}
+
+/// Module path (e.g., crate::models::User)
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ModulePath {
+    /// Path segments (e.g., [Crate, Ident("models"), Ident("User")])
+    pub segments: Vec<PathSegment>,
+}
+
+/// A segment in a module path
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum PathSegment {
+    /// `crate` keyword
+    Crate,
+
+    /// `super` keyword
+    Super,
+
+    /// `self` keyword
+    SelfPath,
+
+    /// Identifier (module or type name)
+    Ident(String),
+}
+
+/// Visibility modifier
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub enum Visibility {
+    /// Private (no `pub` keyword)
+    #[default]
+    Private,
+
+    /// Public (`pub` keyword)
+    Public,
+}
+
 /// A type alias definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TypeAlias {
     /// Alias name (e.g., "UserId")
     pub name: String,
+
+    /// Visibility (pub or private)
+    pub visibility: Visibility,
 
     /// Target type (e.g., PublicKey)
     pub target: TypeSpec,
@@ -47,7 +112,7 @@ pub struct TypeAlias {
     pub span: Option<proc_macro2::Span>,
 }
 
-/// An item in a LUMOS file (struct, enum, or type alias)
+/// An item in a LUMOS file (struct, enum, type alias, module, or use statement)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Item {
     /// Struct definition
@@ -58,6 +123,12 @@ pub enum Item {
 
     /// Type alias definition
     TypeAlias(TypeAlias),
+
+    /// Module declaration (Rust-style)
+    Module(Module),
+
+    /// Use statement (Rust-style)
+    Use(UseStatement),
 }
 
 /// A struct definition
@@ -65,6 +136,9 @@ pub enum Item {
 pub struct StructDef {
     /// Struct name (e.g., "UserAccount")
     pub name: String,
+
+    /// Visibility (pub or private)
+    pub visibility: Visibility,
 
     /// Attributes applied to the struct (e.g., @solana, @account)
     pub attributes: Vec<Attribute>,
@@ -85,6 +159,9 @@ pub struct StructDef {
 pub struct EnumDef {
     /// Enum name (e.g., "GameState")
     pub name: String,
+
+    /// Visibility (pub or private)
+    pub visibility: Visibility,
 
     /// Attributes applied to the enum (e.g., @solana)
     pub attributes: Vec<Attribute>,
@@ -323,6 +400,88 @@ impl Import {
     }
 }
 
+impl ModulePath {
+    /// Create a new module path from segments
+    pub fn new(segments: Vec<PathSegment>) -> Self {
+        Self { segments }
+    }
+
+    /// Create a simple identifier path (e.g., "models" -> [Ident("models")])
+    pub fn from_ident(name: String) -> Self {
+        Self {
+            segments: vec![PathSegment::Ident(name)],
+        }
+    }
+
+    /// Check if this path starts with `crate::`
+    pub fn is_absolute(&self) -> bool {
+        matches!(self.segments.first(), Some(PathSegment::Crate))
+    }
+
+    /// Check if this path starts with `super::`
+    pub fn starts_with_super(&self) -> bool {
+        matches!(self.segments.first(), Some(PathSegment::Super))
+    }
+
+    /// Check if this path starts with `self::`
+    pub fn starts_with_self(&self) -> bool {
+        matches!(self.segments.first(), Some(PathSegment::SelfPath))
+    }
+
+    /// Get the final identifier in the path (e.g., "User" from "crate::models::User")
+    pub fn final_ident(&self) -> Option<&str> {
+        self.segments.iter().rev().find_map(|seg| {
+            if let PathSegment::Ident(name) = seg {
+                Some(name.as_str())
+            } else {
+                None
+            }
+        })
+    }
+
+    /// Convert to string representation (e.g., "crate::models::User")
+    pub fn to_string(&self) -> String {
+        self.segments
+            .iter()
+            .map(|seg| match seg {
+                PathSegment::Crate => "crate".to_string(),
+                PathSegment::Super => "super".to_string(),
+                PathSegment::SelfPath => "self".to_string(),
+                PathSegment::Ident(name) => name.clone(),
+            })
+            .collect::<Vec<_>>()
+            .join("::")
+    }
+}
+
+impl PathSegment {
+    /// Check if this segment is an identifier
+    pub fn is_ident(&self) -> bool {
+        matches!(self, PathSegment::Ident(_))
+    }
+
+    /// Get the identifier name if this is an Ident segment
+    pub fn as_ident(&self) -> Option<&str> {
+        if let PathSegment::Ident(name) = self {
+            Some(name)
+        } else {
+            None
+        }
+    }
+}
+
+impl Visibility {
+    /// Check if this is public visibility
+    pub fn is_public(&self) -> bool {
+        matches!(self, Visibility::Public)
+    }
+
+    /// Check if this is private visibility
+    pub fn is_private(&self) -> bool {
+        matches!(self, Visibility::Private)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -331,6 +490,7 @@ mod tests {
     fn test_struct_has_attribute() {
         let struct_def = StructDef {
             name: "User".to_string(),
+            visibility: Visibility::Private,
             attributes: vec![
                 Attribute {
                     name: "solana".to_string(),
@@ -383,6 +543,7 @@ mod tests {
     fn test_enum_has_attribute() {
         let enum_def = EnumDef {
             name: "GameState".to_string(),
+            visibility: Visibility::Private,
             attributes: vec![Attribute {
                 name: "solana".to_string(),
                 value: None,
@@ -401,6 +562,7 @@ mod tests {
     fn test_enum_is_unit_only() {
         let unit_enum = EnumDef {
             name: "GameState".to_string(),
+            visibility: Visibility::Private,
             attributes: vec![],
             variants: vec![
                 EnumVariant::Unit {
@@ -420,6 +582,7 @@ mod tests {
 
         let mixed_enum = EnumDef {
             name: "GameEvent".to_string(),
+            visibility: Visibility::Private,
             attributes: vec![],
             variants: vec![
                 EnumVariant::Unit {
@@ -466,6 +629,7 @@ mod tests {
     fn test_item_enum() {
         let enum_def = EnumDef {
             name: "Status".to_string(),
+            visibility: Visibility::Private,
             attributes: vec![],
             variants: vec![],
             span: None,

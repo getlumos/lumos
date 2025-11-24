@@ -294,6 +294,11 @@ pub fn transform_to_ir(file: LumosFile) -> Result<Vec<TypeDefinition>> {
                 let type_def = transform_type_alias(alias_def, &alias_resolver)?;
                 type_defs.push(TypeDefinition::TypeAlias(type_def));
             }
+            // Module and Use statements are not yet transformed in this pass
+            // They will be handled by ModuleResolver in #53b
+            AstItem::Module(_) | AstItem::Use(_) => {
+                // Skip for now - module resolution is not yet implemented
+            }
         }
     }
 
@@ -372,6 +377,11 @@ fn transform_to_ir_with_resolver_impl(
             AstItem::TypeAlias(alias_def) => {
                 let type_def = transform_type_alias(alias_def, resolver)?;
                 type_defs.push(TypeDefinition::TypeAlias(type_def));
+            }
+            // Module and Use statements are not yet transformed
+            // They will be handled by ModuleResolver in #53b
+            AstItem::Module(_) | AstItem::Use(_) => {
+                // Skip for now - module resolution is not yet implemented
             }
         }
     }
