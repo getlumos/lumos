@@ -2077,6 +2077,7 @@ fn format_type(type_info: &lumos_core::ir::TypeInfo) -> String {
 
     match type_info {
         TypeInfo::Primitive(p) => p.clone(),
+        TypeInfo::Generic(param) => param.clone(),
         TypeInfo::UserDefined(u) => u.clone(),
         TypeInfo::Array(inner) => format!("Vec<{}>", format_type(inner)),
         TypeInfo::FixedArray { element, size } => {

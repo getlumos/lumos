@@ -178,6 +178,11 @@ impl TypeAliasResolver {
                 }
             }
 
+            AstType::Generic(name) => {
+                // Generic type parameter (T, U, etc.)
+                TypeInfo::Generic(name)
+            }
+
             AstType::Array(inner) => {
                 let inner_type = self.transform_type_with_resolver(*inner, false, visited)?;
                 TypeInfo::Array(Box::new(inner_type))
@@ -424,6 +429,7 @@ fn transform_struct(struct_def: AstStruct, resolver: &TypeAliasResolver) -> Resu
     let metadata = extract_struct_metadata(&struct_def);
 
     let name = struct_def.name;
+    let generic_params = struct_def.type_params;
 
     // Transform fields
     let fields = struct_def
@@ -434,6 +440,7 @@ fn transform_struct(struct_def: AstStruct, resolver: &TypeAliasResolver) -> Resu
 
     Ok(StructDefinition {
         name,
+        generic_params,
         fields,
         metadata,
     })
@@ -445,6 +452,7 @@ fn transform_enum(enum_def: AstEnum, resolver: &TypeAliasResolver) -> Result<Enu
     let metadata = extract_enum_metadata(&enum_def);
 
     let name = enum_def.name;
+    let generic_params = enum_def.type_params;
 
     // Transform variants
     let variants = enum_def
@@ -455,6 +463,7 @@ fn transform_enum(enum_def: AstEnum, resolver: &TypeAliasResolver) -> Result<Enu
 
     Ok(EnumDefinition {
         name,
+        generic_params,
         variants,
         metadata,
     })
@@ -527,6 +536,11 @@ fn transform_type(type_spec: AstType, optional: bool, resolver: &TypeAliasResolv
                 // Validation of whether the type actually exists happens in a later phase
                 TypeInfo::UserDefined(name)
             }
+        }
+
+        AstType::Generic(name) => {
+            // Generic type parameter (T, U, etc.)
+            TypeInfo::Generic(name)
         }
 
         AstType::Array(inner) => {
@@ -827,6 +841,10 @@ fn validate_type_info(
     match type_info {
         TypeInfo::Primitive(_) => {
             // Primitive types are always valid
+            Ok(())
+        }
+        TypeInfo::Generic(_) => {
+            // Generic type parameters are always valid (they're defined by the enclosing struct/enum)
             Ok(())
         }
         TypeInfo::UserDefined(type_name) => {

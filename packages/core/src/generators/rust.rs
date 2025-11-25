@@ -141,8 +141,13 @@ fn generate_struct(struct_def: &StructDefinition) -> String {
         output.push_str("#[account]\n");
     }
 
-    // Generate struct definition
-    output.push_str(&format!("pub struct {} {{\n", struct_def.name));
+    // Generate struct definition with optional generic parameters
+    let struct_name_with_generics = if struct_def.generic_params.is_empty() {
+        struct_def.name.clone()
+    } else {
+        format!("{}<{}>", struct_def.name, struct_def.generic_params.join(", "))
+    };
+    output.push_str(&format!("pub struct {} {{\n", struct_name_with_generics));
 
     // Generate fields
     for field in &struct_def.fields {
@@ -199,8 +204,13 @@ fn generate_enum(enum_def: &EnumDefinition) -> String {
         output.push_str("#[account]\n");
     }
 
-    // Generate enum definition
-    output.push_str(&format!("pub enum {} {{\n", enum_def.name));
+    // Generate enum definition with optional generic parameters
+    let enum_name_with_generics = if enum_def.generic_params.is_empty() {
+        enum_def.name.clone()
+    } else {
+        format!("{}<{}>", enum_def.name, enum_def.generic_params.join(", "))
+    };
+    output.push_str(&format!("pub enum {} {{\n", enum_name_with_generics));
 
     // Generate variants
     for variant in &enum_def.variants {
@@ -476,6 +486,9 @@ fn check_needs_solana_types(type_info: &TypeInfo, needs_pubkey: &mut bool) {
                 *needs_pubkey = true;
             }
         }
+        TypeInfo::Generic(_) => {
+            // Generic parameters don't require imports
+        }
         TypeInfo::Array(inner) => {
             check_needs_solana_types(inner, needs_pubkey);
         }
@@ -518,8 +531,13 @@ fn generate_enum_with_context(enum_def: &EnumDefinition, use_anchor: bool) -> St
         output.push_str("#[account]\n");
     }
 
-    // Generate enum definition
-    output.push_str(&format!("pub enum {} {{\n", enum_def.name));
+    // Generate enum definition with optional generic parameters
+    let enum_name_with_generics = if enum_def.generic_params.is_empty() {
+        enum_def.name.clone()
+    } else {
+        format!("{}<{}>", enum_def.name, enum_def.generic_params.join(", "))
+    };
+    output.push_str(&format!("pub enum {} {{\n", enum_name_with_generics));
 
     // Generate variants
     for variant in &enum_def.variants {
@@ -576,8 +594,13 @@ fn generate_struct_with_context(struct_def: &StructDefinition, use_anchor: bool)
         output.push_str("#[account]\n");
     }
 
-    // Generate struct definition
-    output.push_str(&format!("pub struct {} {{\n", struct_def.name));
+    // Generate struct definition with optional generic parameters
+    let struct_name_with_generics = if struct_def.generic_params.is_empty() {
+        struct_def.name.clone()
+    } else {
+        format!("{}<{}>", struct_def.name, struct_def.generic_params.join(", "))
+    };
+    output.push_str(&format!("pub struct {} {{\n", struct_name_with_generics));
 
     // Generate fields
     for field in &struct_def.fields {
@@ -774,6 +797,9 @@ fn collect_imports_from_type(type_info: &TypeInfo, imports: &mut HashSet<String>
             }
             // Note: Signature is mapped to String in Rust (no special import needed)
         }
+        TypeInfo::Generic(_) => {
+            // Generic parameters don't require imports
+        }
         TypeInfo::Array(inner) => {
             collect_imports_from_type(inner, imports);
         }
@@ -812,6 +838,10 @@ fn map_type_to_rust(type_info: &TypeInfo) -> String {
                 _ => type_name.clone(),
             }
         }
+        TypeInfo::Generic(param_name) => {
+            // Generic type parameter - output as-is
+            param_name.clone()
+        }
         TypeInfo::Array(inner) => {
             let inner_type = map_type_to_rust(inner);
             format!("Vec<{}>", inner_type)
@@ -840,6 +870,7 @@ mod tests {
     fn generates_simple_struct() {
         let type_def = TypeDefinition::Struct(StructDefinition {
             name: "User".to_string(),
+            generic_params: vec![],
             fields: vec![
                 FieldDefinition {
                     name: "id".to_string(),
@@ -868,6 +899,7 @@ mod tests {
     fn generates_solana_account() {
         let type_def = TypeDefinition::Struct(StructDefinition {
             name: "UserAccount".to_string(),
+            generic_params: vec![],
             fields: vec![
                 FieldDefinition {
                     name: "wallet".to_string(),
@@ -903,6 +935,7 @@ mod tests {
     fn generates_optional_fields() {
         let type_def = TypeDefinition::Struct(StructDefinition {
             name: "Profile".to_string(),
+            generic_params: vec![],
             fields: vec![FieldDefinition {
                 name: "email".to_string(),
                 type_info: TypeInfo::Option(Box::new(TypeInfo::Primitive("String".to_string()))),
@@ -920,6 +953,7 @@ mod tests {
     fn generates_array_fields() {
         let type_def = TypeDefinition::Struct(StructDefinition {
             name: "Team".to_string(),
+            generic_params: vec![],
             fields: vec![FieldDefinition {
                 name: "members".to_string(),
                 type_info: TypeInfo::Array(Box::new(TypeInfo::Primitive("u64".to_string()))),
@@ -938,11 +972,13 @@ mod tests {
         let type_defs = vec![
             TypeDefinition::Struct(StructDefinition {
                 name: "User".to_string(),
+            generic_params: vec![],
                 fields: vec![],
                 metadata: Metadata::default(),
             }),
             TypeDefinition::Struct(StructDefinition {
                 name: "Post".to_string(),
+            generic_params: vec![],
                 fields: vec![],
                 metadata: Metadata::default(),
             }),
@@ -957,6 +993,7 @@ mod tests {
     fn maps_publickey_to_pubkey() {
         let type_def = TypeDefinition::Struct(StructDefinition {
             name: "Account".to_string(),
+            generic_params: vec![],
             fields: vec![FieldDefinition {
                 name: "key".to_string(),
                 type_info: TypeInfo::Primitive("PublicKey".to_string()),
@@ -979,6 +1016,7 @@ mod tests {
     fn generates_unit_enum() {
         let type_def = TypeDefinition::Enum(EnumDefinition {
             name: "GameState".to_string(),
+            generic_params: vec![],
             variants: vec![
                 EnumVariantDefinition::Unit {
                     name: "Active".to_string(),
@@ -1011,6 +1049,7 @@ mod tests {
     fn generates_tuple_enum() {
         let type_def = TypeDefinition::Enum(EnumDefinition {
             name: "GameEvent".to_string(),
+            generic_params: vec![],
             variants: vec![
                 EnumVariantDefinition::Tuple {
                     name: "PlayerJoined".to_string(),
@@ -1045,6 +1084,7 @@ mod tests {
     fn generates_struct_enum() {
         let type_def = TypeDefinition::Enum(EnumDefinition {
             name: "GameInstruction".to_string(),
+            generic_params: vec![],
             variants: vec![
                 EnumVariantDefinition::Struct {
                     name: "Initialize".to_string(),
@@ -1106,6 +1146,7 @@ mod tests {
     fn test_custom_derives_on_struct() {
         let type_def = TypeDefinition::Struct(StructDefinition {
             name: "Account".to_string(),
+            generic_params: vec![],
             fields: vec![FieldDefinition {
                 name: "balance".to_string(),
                 type_info: TypeInfo::Primitive("u64".to_string()),
@@ -1135,6 +1176,7 @@ mod tests {
     fn test_custom_derives_deduplication() {
         let type_def = TypeDefinition::Struct(StructDefinition {
             name: "Account".to_string(),
+            generic_params: vec![],
             fields: vec![],
             metadata: Metadata {
                 solana: true,
@@ -1164,6 +1206,7 @@ mod tests {
     fn test_custom_derives_on_anchor_account() {
         let type_def = TypeDefinition::Struct(StructDefinition {
             name: "UserAccount".to_string(),
+            generic_params: vec![],
             fields: vec![],
             metadata: Metadata {
                 solana: true,
@@ -1183,6 +1226,7 @@ mod tests {
     fn test_custom_derives_on_enum() {
         let type_def = TypeDefinition::Enum(EnumDefinition {
             name: "GameState".to_string(),
+            generic_params: vec![],
             variants: vec![
                 EnumVariantDefinition::Unit {
                     name: "Active".to_string(),

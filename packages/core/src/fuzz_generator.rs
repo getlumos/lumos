@@ -351,6 +351,7 @@ mod tests {
     fn test_generates_struct_fuzz_target() {
         let type_defs = vec![TypeDefinition::Struct(StructDefinition {
             name: "PlayerAccount".to_string(),
+            generic_params: vec![],
             fields: vec![
                 FieldDefinition {
                     name: "wallet".to_string(),
@@ -388,6 +389,7 @@ mod tests {
     fn test_generates_enum_fuzz_target() {
         let type_defs = vec![TypeDefinition::Enum(EnumDefinition {
             name: "GameState".to_string(),
+            generic_params: vec![],
             variants: vec![],
             metadata: Metadata::default(),
         })];
@@ -423,11 +425,13 @@ mod tests {
         let type_defs = vec![
             TypeDefinition::Struct(StructDefinition {
                 name: "Account1".to_string(),
+            generic_params: vec![],
                 fields: vec![],
                 metadata: Metadata::default(),
             }),
             TypeDefinition::Enum(EnumDefinition {
                 name: "State1".to_string(),
+            generic_params: vec![],
                 variants: vec![],
                 metadata: Metadata::default(),
             }),
@@ -443,6 +447,7 @@ mod tests {
     fn test_type_exists() {
         let type_defs = vec![TypeDefinition::Struct(StructDefinition {
             name: "PlayerAccount".to_string(),
+            generic_params: vec![],
             fields: vec![],
             metadata: Metadata::default(),
         })];

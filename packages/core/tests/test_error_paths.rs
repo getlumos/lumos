@@ -325,6 +325,7 @@ mod generator_errors {
     fn test_empty_struct_generation() {
         let empty_struct = StructDefinition {
             name: "Empty".to_string(),
+            generic_params: vec![],
             fields: vec![],
             metadata: Metadata::default(),
         };
@@ -344,6 +345,7 @@ mod generator_errors {
         // This is an edge case - enums should have at least one variant
         let empty_enum = EnumDefinition {
             name: "EmptyEnum".to_string(),
+            generic_params: vec![],
             variants: vec![],
             metadata: Metadata::default(),
         };
@@ -372,6 +374,7 @@ mod generator_errors {
 
         let struct_def = StructDefinition {
             name: "Nested".to_string(),
+            generic_params: vec![],
             fields: vec![nested_field],
             metadata: Metadata::default(),
         };
@@ -391,6 +394,7 @@ mod generator_errors {
         // Test enum with all three variant types
         let mixed_enum = EnumDefinition {
             name: "MixedEnum".to_string(),
+            generic_params: vec![],
             variants: vec![
                 EnumVariantDefinition::Unit {
                     name: "Empty".to_string(),

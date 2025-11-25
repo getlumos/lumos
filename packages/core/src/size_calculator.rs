@@ -263,6 +263,13 @@ impl<'a> SizeCalculator<'a> {
     fn calculate_type_size(&mut self, type_info: &TypeInfo) -> SizeInfo {
         match type_info {
             TypeInfo::Primitive(type_name) => self.calculate_primitive_size(type_name),
+            TypeInfo::Generic(param_name) => {
+                // Generic parameters have unknown size until concrete type is provided
+                SizeInfo::Variable {
+                    min: 0,
+                    reason: format!("Generic parameter '{}' (size depends on concrete type)", param_name),
+                }
+            }
             TypeInfo::UserDefined(type_name) => {
                 // Check cache first
                 if let Some(cached) = self.size_cache.get(type_name) {
@@ -371,6 +378,7 @@ impl<'a> SizeCalculator<'a> {
                 "String" => "String (variable)".to_string(),
                 _ => name.clone(),
             },
+            TypeInfo::Generic(param_name) => param_name.clone(),
             TypeInfo::UserDefined(name) => name.clone(),
             TypeInfo::Array(inner) => format!("Vec<{}>", self.describe_type(inner)),
             TypeInfo::FixedArray { element, size } => {
@@ -419,6 +427,7 @@ mod tests {
     fn test_simple_struct_size() {
         let type_defs = vec![TypeDefinition::Struct(StructDefinition {
             name: "Player".to_string(),
+            generic_params: vec![],
             fields: vec![
                 FieldDefinition {
                     name: "wallet".to_string(),
@@ -448,6 +457,7 @@ mod tests {
     fn test_account_with_discriminator() {
         let type_defs = vec![TypeDefinition::Struct(StructDefinition {
             name: "GameAccount".to_string(),
+            generic_params: vec![],
             fields: vec![FieldDefinition {
                 name: "score".to_string(),
                 type_info: TypeInfo::Primitive("u64".to_string()),
@@ -474,6 +484,7 @@ mod tests {
     fn test_option_size() {
         let type_defs = vec![TypeDefinition::Struct(StructDefinition {
             name: "Optional".to_string(),
+            generic_params: vec![],
             fields: vec![FieldDefinition {
                 name: "maybe_value".to_string(),
                 type_info: TypeInfo::Option(Box::new(TypeInfo::Primitive("u64".to_string()))),

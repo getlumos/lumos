@@ -35,6 +35,9 @@ pub struct StructDefinition {
     /// Struct name
     pub name: String,
 
+    /// Generic type parameters (e.g., ["T", "U"])
+    pub generic_params: Vec<String>,
+
     /// Fields in this struct
     pub fields: Vec<FieldDefinition>,
 
@@ -47,6 +50,9 @@ pub struct StructDefinition {
 pub struct EnumDefinition {
     /// Enum name
     pub name: String,
+
+    /// Generic type parameters (e.g., ["T", "E"])
+    pub generic_params: Vec<String>,
 
     /// Variants in this enum
     pub variants: Vec<EnumVariantDefinition>,
@@ -92,6 +98,9 @@ pub struct FieldDefinition {
 pub enum TypeInfo {
     /// Primitive types (u64, string, etc.)
     Primitive(String),
+
+    /// Generic type parameter (T, U, K, V, etc.)
+    Generic(String),
 
     /// User-defined types
     UserDefined(String),

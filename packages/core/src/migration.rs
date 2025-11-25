@@ -344,6 +344,7 @@ fn describe_change(change: &SchemaChange) -> String {
 fn type_info_display(type_info: &TypeInfo) -> String {
     match type_info {
         TypeInfo::Primitive(name) => name.clone(),
+        TypeInfo::Generic(param_name) => param_name.clone(),
         TypeInfo::UserDefined(name) => name.clone(),
         TypeInfo::Array(inner) => format!("[{}]", type_info_display(inner)),
         TypeInfo::FixedArray { element, size } => {
@@ -491,6 +492,7 @@ fn map_type_to_rust(type_info: &TypeInfo, optional: bool) -> String {
             other => other,
         }
         .to_string(),
+        TypeInfo::Generic(param_name) => param_name.clone(),
         TypeInfo::UserDefined(name) => name.clone(),
         TypeInfo::Array(inner) => format!("Vec<{}>", map_type_to_rust(inner, false)),
         TypeInfo::FixedArray { element, size } => {
@@ -538,6 +540,7 @@ fn get_default_value_for_type(type_info: &TypeInfo) -> String {
             _ => "Default::default()",
         }
         .to_string(),
+        TypeInfo::Generic(_) => "Default::default()".to_string(),
         TypeInfo::UserDefined(_) => "Default::default()".to_string(),
         TypeInfo::Array(_) => "Vec::new()".to_string(),
         TypeInfo::FixedArray { element, size } => {
@@ -699,6 +702,7 @@ fn map_type_to_typescript(type_info: &TypeInfo, optional: bool) -> String {
             other => other,
         }
         .to_string(),
+        TypeInfo::Generic(param_name) => param_name.clone(),
         TypeInfo::UserDefined(name) => name.clone(),
         TypeInfo::Array(inner) => format!("{}[]", map_type_to_typescript(inner, false)),
         TypeInfo::FixedArray { element, .. } => {
@@ -751,6 +755,7 @@ fn get_typescript_default_value_for_type(type_info: &TypeInfo) -> String {
             _ => "undefined",
         }
         .to_string(),
+        TypeInfo::Generic(_) => "undefined".to_string(),
         TypeInfo::UserDefined(_) => "undefined".to_string(),
         TypeInfo::Array(_) => "[]".to_string(),
         TypeInfo::FixedArray { element, size } => {
@@ -769,6 +774,7 @@ mod tests {
     fn create_test_struct(name: &str, fields: Vec<(&str, TypeInfo, bool)>) -> StructDefinition {
         StructDefinition {
             name: name.to_string(),
+            generic_params: vec![],
             fields: fields
                 .into_iter()
                 .map(|(field_name, type_info, optional)| FieldDefinition {

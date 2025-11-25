@@ -345,6 +345,7 @@ mod tests {
     fn test_detects_missing_signer() {
         let type_defs = vec![TypeDefinition::Struct(StructDefinition {
             name: "UpdateInstruction".to_string(),
+            generic_params: vec![],
             fields: vec![FieldDefinition {
                 name: "authority".to_string(),
                 type_info: TypeInfo::Primitive("PublicKey".to_string()),
@@ -367,6 +368,7 @@ mod tests {
     fn test_detects_unchecked_arithmetic() {
         let type_defs = vec![TypeDefinition::Struct(StructDefinition {
             name: "TokenAccount".to_string(),
+            generic_params: vec![],
             fields: vec![FieldDefinition {
                 name: "balance".to_string(),
                 type_info: TypeInfo::Primitive("u64".to_string()),
@@ -388,6 +390,7 @@ mod tests {
     fn test_detects_no_discriminator() {
         let type_defs = vec![TypeDefinition::Struct(StructDefinition {
             name: "GameAccount".to_string(),
+            generic_params: vec![],
             fields: vec![],
             metadata: Metadata {
                 solana: true,
@@ -409,6 +412,7 @@ mod tests {
     fn test_strict_mode_more_warnings() {
         let type_defs = vec![TypeDefinition::Struct(StructDefinition {
             name: "Account".to_string(),
+            generic_params: vec![],
             fields: vec![FieldDefinition {
                 name: "owner".to_string(),
                 type_info: TypeInfo::Primitive("PublicKey".to_string()),
@@ -438,6 +442,7 @@ mod tests {
     fn test_no_false_positives_on_safe_struct() {
         let type_defs = vec![TypeDefinition::Struct(StructDefinition {
             name: "SafeData".to_string(),
+            generic_params: vec![],
             fields: vec![
                 FieldDefinition {
                     name: "id".to_string(),

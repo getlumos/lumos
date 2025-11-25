@@ -436,6 +436,7 @@ fn contains_u64_or_i64(type_info: &TypeInfo) -> bool {
         TypeInfo::Primitive(type_name) => {
             matches!(type_name.as_str(), "u64" | "i64")
         }
+        TypeInfo::Generic(_) => false, // Generic parameters are not u64/i64
         TypeInfo::Array(inner) | TypeInfo::FixedArray { element: inner, .. } | TypeInfo::Option(inner) => {
             contains_u64_or_i64(inner)
         }
@@ -447,8 +448,13 @@ fn contains_u64_or_i64(type_info: &TypeInfo) -> bool {
 fn generate_struct_interface(struct_def: &StructDefinition) -> String {
     let mut output = String::new();
 
-    // Generate interface
-    output.push_str(&format!("export interface {} {{\n", struct_def.name));
+    // Generate interface with optional generic parameters
+    let interface_name_with_generics = if struct_def.generic_params.is_empty() {
+        struct_def.name.clone()
+    } else {
+        format!("{}<{}>", struct_def.name, struct_def.generic_params.join(", "))
+    };
+    output.push_str(&format!("export interface {} {{\n", interface_name_with_generics));
 
     // Generate fields
     for field in &struct_def.fields {
@@ -522,8 +528,13 @@ fn generate_enum_type(enum_def: &EnumDefinition) -> String {
         output.push_str(" */\n");
     }
 
-    // Generate discriminated union type
-    output.push_str(&format!("export type {} =\n", enum_def.name));
+    // Generate discriminated union type with optional generic parameters
+    let type_name_with_generics = if enum_def.generic_params.is_empty() {
+        enum_def.name.clone()
+    } else {
+        format!("{}<{}>", enum_def.name, enum_def.generic_params.join(", "))
+    };
+    output.push_str(&format!("export type {} =\n", type_name_with_generics));
 
     for variant in &enum_def.variants {
         let prefix = "  | ";
@@ -661,6 +672,9 @@ fn collect_imports_from_type(type_info: &TypeInfo, needs_publickey: &mut bool) {
                 *needs_publickey = true;
             }
         }
+        TypeInfo::Generic(_) => {
+            // Generic parameters don't require imports
+        }
         TypeInfo::Array(inner) => {
             collect_imports_from_type(inner, needs_publickey);
         }
@@ -716,6 +730,10 @@ fn map_type_to_typescript(type_info: &TypeInfo) -> String {
             let inner_type = map_type_to_typescript(inner);
             format!("{} | undefined", inner_type)
         }
+        TypeInfo::Generic(param_name) => {
+            // Generic type parameter - output as-is
+            param_name.clone()
+        }
         TypeInfo::UserDefined(type_name) => type_name.clone(),
     }
 }
@@ -754,6 +772,11 @@ fn map_type_to_borsh(type_info: &TypeInfo) -> String {
             let inner_borsh = map_type_to_borsh(inner);
             format!("borsh.option({})", inner_borsh)
         }
+        TypeInfo::Generic(param_name) => {
+            // Generic parameters cannot be serialized directly with Borsh
+            // They need concrete types at instantiation time
+            format!("/* Generic parameter '{}' - Borsh schema needed at concrete type level */", param_name)
+        }
         TypeInfo::UserDefined(type_name) => {
             // User-defined types need their schema
             format!("{}Schema", type_name)
@@ -773,6 +796,7 @@ mod tests {
     fn generates_simple_interface() {
         let type_def = TypeDefinition::Struct(StructDefinition {
             name: "User".to_string(),
+            generic_params: vec![],
             fields: vec![
                 FieldDefinition {
                     name: "id".to_string(),
@@ -800,6 +824,7 @@ mod tests {
     fn generates_solana_interface_with_borsh() {
         let type_def = TypeDefinition::Struct(StructDefinition {
             name: "UserAccount".to_string(),
+            generic_params: vec![],
             fields: vec![
                 FieldDefinition {
                     name: "wallet".to_string(),
@@ -837,6 +862,7 @@ mod tests {
     fn generates_optional_fields() {
         let type_def = TypeDefinition::Struct(StructDefinition {
             name: "Profile".to_string(),
+            generic_params: vec![],
             fields: vec![FieldDefinition {
                 name: "email".to_string(),
                 type_info: TypeInfo::Option(Box::new(TypeInfo::Primitive("String".to_string()))),
@@ -854,6 +880,7 @@ mod tests {
     fn generates_array_fields() {
         let type_def = TypeDefinition::Struct(StructDefinition {
             name: "Team".to_string(),
+            generic_params: vec![],
             fields: vec![FieldDefinition {
                 name: "members".to_string(),
                 type_info: TypeInfo::Array(Box::new(TypeInfo::Primitive("u64".to_string()))),
@@ -878,11 +905,13 @@ mod tests {
         let type_defs = vec![
             TypeDefinition::Struct(StructDefinition {
                 name: "User".to_string(),
+            generic_params: vec![],
                 fields: vec![],
                 metadata: Metadata::default(),
             }),
             TypeDefinition::Struct(StructDefinition {
                 name: "Post".to_string(),
+            generic_params: vec![],
                 fields: vec![],
                 metadata: Metadata::default(),
             }),
@@ -897,6 +926,7 @@ mod tests {
     fn maps_bigint_types() {
         let type_def = TypeDefinition::Struct(StructDefinition {
             name: "BigNumbers".to_string(),
+            generic_params: vec![],
             fields: vec![
                 FieldDefinition {
                     name: "big_unsigned".to_string(),
@@ -923,6 +953,7 @@ mod tests {
     fn generates_unit_enum() {
         let type_def = TypeDefinition::Enum(EnumDefinition {
             name: "GameState".to_string(),
+            generic_params: vec![],
             variants: vec![
                 EnumVariantDefinition::Unit {
                     name: "Active".to_string(),
@@ -958,6 +989,7 @@ mod tests {
     fn generates_tuple_enum() {
         let type_def = TypeDefinition::Enum(EnumDefinition {
             name: "GameEvent".to_string(),
+            generic_params: vec![],
             variants: vec![
                 EnumVariantDefinition::Tuple {
                     name: "PlayerJoined".to_string(),
@@ -994,6 +1026,7 @@ mod tests {
     fn generates_struct_enum() {
         let type_def = TypeDefinition::Enum(EnumDefinition {
             name: "GameInstruction".to_string(),
+            generic_params: vec![],
             variants: vec![
                 EnumVariantDefinition::Struct {
                     name: "Initialize".to_string(),

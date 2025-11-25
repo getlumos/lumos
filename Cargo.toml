@@ -3,6 +3,7 @@ members = [
     "packages/core",
     "packages/cli",
     "packages/lsp",
+    "packages/cargo-lumos",
 ]
 resolver = "2"
 

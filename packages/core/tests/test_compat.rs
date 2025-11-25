@@ -24,6 +24,7 @@ fn create_struct(
 
     TypeDefinition::Struct(StructDefinition {
         name: name.to_string(),
+        generic_params: vec![],
         fields: field_defs,
         metadata: Metadata {
             solana: true,

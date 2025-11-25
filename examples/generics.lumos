@@ -1,0 +1,46 @@
+// Generic Types Example for LUMOS
+// Demonstrates support for generic type parameters
+
+#[solana]
+
+// Generic wrapper struct
+struct Wrapper<T> {
+    value: T,
+}
+
+// Generic key-value pair
+struct Pair<K, V> {
+    key: K,
+    value: V,
+}
+
+// Generic Result type
+enum Result<T, E> {
+    Ok(T),
+    Err(E),
+}
+
+// Generic Option-like enum
+enum Maybe<T> {
+    Some(T),
+    None,
+}
+
+// Container with Vec of generic type
+struct Container<T> {
+    items: Vec<T>,
+    count: u32,
+}
+
+// Node for linked structures
+struct Node<T> {
+    data: T,
+    next: Option<PublicKey>,
+}
+
+// Response wrapper for API
+struct Response<T> {
+    success: bool,
+    data: Option<T>,
+    error: Option<String>,
+}

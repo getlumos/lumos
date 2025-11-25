@@ -136,6 +136,88 @@ fn parse_visibility(vis: &syn::Visibility) -> Visibility {
     }
 }
 
+/// Parse generic type parameters from syn::Generics
+///
+/// Extracts simple type parameters (e.g., T, U, K, V) from generic declarations.
+/// Currently does not support:
+/// - Lifetime parameters ('a, 'b)
+/// - Const generic parameters (const N: usize)
+/// - Type bounds (T: Trait)
+/// - Where clauses
+///
+/// # Arguments
+///
+/// * `generics` - syn Generics node
+///
+/// # Returns
+///
+/// * `Ok(Vec<String>)` - List of type parameter names
+/// * `Err(LumosError)` - If unsupported generic features are used
+///
+/// # Example
+///
+/// ```ignore
+/// // For `struct Foo<T, U>`
+/// let params = parse_generic_params(&item.generics)?;
+/// assert_eq!(params, vec!["T", "U"]);
+/// ```
+fn parse_generic_params(generics: &syn::Generics) -> Result<Vec<String>> {
+    let mut type_params = Vec::new();
+
+    // Check for where clause (unsupported for now)
+    if generics.where_clause.is_some() {
+        return Err(LumosError::SchemaParse(
+            "Where clauses on generic types are not yet supported".to_string(),
+            None,
+        ));
+    }
+
+    // Extract type parameters
+    for param in &generics.params {
+        match param {
+            syn::GenericParam::Type(type_param) => {
+                // Check for bounds (unsupported for now)
+                if !type_param.bounds.is_empty() {
+                    return Err(LumosError::SchemaParse(
+                        format!(
+                            "Type parameter bounds are not yet supported (found on '{}')",
+                            type_param.ident
+                        ),
+                        None,
+                    ));
+                }
+
+                // Check for default type (unsupported for now)
+                if type_param.default.is_some() {
+                    return Err(LumosError::SchemaParse(
+                        format!(
+                            "Default types for generic parameters are not yet supported (found on '{}')",
+                            type_param.ident
+                        ),
+                        None,
+                    ));
+                }
+
+                type_params.push(type_param.ident.to_string());
+            }
+            syn::GenericParam::Lifetime(_) => {
+                return Err(LumosError::SchemaParse(
+                    "Lifetime parameters are not supported in LUMOS schemas".to_string(),
+                    None,
+                ));
+            }
+            syn::GenericParam::Const(_) => {
+                return Err(LumosError::SchemaParse(
+                    "Const generic parameters are not yet supported".to_string(),
+                    None,
+                ));
+            }
+        }
+    }
+
+    Ok(type_params)
+}
+
 /// Parse a type alias definition
 ///
 /// Converts `type UserId = PublicKey;` into a TypeAlias AST node.
@@ -406,6 +488,9 @@ fn parse_struct(item: syn::ItemStruct) -> Result<StructDef> {
     let span = Some(item.ident.span());
     let visibility = parse_visibility(&item.vis);
 
+    // Extract generic type parameters
+    let type_params = parse_generic_params(&item.generics)?;
+
     // Extract attributes
     let attributes = parse_attributes(&item.attrs)?;
 
@@ -417,7 +502,7 @@ fn parse_struct(item: syn::ItemStruct) -> Result<StructDef> {
         syn::Fields::Named(fields_named) => {
             let mut field_defs = Vec::new();
             for field in fields_named.named {
-                let field_def = parse_field(field)?;
+                let field_def = parse_field(field, &type_params)?;
                 field_defs.push(field_def);
             }
             field_defs
@@ -433,6 +518,7 @@ fn parse_struct(item: syn::ItemStruct) -> Result<StructDef> {
     Ok(StructDef {
         name,
         visibility,
+        type_params,
         attributes,
         fields,
         version,
@@ -446,6 +532,9 @@ fn parse_enum(item: syn::ItemEnum) -> Result<EnumDef> {
     let span = Some(item.ident.span());
     let visibility = parse_visibility(&item.vis);
 
+    // Extract generic type parameters
+    let type_params = parse_generic_params(&item.generics)?;
+
     // Extract attributes
     let attributes = parse_attributes(&item.attrs)?;
 
@@ -455,7 +544,7 @@ fn parse_enum(item: syn::ItemEnum) -> Result<EnumDef> {
     // Extract variants
     let mut variants = Vec::new();
     for variant in item.variants {
-        let variant_def = parse_enum_variant(variant)?;
+        let variant_def = parse_enum_variant(variant, &type_params)?;
         variants.push(variant_def);
     }
 
@@ -469,6 +558,7 @@ fn parse_enum(item: syn::ItemEnum) -> Result<EnumDef> {
     Ok(EnumDef {
         name,
         visibility,
+        type_params,
         attributes,
         variants,
         version,
@@ -477,7 +567,7 @@ fn parse_enum(item: syn::ItemEnum) -> Result<EnumDef> {
 }
 
 /// Parse an enum variant
-fn parse_enum_variant(variant: syn::Variant) -> Result<EnumVariant> {
+fn parse_enum_variant(variant: syn::Variant, generic_params: &[String]) -> Result<EnumVariant> {
     let name = variant.ident.to_string();
     let span = Some(variant.ident.span());
 
@@ -489,7 +579,7 @@ fn parse_enum_variant(variant: syn::Variant) -> Result<EnumVariant> {
         syn::Fields::Unnamed(fields_unnamed) => {
             let mut types = Vec::new();
             for field in fields_unnamed.unnamed {
-                let (type_spec, _optional) = parse_type(&field.ty)?;
+                let (type_spec, _optional) = parse_type_with_generics(&field.ty, generic_params)?;
                 types.push(type_spec);
             }
             Ok(EnumVariant::Tuple { name, types, span })
@@ -499,7 +589,7 @@ fn parse_enum_variant(variant: syn::Variant) -> Result<EnumVariant> {
         syn::Fields::Named(fields_named) => {
             let mut fields = Vec::new();
             for field in fields_named.named {
-                let field_def = parse_field(field)?;
+                let field_def = parse_field(field, generic_params)?;
                 fields.push(field_def);
             }
             Ok(EnumVariant::Struct { name, fields, span })
@@ -508,7 +598,7 @@ fn parse_enum_variant(variant: syn::Variant) -> Result<EnumVariant> {
 }
 
 /// Parse a field definition
-fn parse_field(field: syn::Field) -> Result<FieldDef> {
+fn parse_field(field: syn::Field, generic_params: &[String]) -> Result<FieldDef> {
     let name = field
         .ident
         .as_ref()
@@ -520,8 +610,8 @@ fn parse_field(field: syn::Field) -> Result<FieldDef> {
     // Extract field attributes
     let attributes = parse_attributes(&field.attrs)?;
 
-    // Parse field type
-    let (type_spec, optional) = parse_type(&field.ty)?;
+    // Parse field type (with generic context)
+    let (type_spec, optional) = parse_type_with_generics(&field.ty, generic_params)?;
 
     Ok(FieldDef {
         name,
@@ -682,8 +772,12 @@ fn parse_derive_list(tokens: &str) -> Result<AttributeValue> {
 
 /// Parse a type specification
 fn parse_type(ty: &Type) -> Result<(TypeSpec, bool)> {
+    parse_type_with_generics(ty, &[])
+}
+
+fn parse_type_with_generics(ty: &Type, generic_params: &[String]) -> Result<(TypeSpec, bool)> {
     match ty {
-        // Simple type: u64, string, PublicKey
+        // Simple type: u64, string, PublicKey, or generic parameter T
         Type::Path(type_path) => {
             let type_name = type_path
                 .path
@@ -699,20 +793,38 @@ fn parse_type(ty: &Type) -> Result<(TypeSpec, bool)> {
                 if let Some(segment) = type_path.path.segments.last() {
                     if let syn::PathArguments::AngleBracketed(args) = &segment.arguments {
                         if let Some(syn::GenericArgument::Type(inner_ty)) = args.args.first() {
-                            let (inner_type_spec, _) = parse_type(inner_ty)?;
+                            let (inner_type_spec, _) = parse_type_with_generics(inner_ty, generic_params)?;
                             return Ok((inner_type_spec, true)); // optional = true
                         }
                     }
                 }
             }
 
-            // Regular type
+            // Check if it's Vec<T> (dynamic array)
+            if type_name == "Vec" {
+                // Extract the inner type from Vec<T>
+                if let Some(segment) = type_path.path.segments.last() {
+                    if let syn::PathArguments::AngleBracketed(args) = &segment.arguments {
+                        if let Some(syn::GenericArgument::Type(inner_ty)) = args.args.first() {
+                            let (inner_type_spec, _) = parse_type_with_generics(inner_ty, generic_params)?;
+                            return Ok((TypeSpec::Array(Box::new(inner_type_spec)), false));
+                        }
+                    }
+                }
+            }
+
+            // Check if it's a generic parameter
+            if generic_params.contains(&type_name) {
+                return Ok((TypeSpec::Generic(type_name), false));
+            }
+
+            // Regular type (primitive or user-defined)
             Ok((TypeSpec::Primitive(type_name), false))
         }
 
         // Fixed-size array type: [T; N]
         Type::Array(type_array) => {
-            let (inner_type_spec, _) = parse_type(&type_array.elem)?;
+            let (inner_type_spec, _) = parse_type_with_generics(&type_array.elem, generic_params)?;
 
             // Extract array size from length expression
             let size = parse_array_size(&type_array.len)?;
@@ -731,7 +843,7 @@ fn parse_type(ty: &Type) -> Result<(TypeSpec, bool)> {
 
         // Slice type: [T] (dynamic array/Vec)
         Type::Slice(type_slice) => {
-            let (inner_type_spec, _) = parse_type(&type_slice.elem)?;
+            let (inner_type_spec, _) = parse_type_with_generics(&type_slice.elem, generic_params)?;
             Ok((TypeSpec::Array(Box::new(inner_type_spec)), false))
         }
 
@@ -1477,5 +1589,207 @@ mod tests {
             }
             _ => panic!("Expected struct"),
         }
+    }
+
+    #[test]
+    fn test_parse_generic_struct_single_param() {
+        let input = r#"
+            struct Wrapper<T> {
+                value: T,
+            }
+        "#;
+
+        let result = parse_lumos_file(input);
+        assert!(result.is_ok());
+
+        let file = result.unwrap();
+        match &file.items[0] {
+            AstItem::Struct(struct_def) => {
+                assert_eq!(struct_def.name, "Wrapper");
+                assert_eq!(struct_def.type_params.len(), 1);
+                assert_eq!(struct_def.type_params[0], "T");
+                assert_eq!(struct_def.fields.len(), 1);
+                assert_eq!(struct_def.fields[0].name, "value");
+                match &struct_def.fields[0].type_spec {
+                    TypeSpec::Generic(name) => assert_eq!(name, "T"),
+                    _ => panic!("Expected Generic type"),
+                }
+            }
+            _ => panic!("Expected struct item"),
+        }
+    }
+
+    #[test]
+    fn test_parse_generic_struct_multiple_params() {
+        let input = r#"
+            struct KeyValue<K, V> {
+                key: K,
+                value: V,
+            }
+        "#;
+
+        let result = parse_lumos_file(input);
+        assert!(result.is_ok());
+
+        let file = result.unwrap();
+        match &file.items[0] {
+            AstItem::Struct(struct_def) => {
+                assert_eq!(struct_def.name, "KeyValue");
+                assert_eq!(struct_def.type_params.len(), 2);
+                assert_eq!(struct_def.type_params[0], "K");
+                assert_eq!(struct_def.type_params[1], "V");
+                assert_eq!(struct_def.fields.len(), 2);
+            }
+            _ => panic!("Expected struct item"),
+        }
+    }
+
+    #[test]
+    fn test_parse_generic_enum() {
+        let input = r#"
+            enum Result<T, E> {
+                Ok(T),
+                Err(E),
+            }
+        "#;
+
+        let result = parse_lumos_file(input);
+        assert!(result.is_ok());
+
+        let file = result.unwrap();
+        match &file.items[0] {
+            AstItem::Enum(enum_def) => {
+                assert_eq!(enum_def.name, "Result");
+                assert_eq!(enum_def.type_params.len(), 2);
+                assert_eq!(enum_def.type_params[0], "T");
+                assert_eq!(enum_def.type_params[1], "E");
+                assert_eq!(enum_def.variants.len(), 2);
+            }
+            _ => panic!("Expected enum item"),
+        }
+    }
+
+    #[test]
+    fn test_parse_generic_nested_in_vec() {
+        let input = r#"
+            struct Container<T> {
+                items: Vec<T>,
+            }
+        "#;
+
+        let result = parse_lumos_file(input);
+        assert!(result.is_ok());
+
+        let file = result.unwrap();
+        match &file.items[0] {
+            AstItem::Struct(struct_def) => {
+                assert_eq!(struct_def.type_params.len(), 1);
+                assert_eq!(struct_def.type_params[0], "T");
+
+                let field = &struct_def.fields[0];
+                match &field.type_spec {
+                    TypeSpec::Array(inner) => match inner.as_ref() {
+                        TypeSpec::Generic(name) => assert_eq!(name, "T"),
+                        _ => panic!("Expected Generic inside Array"),
+                    },
+                    _ => panic!("Expected Array type"),
+                }
+            }
+            _ => panic!("Expected struct item"),
+        }
+    }
+
+    #[test]
+    fn test_parse_generic_nested_in_option() {
+        let input = r#"
+            struct Maybe<T> {
+                value: Option<T>,
+            }
+        "#;
+
+        let result = parse_lumos_file(input);
+        assert!(result.is_ok());
+
+        let file = result.unwrap();
+        match &file.items[0] {
+            AstItem::Struct(struct_def) => {
+                assert_eq!(struct_def.type_params.len(), 1);
+
+                let field = &struct_def.fields[0];
+                assert!(field.optional);
+                match &field.type_spec {
+                    TypeSpec::Generic(name) => assert_eq!(name, "T"),
+                    _ => panic!("Expected Generic type in Option"),
+                }
+            }
+            _ => panic!("Expected struct item"),
+        }
+    }
+
+    #[test]
+    fn test_parse_generic_with_bounds_should_error() {
+        let input = r#"
+            struct Sortable<T: Ord> {
+                value: T,
+            }
+        "#;
+
+        let result = parse_lumos_file(input);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Type parameter bounds are not yet supported"));
+    }
+
+    #[test]
+    fn test_parse_generic_with_where_clause_should_error() {
+        let input = r#"
+            struct Container<T>
+            where
+                T: Clone,
+            {
+                value: T,
+            }
+        "#;
+
+        let result = parse_lumos_file(input);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Where clauses on generic types are not yet supported"));
+    }
+
+    #[test]
+    fn test_parse_generic_with_lifetime_should_error() {
+        let input = r#"
+            struct Reference<'a, T> {
+                value: &'a T,
+            }
+        "#;
+
+        let result = parse_lumos_file(input);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Lifetime parameters are not supported"));
+    }
+
+    #[test]
+    fn test_parse_generic_with_const_should_error() {
+        let input = r#"
+            struct Array<T, const N: usize> {
+                data: [T; N],
+            }
+        "#;
+
+        let result = parse_lumos_file(input);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Const generic parameters are not yet supported"));
     }
 }

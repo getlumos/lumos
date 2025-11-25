@@ -25,9 +25,9 @@ LUMOS continues rapid evolution with IDE integration and schema versioning:
 - ✅ **Interactive playground** - Live code generation at docs.lumos-lang.org/playground
 - ✅ **Performance benchmarks** - Comprehensive Borsh comparison suite
 
-**Completed**: Phase 5.1 (Schema Evolution - 100%), Phase 5.2 (IDE Integration - 100%), Phase 6.3 (Security & Validation - 100%)
-**Active**: Phase 5.3 (Advanced Type System - 80%)
-**Next**: Phase 5.4 (Multi-Language Generation), Phase 6.1 (Framework Integration)
+**Completed**: Phase 5.1 (Schema Evolution - 100%), Phase 5.2 (IDE Integration - 100%), Phase 5.3 (Advanced Type System - 100%), Phase 6.2 (Tooling Ecosystem - 100%), Phase 6.3 (Security & Validation - 100%)
+**Active**: Phase 5.4 (Multi-Language Generation), Phase 6.1 (Framework Integration)
+**Next**: Era 2 - Language Transformation (Phase 7+)
 
 ---
 
@@ -182,7 +182,7 @@ Transform from schema DSL → full programming language for type-safe Solana wor
 
 **Goal**: Express complex Solana program constraints
 
-**Status**: 4/5 complete (80%)
+**Status**: 5/5 complete (100%) ✅
 
 **Issues:**
 - [x] Add custom derive macros support to LUMOS [#50] ✅ **COMPLETE**
@@ -192,9 +192,23 @@ Transform from schema DSL → full programming language for type-safe Solana wor
   - [x] #53a: AST foundations with visibility support ✅ **COMPLETE**
   - [x] #53b: Module resolution & hierarchical loading ✅ **COMPLETE**
   - [x] #53c: Use statement validation & CLI integration ✅ **COMPLETE**
-- [ ] Add generic struct/enum definitions to LUMOS [#54]
+- [x] Add generic struct/enum definitions to LUMOS [#54] ✅ **COMPLETE**
 
 **Completed**:
+- #54 (Nov 25, 2025) - Generic type parameters support
+  - Added `type_params: Vec<String>` to AST (StructDef, EnumDef)
+  - Added `TypeSpec::Generic(String)` variant for generic parameter types
+  - Implemented `parse_generic_params()` to extract from `syn::Generics`
+  - Added validation for unsupported features (bounds, where clauses, lifetimes, const generics)
+  - Updated IR with `generic_params` field in StructDefinition and EnumDefinition
+  - Added `TypeInfo::Generic(String)` variant in IR layer
+  - Updated transform layer to pass generic context through type parsing
+  - Modified Rust generator to output `struct Foo<T>` and `enum Result<T, E>` syntax
+  - Modified TypeScript generator to output `interface Foo<T>` and `type Result<T, E>` syntax
+  - Fixed 13+ non-exhaustive pattern matches across all modules
+  - Added 10 comprehensive parser tests for generic functionality
+  - Created examples/generics.lumos demonstrating various generic patterns
+  - All 139 tests passing with full generic support
 - #50 (Nov 24, 2025) - Custom derive macros support
   - Extended `AttributeValue` enum with `List(Vec<String>)` variant
   - Added `#[derive(...)]` parser with comma-separated list support
@@ -335,20 +349,34 @@ lumos generate schema.lumos --lang rust,typescript,python,go,ruby
 
 ### 6.2 Tooling Ecosystem
 
-**Status**: 2/4 complete (50%)
+**Status**: 4/4 complete (100%) ✅
 
 **Issues:**
-- [ ] Create `cargo lumos` subcommand for Rust workflows [#59]
+- [x] Create `cargo lumos` subcommand for Rust workflows [#59] ✅ **COMPLETE**
 - [x] Create GitHub Action for CI/CD auto-generation [#60] ✅ **COMPLETE**
-- [ ] Create pre-commit hook for schema validation [#61]
+- [x] Create pre-commit hook for schema validation [#61] ✅ **COMPLETE**
 - [x] Create npm package for JavaScript/TypeScript projects [#62] ✅ **COMPLETE**
 
 **Completed**:
+- #59 (Nov 25, 2025) - cargo lumos subcommand for Rust workflows
+  - New package `cargo-lumos` in workspace
+  - Supports all lumos commands via `cargo lumos <cmd>`
+  - Reads config from `[package.metadata.lumos]` in Cargo.toml
+  - Auto-detects local debug/release builds for development
+  - External command passthrough for full CLI compatibility
+  - 5 unit tests
+
 - #60 (Nov 2025) - GitHub Action for automated validation and generation
   - Published to GitHub Marketplace as `getlumos/lumos-action@v1`
   - Auto-install CLI, validate schemas, generate code, drift detection
   - Comprehensive CI/CD integration with PR comments
   - Available at https://github.com/marketplace/actions/lumos-generate
+
+- #61 (Nov 2025) - Pre-commit hook for schema validation
+  - Repository: https://github.com/getlumos/lumos-pre-commit
+  - Three hooks: lumos-validate, lumos-format, lumos-check-generated
+  - Works with pre-commit framework
+  - Fast validation (< 1s)
 
 - #62 (Nov 23, 2025) - npm package for JavaScript/TypeScript projects
   - Published `@getlumos/cli` to npm registry
@@ -760,17 +788,21 @@ Core language free forever, monetize via cloud platform and premium extensions
 - [x] Emacs mode (#48)
 - [x] Sublime Text package (#49)
 
-**5.3 Advanced Type System (80% complete):**
+**5.3 Advanced Type System (100% complete) ✅:**
 - [x] Custom derive macros support (#50)
 - [x] Fixed-size arrays (const generics) (#51)
 - [x] Type aliases and imports (#52)
 - [x] Nested module support (#53)
+- [x] Generic struct/enum definitions (#54)
 
 **5.4 Multi-Language Code Generation (0% complete):**
 - No issues started yet
 
-**6.2 Tooling Ecosystem (25% complete):**
+**6.2 Tooling Ecosystem (100% complete) ✅:**
+- [x] cargo lumos subcommand (#59)
 - [x] GitHub Action for CI/CD (#60)
+- [x] Pre-commit hook for validation (#61)
+- [x] npm package for JS/TS (#62)
 
 **6.3 Security & Validation (100% complete):**
 - [x] Static security analysis
@@ -877,9 +909,13 @@ See an opportunity to help? Check our [Contributing Guide](CONTRIBUTING.md) or:
 
 **This roadmap is a living document** - priorities may shift based on community feedback and ecosystem needs.
 
-**Last Updated**: November 24, 2025
+**Last Updated**: November 25, 2025
 
 **Recent Updates**:
+- Nov 25, 2025: **PHASE 6.2 TOOLING ECOSYSTEM COMPLETE** 🎉🎉🎉 - All 4 issues closed (#59-#62)
+- Nov 25, 2025: **cargo lumos subcommand COMPLETE** (#59) - Full cargo integration with Cargo.toml config support
+- Nov 25, 2025: **PHASE 5.3 ADVANCED TYPE SYSTEM COMPLETE** 🎉🎉🎉 - All 5 issues closed (#50-#54)
+- Nov 25, 2025: **Generic type parameters COMPLETE** (#54) - Full `<T>`, `<K, V>` support in structs/enums with Rust + TypeScript generation
 - Nov 24, 2025: **Module system foundations COMPLETE** (#53a) - Phase 5.3 at 65% 🚧 - AST & visibility support, split into sub-issues (#113-115)
 - Nov 24, 2025: **Type aliases and imports COMPLETE** (#52) - Phase 5.3 at 60% 🎉 - Multi-file schemas with automatic import discovery
 - Nov 24, 2025: **Fixed-size arrays COMPLETE** (#51) - Phase 5.3 at 40% 🎉 - Const generics support for `[T; N]` syntax

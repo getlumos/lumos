@@ -140,6 +140,9 @@ pub struct StructDef {
     /// Visibility (pub or private)
     pub visibility: Visibility,
 
+    /// Generic type parameters (e.g., ["T", "U"] from `struct Foo<T, U>`)
+    pub type_params: Vec<String>,
+
     /// Attributes applied to the struct (e.g., @solana, @account)
     pub attributes: Vec<Attribute>,
 
@@ -162,6 +165,9 @@ pub struct EnumDef {
 
     /// Visibility (pub or private)
     pub visibility: Visibility,
+
+    /// Generic type parameters (e.g., ["T", "E"] from `enum Result<T, E>`)
+    pub type_params: Vec<String>,
 
     /// Attributes applied to the enum (e.g., @solana)
     pub attributes: Vec<Attribute>,
@@ -235,6 +241,9 @@ pub enum TypeSpec {
 
     /// Fixed-size array type (e.g., `[u8; 32]` in Rust and LUMOS)
     FixedArray { element: Box<TypeSpec>, size: usize },
+
+    /// Generic type parameter (e.g., T, U, K, V)
+    Generic(String),
 
     /// User-defined type (e.g., Address, CustomStruct)
     UserDefined(String),
@@ -365,6 +374,7 @@ impl TypeSpec {
             TypeSpec::FixedArray { element, size } => {
                 format!("[{}; {}]", element.as_string(), size)
             }
+            TypeSpec::Generic(name) => name.clone(),
             TypeSpec::UserDefined(name) => name.clone(),
         }
     }
@@ -491,6 +501,7 @@ mod tests {
         let struct_def = StructDef {
             name: "User".to_string(),
             visibility: Visibility::Private,
+            type_params: vec![],
             attributes: vec![
                 Attribute {
                     name: "solana".to_string(),
@@ -544,6 +555,7 @@ mod tests {
         let enum_def = EnumDef {
             name: "GameState".to_string(),
             visibility: Visibility::Private,
+            type_params: vec![],
             attributes: vec![Attribute {
                 name: "solana".to_string(),
                 value: None,
@@ -563,6 +575,7 @@ mod tests {
         let unit_enum = EnumDef {
             name: "GameState".to_string(),
             visibility: Visibility::Private,
+            type_params: vec![],
             attributes: vec![],
             variants: vec![
                 EnumVariant::Unit {
@@ -583,6 +596,7 @@ mod tests {
         let mixed_enum = EnumDef {
             name: "GameEvent".to_string(),
             visibility: Visibility::Private,
+            type_params: vec![],
             attributes: vec![],
             variants: vec![
                 EnumVariant::Unit {
@@ -630,6 +644,7 @@ mod tests {
         let enum_def = EnumDef {
             name: "Status".to_string(),
             visibility: Visibility::Private,
+            type_params: vec![],
             attributes: vec![],
             variants: vec![],
             span: None,

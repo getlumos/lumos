@@ -489,3 +489,101 @@ fn test_e2e_enum_schema_compiles() {
 
     println!("✓ E2E enum test passed (parse → IR → Rust + TypeScript → compile)");
 }
+
+#[test]
+fn test_e2e_generic_types_compile() {
+    let lumos_code = r#"
+        struct Wrapper<T> {
+            value: T,
+        }
+
+        struct Pair<K, V> {
+            key: K,
+            value: V,
+        }
+
+        enum Result<T, E> {
+            Ok(T),
+            Err(E),
+        }
+
+        enum Maybe<T> {
+            Some(T),
+            None,
+        }
+
+        struct Container<T> {
+            items: Vec<T>,
+            count: u32,
+        }
+    "#;
+
+    // Parse
+    let ast = parse_lumos_file(lumos_code).expect("Failed to parse generic schema");
+    assert_eq!(ast.items.len(), 5);
+
+    // Transform to IR
+    let ir = transform_to_ir(ast).expect("Failed to transform generic schema");
+
+    // Generate Rust code
+    let rust_code = rust::generate_module(&ir);
+    println!("Generated Rust code:\n{}", rust_code);
+
+    // Verify generic syntax in Rust
+    assert!(rust_code.contains("pub struct Wrapper<T>"));
+    assert!(rust_code.contains("pub struct Pair<K, V>"));
+    assert!(rust_code.contains("pub enum Result<T, E>"));
+    assert!(rust_code.contains("pub enum Maybe<T>"));
+    assert!(rust_code.contains("pub struct Container<T>"));
+    assert!(rust_code.contains("pub value: T,"));
+    assert!(rust_code.contains("pub key: K,"));
+    assert!(rust_code.contains("pub value: V,"));
+    assert!(rust_code.contains("Ok(T)"));
+    assert!(rust_code.contains("Err(E)"));
+    assert!(rust_code.contains("Some(T)"));
+    assert!(rust_code.contains("pub items: Vec<T>,"));
+
+    // Test Rust compilation
+    let (temp_dir, project_dir) = create_temp_rust_project("test_generics", &rust_code);
+
+    println!("Compiling Rust project at: {:?}", project_dir);
+    let output = Command::new("cargo")
+        .arg("check")
+        .current_dir(&project_dir)
+        .output()
+        .expect("Failed to run cargo check");
+
+    if !output.status.success() {
+        eprintln!("STDOUT: {}", String::from_utf8_lossy(&output.stdout));
+        eprintln!("STDERR: {}", String::from_utf8_lossy(&output.stderr));
+        panic!("Rust compilation failed for generic types");
+    }
+
+    println!("✓ Rust generic types compile successfully");
+
+    // Generate TypeScript code
+    let ts_code = typescript::generate_module(&ir);
+    println!("Generated TypeScript code:\n{}", ts_code);
+
+    // Verify generic syntax in TypeScript
+    assert!(ts_code.contains("export interface Wrapper<T>"));
+    assert!(ts_code.contains("export interface Pair<K, V>"));
+    assert!(ts_code.contains("export type Result<T, E> ="));
+    assert!(ts_code.contains("export type Maybe<T> ="));
+    assert!(ts_code.contains("export interface Container<T>"));
+    assert!(ts_code.contains("value: T;"));
+    assert!(ts_code.contains("key: K;"));
+    assert!(ts_code.contains("value: V;"));
+    assert!(ts_code.contains("items: T[];"));
+
+    // Validate TypeScript syntax
+    assert!(
+        validate_typescript_syntax(&ts_code),
+        "Generated TypeScript generic code has syntax errors"
+    );
+
+    // Keep temp dir alive until test completes
+    drop(temp_dir);
+
+    println!("✓ E2E generic types test passed (parse → IR → Rust compile + TypeScript syntax)");
+}

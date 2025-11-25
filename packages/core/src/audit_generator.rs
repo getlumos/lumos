@@ -336,6 +336,7 @@ mod tests {
     fn test_generates_account_validation_checks() {
         let type_defs = vec![TypeDefinition::Struct(StructDefinition {
             name: "PlayerAccount".to_string(),
+            generic_params: vec![],
             fields: vec![],
             metadata: Metadata {
                 solana: true,
@@ -358,6 +359,7 @@ mod tests {
     fn test_generates_signer_checks_for_authority() {
         let type_defs = vec![TypeDefinition::Struct(StructDefinition {
             name: "Config".to_string(),
+            generic_params: vec![],
             fields: vec![FieldDefinition {
                 name: "authority".to_string(),
                 type_info: TypeInfo::Primitive("PublicKey".to_string()),
@@ -385,6 +387,7 @@ mod tests {
     fn test_generates_arithmetic_checks() {
         let type_defs = vec![TypeDefinition::Struct(StructDefinition {
             name: "Vault".to_string(),
+            generic_params: vec![],
             fields: vec![FieldDefinition {
                 name: "balance".to_string(),
                 type_info: TypeInfo::Primitive("u64".to_string()),
@@ -407,6 +410,7 @@ mod tests {
     fn test_sorted_by_priority() {
         let type_defs = vec![TypeDefinition::Struct(StructDefinition {
             name: "TokenAccount".to_string(),
+            generic_params: vec![],
             fields: vec![
                 FieldDefinition {
                     name: "authority".to_string(),

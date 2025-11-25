@@ -337,6 +337,11 @@ impl<'a> CorpusGenerator<'a> {
     fn serialize_minimal_value(&self, type_info: &TypeInfo, _optional: bool) -> Vec<u8> {
         match type_info {
             TypeInfo::Primitive(name) => self.serialize_minimal_primitive(name),
+            TypeInfo::Generic(_) => {
+                // Generic parameters can't be serialized without concrete type
+                // Return empty bytes (fuzzer will discover valid structures)
+                vec![]
+            }
             TypeInfo::Array(_) => {
                 // Empty vec (length = 0)
                 vec![0, 0, 0, 0]
@@ -365,6 +370,10 @@ impl<'a> CorpusGenerator<'a> {
     fn serialize_maximal_value(&self, type_info: &TypeInfo, _optional: bool) -> Vec<u8> {
         match type_info {
             TypeInfo::Primitive(name) => self.serialize_maximal_primitive(name),
+            TypeInfo::Generic(_) => {
+                // Generic parameters can't be serialized without concrete type
+                vec![]
+            }
             TypeInfo::Array(inner) => {
                 // Vec with 10 elements
                 let mut data = vec![10, 0, 0, 0]; // length = 10
@@ -482,6 +491,7 @@ mod tests {
     fn test_generates_minimal_struct_corpus() {
         let type_defs = vec![TypeDefinition::Struct(StructDefinition {
             name: "SimpleStruct".to_string(),
+            generic_params: vec![],
             fields: vec![FieldDefinition {
                 name: "value".to_string(),
                 type_info: TypeInfo::Primitive("u32".to_string()),
@@ -505,6 +515,7 @@ mod tests {
     fn test_generates_account_discriminator() {
         let type_defs = vec![TypeDefinition::Struct(StructDefinition {
             name: "AccountStruct".to_string(),
+            generic_params: vec![],
             fields: vec![FieldDefinition {
                 name: "value".to_string(),
                 type_info: TypeInfo::Primitive("u8".to_string()),
@@ -533,6 +544,7 @@ mod tests {
     fn test_generates_optional_corpus() {
         let type_defs = vec![TypeDefinition::Struct(StructDefinition {
             name: "OptionalStruct".to_string(),
+            generic_params: vec![],
             fields: vec![FieldDefinition {
                 name: "maybe_value".to_string(),
                 type_info: TypeInfo::Option(Box::new(TypeInfo::Primitive("u32".to_string()))),
@@ -566,6 +578,7 @@ mod tests {
     fn test_generates_vec_corpus() {
         let type_defs = vec![TypeDefinition::Struct(StructDefinition {
             name: "VecStruct".to_string(),
+            generic_params: vec![],
             fields: vec![FieldDefinition {
                 name: "items".to_string(),
                 type_info: TypeInfo::Array(Box::new(TypeInfo::Primitive("u8".to_string()))),
@@ -598,6 +611,7 @@ mod tests {
     fn test_generates_enum_corpus() {
         let type_defs = vec![TypeDefinition::Enum(EnumDefinition {
             name: "SimpleEnum".to_string(),
+            generic_params: vec![],
             variants: vec![
                 EnumVariantDefinition::Unit {
                     name: "Variant1".to_string(),
