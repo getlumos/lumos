@@ -463,13 +463,14 @@ Write data structures once in `.lumos` syntax → Generate production-ready Rust
 | Security analysis | ✅ | Static analysis for vulnerabilities (v0.1.2) |
 | Fuzzing support | ✅ | Generate fuzzing harnesses for code (v0.1.2) |
 | Language Server (LSP) | ✅ | Diagnostics, completion, hover for all editors (v0.2.0) |
+| Multi-language generation | ✅ | Rust, TypeScript, Python, Go, Ruby via --lang flag |
 
 ---
 
 ## Development Commands
 
 ```bash
-# Run tests (129 tests, ~140s with E2E)
+# Run tests (322 tests, ~180s with E2E)
 cargo test --all-features --workspace
 
 # Check formatting
@@ -493,18 +494,21 @@ cargo test --package lumos-lsp
 
 ---
 
-## Test Suite (142 tests)
+## Test Suite (322 tests)
 
 | Suite | Count | Location |
 |-------|-------|----------|
-| Unit tests | 74 | `packages/core/src/**/*.rs` |
+| Unit tests | 211 | `packages/core/src/**/*.rs` |
 | Parser integration | 5 | `packages/core/tests/integration_test.rs` |
 | Error path tests | 30 | `packages/core/tests/test_error_paths.rs` |
-| Rust generator | 5 | `packages/core/tests/test_rust_generator.rs` |
-| TypeScript generator | 6 | `packages/core/tests/test_typescript_generator.rs` |
+| Rust generator | 8 | `packages/core/tests/test_rust_generator.rs` |
+| TypeScript generator | 7 | `packages/core/tests/test_typescript_generator.rs` |
+| Python generator | 11 | `packages/core/src/generators/python.rs` |
+| Go generator | 11 | `packages/core/src/generators/go.rs` |
+| Ruby generator | 11 | `packages/core/src/generators/ruby.rs` |
 | LSP tests | 13 | `packages/lsp/src/server/**/*.rs` (diagnostics, completion, hover) |
-| E2E compilation | 0 | Disabled (takes ~60s per test) |
-| Doc tests | 9 | Documentation examples (3 ignored) |
+| E2E compilation | 11 | `packages/core/tests/test_e2e.rs` (actual compilation) |
+| Doc tests | 18 | Documentation examples (13 ignored) |
 
 **E2E tests compile generated Rust code with `cargo check` (takes ~60s per test).**
 
