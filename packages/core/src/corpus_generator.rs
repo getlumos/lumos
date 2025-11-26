@@ -497,6 +497,7 @@ mod tests {
                 type_info: TypeInfo::Primitive("u32".to_string()),
                 optional: false,
                 deprecated: None,
+                anchor_attrs: vec![],
             }],
             metadata: Metadata::default(),
         })];
@@ -521,12 +522,15 @@ mod tests {
                 type_info: TypeInfo::Primitive("u8".to_string()),
                 optional: false,
                 deprecated: None,
+                anchor_attrs: vec![],
             }],
             metadata: Metadata {
                 solana: true,
                 attributes: vec!["account".to_string()],
                 version: None,
                 custom_derives: vec![],
+                is_instruction: false,
+                anchor_attrs: vec![],
             },
         })];
 
@@ -550,6 +554,7 @@ mod tests {
                 type_info: TypeInfo::Option(Box::new(TypeInfo::Primitive("u32".to_string()))),
                 optional: true,
                 deprecated: None,
+                anchor_attrs: vec![],
             }],
             metadata: Metadata::default(),
         })];
@@ -584,6 +589,7 @@ mod tests {
                 type_info: TypeInfo::Array(Box::new(TypeInfo::Primitive("u8".to_string()))),
                 optional: false,
                 deprecated: None,
+                anchor_attrs: vec![],
             }],
             metadata: Metadata::default(),
         })];

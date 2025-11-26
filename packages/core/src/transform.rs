@@ -515,6 +515,9 @@ fn transform_field(field: AstField, resolver: &TypeAliasResolver) -> Result<Fiel
     // Extract deprecation info from attributes
     let deprecated = extract_deprecation(&field.attributes);
 
+    // Extract anchor attributes
+    let anchor_attrs = extract_anchor_attrs(&field.attributes);
+
     // Transform type using the alias resolver
     let type_info = transform_type(field.type_spec, optional, resolver)?;
 
@@ -523,6 +526,7 @@ fn transform_field(field: AstField, resolver: &TypeAliasResolver) -> Result<Fiel
         type_info,
         optional,
         deprecated,
+        anchor_attrs,
     })
 }
 
@@ -635,6 +639,8 @@ fn extract_struct_metadata(struct_def: &AstStruct) -> Metadata {
             .collect(),
         version: struct_def.version.clone(),
         custom_derives: extract_custom_derives(&struct_def.attributes),
+        is_instruction: struct_def.has_attribute("instruction"),
+        anchor_attrs: extract_anchor_attrs(&struct_def.attributes),
     }
 }
 
@@ -649,6 +655,8 @@ fn extract_enum_metadata(enum_def: &AstEnum) -> Metadata {
             .collect(),
         version: enum_def.version.clone(),
         custom_derives: extract_custom_derives(&enum_def.attributes),
+        is_instruction: false, // Enums don't have instruction attribute
+        anchor_attrs: Vec::new(),
     }
 }
 
@@ -672,6 +680,33 @@ fn extract_deprecation(attributes: &[Attribute]) -> Option<String> {
                 "This field is deprecated".to_string()
             }
         })
+}
+
+/// Extract Anchor framework attributes from field/struct attributes
+///
+/// Finds all `#[anchor(...)]` attributes and returns their raw content strings.
+/// These are later parsed by the anchor module during code generation.
+///
+/// # Arguments
+///
+/// * `attributes` - List of attributes to search
+///
+/// # Returns
+///
+/// Vector of anchor attribute content strings (e.g., `["init, payer = authority, space = 8 + 32"]`)
+fn extract_anchor_attrs(attributes: &[Attribute]) -> Vec<String> {
+    attributes
+        .iter()
+        .filter(|attr| attr.name == "anchor")
+        .filter_map(|attr| {
+            // Extract the raw attribute content
+            if let Some(AttributeValue::String(content)) = &attr.value {
+                Some(content.clone())
+            } else {
+                None
+            }
+        })
+        .collect()
 }
 
 /// Extract custom derive macros from attributes

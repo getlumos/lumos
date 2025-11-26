@@ -370,6 +370,7 @@ mod generator_errors {
             ))))),
             optional: true,
             deprecated: None,
+            anchor_attrs: vec![],
         };
 
         let struct_def = StructDefinition {
@@ -410,6 +411,7 @@ mod generator_errors {
                         type_info: TypeInfo::Primitive("String".to_string()),
                         optional: false,
                         deprecated: None,
+                        anchor_attrs: vec![],
                     }],
                 },
             ],

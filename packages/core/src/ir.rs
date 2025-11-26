@@ -91,6 +91,10 @@ pub struct FieldDefinition {
 
     /// Deprecation message (None if not deprecated)
     pub deprecated: Option<String>,
+
+    /// Raw anchor attribute strings (e.g., ["init, payer = authority, space = 8 + 32"])
+    /// These are parsed by the anchor module during code generation
+    pub anchor_attrs: Vec<String>,
 }
 
 /// Type information
@@ -130,6 +134,12 @@ pub struct Metadata {
     /// Custom derive macros specified by user (e.g., PartialEq, Eq, Hash)
     /// These are added on top of auto-generated derives
     pub custom_derives: Vec<String>,
+
+    /// Whether this struct is an Anchor instruction context (has #[instruction])
+    pub is_instruction: bool,
+
+    /// Anchor-specific struct attributes (raw strings for later parsing)
+    pub anchor_attrs: Vec<String>,
 }
 
 impl TypeDefinition {

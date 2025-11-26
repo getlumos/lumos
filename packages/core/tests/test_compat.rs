@@ -19,6 +19,7 @@ fn create_struct(
             type_info,
             optional,
             deprecated: None,
+            anchor_attrs: vec![],
         })
         .collect();
 
@@ -31,6 +32,8 @@ fn create_struct(
             attributes: vec!["account".to_string()],
             version: version.map(|s| s.to_string()),
             custom_derives: vec![],
+            is_instruction: false,
+            anchor_attrs: vec![],
         },
     })
 }

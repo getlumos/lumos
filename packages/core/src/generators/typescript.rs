@@ -813,12 +813,14 @@ mod tests {
                     type_info: TypeInfo::Primitive("u64".to_string()),
                     optional: false,
                     deprecated: None,
+                    anchor_attrs: vec![],
                 },
                 FieldDefinition {
                     name: "name".to_string(),
                     type_info: TypeInfo::Primitive("String".to_string()),
                     optional: false,
                     deprecated: None,
+                    anchor_attrs: vec![],
                 },
             ],
             metadata: Metadata::default(),
@@ -841,12 +843,14 @@ mod tests {
                     type_info: TypeInfo::Primitive("PublicKey".to_string()),
                     optional: false,
                     deprecated: None,
+                    anchor_attrs: vec![],
                 },
                 FieldDefinition {
                     name: "balance".to_string(),
                     type_info: TypeInfo::Primitive("u64".to_string()),
                     optional: false,
                     deprecated: None,
+                    anchor_attrs: vec![],
                 },
             ],
             metadata: Metadata {
@@ -854,6 +858,8 @@ mod tests {
                 attributes: vec!["account".to_string()],
                 version: None,
                 custom_derives: vec![],
+                is_instruction: false,
+                anchor_attrs: vec![],
             },
         });
 
@@ -878,6 +884,7 @@ mod tests {
                 type_info: TypeInfo::Option(Box::new(TypeInfo::Primitive("String".to_string()))),
                 optional: true,
                 deprecated: None,
+                anchor_attrs: vec![],
             }],
             metadata: Metadata::default(),
         });
@@ -896,12 +903,15 @@ mod tests {
                 type_info: TypeInfo::Array(Box::new(TypeInfo::Primitive("u64".to_string()))),
                 optional: false,
                 deprecated: None,
+                anchor_attrs: vec![],
             }],
             metadata: Metadata {
                 solana: true,
                 attributes: vec![],
                 version: None,
                 custom_derives: vec![],
+                is_instruction: false,
+                anchor_attrs: vec![],
             },
         });
 
@@ -943,12 +953,14 @@ mod tests {
                     type_info: TypeInfo::Primitive("u128".to_string()),
                     optional: false,
                     deprecated: None,
+                    anchor_attrs: vec![],
                 },
                 FieldDefinition {
                     name: "big_signed".to_string(),
                     type_info: TypeInfo::Primitive("i128".to_string()),
                     optional: false,
                     deprecated: None,
+                    anchor_attrs: vec![],
                 },
             ],
             metadata: Metadata::default(),
@@ -980,6 +992,8 @@ mod tests {
                 attributes: vec![],
                 version: None,
                 custom_derives: vec![],
+                is_instruction: false,
+                anchor_attrs: vec![],
             },
         });
 
@@ -1018,6 +1032,8 @@ mod tests {
                 attributes: vec![],
                 version: None,
                 custom_derives: vec![],
+                is_instruction: false,
+                anchor_attrs: vec![],
             },
         });
 
@@ -1046,12 +1062,14 @@ mod tests {
                             type_info: TypeInfo::Primitive("Pubkey".to_string()),
                             optional: false,
                             deprecated: None,
+                            anchor_attrs: vec![],
                         },
                         FieldDefinition {
                             name: "max_players".to_string(),
                             type_info: TypeInfo::Primitive("u32".to_string()),
                             optional: false,
                             deprecated: None,
+                            anchor_attrs: vec![],
                         },
                     ],
                 },
@@ -1063,12 +1081,14 @@ mod tests {
                             type_info: TypeInfo::Primitive("Pubkey".to_string()),
                             optional: false,
                             deprecated: None,
+                            anchor_attrs: vec![],
                         },
                         FieldDefinition {
                             name: "new_score".to_string(),
                             type_info: TypeInfo::Primitive("u64".to_string()),
                             optional: false,
                             deprecated: None,
+                            anchor_attrs: vec![],
                         },
                     ],
                 },
@@ -1078,6 +1098,8 @@ mod tests {
                 attributes: vec![],
                 version: None,
                 custom_derives: vec![],
+                is_instruction: false,
+                anchor_attrs: vec![],
             },
         });
 

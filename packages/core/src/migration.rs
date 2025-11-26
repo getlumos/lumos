@@ -788,6 +788,7 @@ mod tests {
                     type_info,
                     optional,
                     deprecated: None,
+                    anchor_attrs: vec![],
                 })
                 .collect(),
             metadata: Default::default(),
