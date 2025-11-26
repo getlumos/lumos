@@ -4,7 +4,7 @@
 
 **For detailed vision**: See [docs/VISION.md](docs/VISION.md) (vertical expansion) and [docs/FUTURE.md](docs/FUTURE.md) (horizontal expansion)
 
-**Last Updated**: November 25, 2025
+**Last Updated**: November 26, 2025
 
 ---
 
@@ -341,11 +341,32 @@ lumos generate schema.lumos --lang rust,typescript,python,go,ruby
 
 ### 6.1 Framework Integration
 
-**Issues to create:**
-- [ ] Create Anchor framework plugin for LUMOS [#55] **HIGH PRIORITY**
+**Status**: 1/4 in progress (~50%)
+
+**Issues:**
+- [~] Create Anchor framework plugin for LUMOS [#55] **IN PROGRESS**
 - [ ] Add Seahorse integration for Python-based Solana development [#56]
 - [ ] Add native Solana program support (non-Anchor) [#57]
 - [ ] Add Metaplex standard compatibility for NFT schemas [#58]
+
+**In Progress**:
+- #55 - Anchor Framework Plugin (Phases 1-2 complete, 3-4 remaining)
+  - Phase 1 ✅ (Nov 25, 2025) - IDL Generation and Space Calculation
+    - New anchor module with IDL types (Idl, IdlTypeDef, IdlField, IdlType)
+    - IdlGenerator with generate(), convert_struct(), convert_enum()
+    - Account space calculation with 8-byte discriminator
+    - CLI commands: `lumos anchor idl`, `lumos anchor space`
+    - 7 unit tests
+  - Phase 2 ✅ (Nov 26, 2025) - Constraints and Instruction Context
+    - AnchorAccountAttr enum (init, mut, signer, constraint, has_one, seeds, bump, payer, space, close, realloc)
+    - SeedComponent enum for PDA seeds (Literal, AccountKey, Arg, Bytes)
+    - AnchorAccountType enum (Account, Signer, Program, SystemAccount, etc.)
+    - InstructionContext, InstructionAccount structs
+    - parse_anchor_attrs() for #[anchor(...)] parsing
+    - generate_accounts_context() for #[derive(Accounts)] generation
+    - 8 unit tests (15 total anchor tests)
+  - Phase 3 (pending) - AST/Parser Integration
+  - Phase 4 (pending) - CLI Commands and E2E Tests
 
 ### 6.2 Tooling Ecosystem
 
@@ -909,7 +930,7 @@ See an opportunity to help? Check our [Contributing Guide](CONTRIBUTING.md) or:
 
 **This roadmap is a living document** - priorities may shift based on community feedback and ecosystem needs.
 
-**Last Updated**: November 25, 2025
+**Last Updated**: November 26, 2025
 
 **Recent Updates**:
 - Nov 25, 2025: **PHASE 6.2 TOOLING ECOSYSTEM COMPLETE** 🎉🎉🎉 - All 4 issues closed (#59-#62)
