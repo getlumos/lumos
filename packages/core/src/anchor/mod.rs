@@ -42,8 +42,14 @@
 //! let json = serde_json::to_string_pretty(&idl).unwrap();
 //! ```
 
+mod attributes;
 mod idl;
 
+pub use attributes::{
+    generate_accounts_context, parse_anchor_attrs, parse_instruction_context, AnchorAccountAttr,
+    AnchorAccountType, AnchorFieldAttrs, InstructionAccount, InstructionArg, InstructionContext,
+    SeedComponent,
+};
 pub use idl::{
     Idl, IdlAccount, IdlAccountItem, IdlEnumVariant, IdlField, IdlGenerator, IdlGeneratorConfig,
     IdlInstruction, IdlType, IdlTypeDef, IdlTypeDefTy,
