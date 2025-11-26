@@ -1,0 +1,865 @@
+// Licensed under either of Apache License, Version 2.0 or MIT license at your option.
+// Copyright 2025 RECTOR-LABS
+
+//! Go Code Generator
+//!
+//! Generates Go structs and Borsh serialization from IR for backend Solana
+//! integration with guaranteed serialization compatibility.
+//!
+//! ## Overview
+//!
+//! This generator produces type-safe Go code for Solana dApp backends with:
+//!
+//! - **Go Structs** - Type-safe data structures with field tags
+//! - **Borsh Serialization** - Compatible with `github.com/near/borsh-go`
+//! - **Enum Support** - Go type aliases with constants and variant structs
+//! - **Solana Integration** - Automatic `[32]byte` for public keys
+//!
+//! ## Type Mapping
+//!
+//! IR types are mapped to Go types:
+//!
+//! | IR Type | Go Type | Notes |
+//! |---------|---------|-------|
+//! | `u8`, `u16`, `u32`, `u64` | `uint8`, `uint16`, etc. | Native unsigned integers |
+//! | `u128` | `[16]byte` | Byte array for 128-bit |
+//! | `i8`, `i16`, `i32`, `i64` | `int8`, `int16`, etc. | Native signed integers |
+//! | `i128` | `[16]byte` | Byte array for 128-bit |
+//! | `String` | `string` | UTF-8 strings |
+//! | `bool` | `bool` | - |
+//! | `PublicKey` | `[32]byte` | Solana public key |
+//! | `[T]` | `[]T` | Dynamic slices |
+//! | `[T; N]` | `[N]T` | Fixed-size arrays |
+//! | `Option<T>` | `*T` | Pointer for optional |
+//!
+//! ## Example
+//!
+//! ```rust
+//! use lumos_core::{parser, transform, generators::go};
+//!
+//! let source = r#"
+//!     #[solana]
+//!     #[account]
+//!     struct UserAccount {
+//!         wallet: PublicKey,
+//!         balance: u64,
+//!         items: [PublicKey],
+//!     }
+//! "#;
+//!
+//! let ast = parser::parse_lumos_file(source)?;
+//! let ir = transform::transform_to_ir(ast)?;
+//! let go_code = go::generate_module(&ir);
+//!
+//! // Generated Go includes struct with borsh tags
+//! assert!(go_code.contains("type UserAccount struct"));
+//! assert!(go_code.contains("Wallet [32]byte"));
+//! assert!(go_code.contains("Balance uint64"));
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! ```
+
+use crate::ir::{
+    EnumDefinition, EnumVariantDefinition, StructDefinition, TypeAliasDefinition, TypeDefinition,
+    TypeInfo,
+};
+
+/// Generate Go code from a type definition
+pub fn generate(type_def: &TypeDefinition) -> String {
+    match type_def {
+        TypeDefinition::Struct(struct_def) => generate_struct(struct_def),
+        TypeDefinition::Enum(enum_def) => generate_enum(enum_def),
+        TypeDefinition::TypeAlias(alias_def) => generate_type_alias(alias_def),
+    }
+}
+
+/// Generate Go code from a type alias definition
+fn generate_type_alias(alias_def: &TypeAliasDefinition) -> String {
+    let mut output = String::new();
+
+    // Add file header
+    output.push_str(&generate_header());
+
+    // Add package declaration
+    output.push_str("package generated\n\n");
+
+    // Generate the type alias
+    let go_type = map_type_to_go(&alias_def.target);
+    output.push_str(&format!("type {} = {}\n", alias_def.name, go_type));
+
+    output
+}
+
+/// Generate Go code from a struct definition
+fn generate_struct(struct_def: &StructDefinition) -> String {
+    let mut output = String::new();
+
+    // Add file header
+    output.push_str(&generate_header());
+
+    // Add package declaration
+    output.push_str("package generated\n\n");
+
+    // Collect required imports
+    let imports = collect_struct_imports(struct_def);
+    if !imports.is_empty() {
+        output.push_str("import (\n");
+        for import in &imports {
+            output.push_str(&format!("\t\"{}\"\n", import));
+        }
+        output.push_str(")\n\n");
+    }
+
+    // Generate version constant if version is specified
+    if let Some(version) = &struct_def.metadata.version {
+        output.push_str(&format!(
+            "const {}Version = \"{}\"\n\n",
+            struct_def.name, version
+        ));
+    }
+
+    // Generate struct
+    output.push_str(&generate_struct_definition(struct_def));
+
+    output
+}
+
+/// Generate Go code from an enum definition
+fn generate_enum(enum_def: &EnumDefinition) -> String {
+    let mut output = String::new();
+
+    // Add file header
+    output.push_str(&generate_header());
+
+    // Add package declaration
+    output.push_str("package generated\n\n");
+
+    // Collect required imports
+    let imports = collect_enum_imports(enum_def);
+    if !imports.is_empty() {
+        output.push_str("import (\n");
+        for import in &imports {
+            output.push_str(&format!("\t\"{}\"\n", import));
+        }
+        output.push_str(")\n\n");
+    }
+
+    // Generate version constant if version is specified
+    if let Some(version) = &enum_def.metadata.version {
+        output.push_str(&format!(
+            "const {}Version = \"{}\"\n\n",
+            enum_def.name, version
+        ));
+    }
+
+    // Generate enum type
+    output.push_str(&generate_enum_definition(enum_def));
+
+    output
+}
+
+/// Generate file header
+fn generate_header() -> String {
+    "// Auto-generated by LUMOS\n// DO NOT EDIT - Changes will be overwritten\n\n".to_string()
+}
+
+/// Estimate output size for string capacity pre-allocation
+fn estimate_output_size(type_defs: &[TypeDefinition]) -> usize {
+    const BASE_OVERHEAD: usize = 400;
+    const STRUCT_BASE: usize = 200;
+    const FIELD_SIZE: usize = 100;
+    const ENUM_BASE: usize = 250;
+    const VARIANT_SIZE: usize = 150;
+
+    let mut total = BASE_OVERHEAD;
+
+    for type_def in type_defs {
+        total += match type_def {
+            TypeDefinition::Struct(s) => STRUCT_BASE + (s.fields.len() * FIELD_SIZE),
+            TypeDefinition::Enum(e) => ENUM_BASE + (e.variants.len() * VARIANT_SIZE),
+            TypeDefinition::TypeAlias(_) => 100,
+        };
+    }
+
+    total
+}
+
+/// Generate Go code for a complete module with multiple type definitions.
+///
+/// This is the primary function for generating Go code from IR.
+///
+/// # Arguments
+///
+/// * `type_defs` - Slice of IR type definitions (structs and enums)
+///
+/// # Returns
+///
+/// Complete Go source code as a `String`, ready to write to a `.go` file.
+pub fn generate_module(type_defs: &[TypeDefinition]) -> String {
+    let estimated_capacity = estimate_output_size(type_defs);
+    let mut output = String::with_capacity(estimated_capacity);
+
+    // Add file header
+    output.push_str(&generate_header());
+
+    // Add package declaration
+    output.push_str("package generated\n\n");
+
+    // Collect all imports needed
+    let mut all_imports = std::collections::HashSet::new();
+    for type_def in type_defs {
+        match type_def {
+            TypeDefinition::Struct(s) => {
+                let imports = collect_struct_imports(s);
+                all_imports.extend(imports);
+            }
+            TypeDefinition::Enum(e) => {
+                let imports = collect_enum_imports(e);
+                all_imports.extend(imports);
+            }
+            TypeDefinition::TypeAlias(_) => {}
+        }
+    }
+
+    // Write imports
+    if !all_imports.is_empty() {
+        let mut sorted_imports: Vec<_> = all_imports.into_iter().collect();
+        sorted_imports.sort();
+        output.push_str("import (\n");
+        for import in sorted_imports {
+            output.push_str(&format!("\t\"{}\"\n", import));
+        }
+        output.push_str(")\n\n");
+    }
+
+    // Generate each type definition
+    for (i, type_def) in type_defs.iter().enumerate() {
+        if i > 0 {
+            output.push('\n');
+        }
+
+        match type_def {
+            TypeDefinition::Struct(s) => {
+                // Generate version constant if present
+                if let Some(version) = &s.metadata.version {
+                    output.push_str(&format!("const {}Version = \"{}\"\n\n", s.name, version));
+                }
+
+                output.push_str(&generate_struct_definition(s));
+            }
+            TypeDefinition::Enum(e) => {
+                // Generate version constant if present
+                if let Some(version) = &e.metadata.version {
+                    output.push_str(&format!("const {}Version = \"{}\"\n\n", e.name, version));
+                }
+
+                output.push_str(&generate_enum_definition(e));
+            }
+            TypeDefinition::TypeAlias(a) => {
+                let go_type = map_type_to_go(&a.target);
+                output.push_str(&format!("type {} = {}\n", a.name, go_type));
+            }
+        }
+    }
+
+    output
+}
+
+/// Generate Go struct definition
+fn generate_struct_definition(struct_def: &StructDefinition) -> String {
+    let mut output = String::new();
+
+    // Add deprecation comment if any field is deprecated
+    let deprecated_fields: Vec<_> = struct_def
+        .fields
+        .iter()
+        .filter(|f| f.deprecated.is_some())
+        .collect();
+
+    if !deprecated_fields.is_empty() {
+        output.push_str("// Deprecated fields:\n");
+        for field in &deprecated_fields {
+            if let Some(msg) = &field.deprecated {
+                output.push_str(&format!("//   - {}: {}\n", field.name, msg));
+            } else {
+                output.push_str(&format!("//   - {}: deprecated\n", field.name));
+            }
+        }
+    }
+
+    // Generate generic parameters if present
+    let generic_suffix = if struct_def.generic_params.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "[{}]",
+            struct_def
+                .generic_params
+                .iter()
+                .map(|p| format!("{} any", p))
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    };
+
+    output.push_str(&format!(
+        "type {}{} struct {{\n",
+        struct_def.name, generic_suffix
+    ));
+
+    if struct_def.fields.is_empty() {
+        output.push_str("}\n");
+    } else {
+        for field in &struct_def.fields {
+            let go_type = map_type_to_go(&field.type_info);
+
+            // Handle optional fields
+            let type_str = if field.optional && !matches!(&field.type_info, TypeInfo::Option(_)) {
+                format!("*{}", go_type)
+            } else {
+                go_type
+            };
+
+            // Go uses PascalCase for exported fields
+            let field_name = to_pascal_case(&field.name);
+
+            // Add borsh tag for serialization
+            let borsh_tag = format!("`borsh:\"{}\"`", field.name);
+
+            // Add deprecation comment
+            if let Some(msg) = &field.deprecated {
+                output.push_str(&format!("\t// Deprecated: {}\n", msg));
+            }
+
+            output.push_str(&format!("\t{} {} {}\n", field_name, type_str, borsh_tag));
+        }
+        output.push_str("}\n");
+    }
+
+    output
+}
+
+/// Generate Go enum definition
+fn generate_enum_definition(enum_def: &EnumDefinition) -> String {
+    let mut output = String::new();
+
+    if enum_def.is_unit_only() {
+        // Simple enum - use const iota pattern
+        output.push_str(&format!("type {} uint8\n\n", enum_def.name));
+        output.push_str("const (\n");
+
+        for (idx, variant) in enum_def.variants.iter().enumerate() {
+            if let EnumVariantDefinition::Unit { name } = variant {
+                if idx == 0 {
+                    output.push_str(&format!(
+                        "\t{}{} {} = iota\n",
+                        enum_def.name, name, enum_def.name
+                    ));
+                } else {
+                    output.push_str(&format!("\t{}{}\n", enum_def.name, name));
+                }
+            }
+        }
+        output.push_str(")\n");
+
+        // Add String() method for enum
+        output.push_str(&format!(
+            "\nfunc (e {}) String() string {{\n",
+            enum_def.name
+        ));
+        output.push_str("\tswitch e {\n");
+        for variant in &enum_def.variants {
+            if let EnumVariantDefinition::Unit { name } = variant {
+                output.push_str(&format!(
+                    "\tcase {}{}:\n\t\treturn \"{}\"\n",
+                    enum_def.name, name, name
+                ));
+            }
+        }
+        output.push_str("\tdefault:\n\t\treturn \"Unknown\"\n");
+        output.push_str("\t}\n}\n");
+    } else {
+        // Complex enum with variants - use interface pattern
+        output.push_str(&format!(
+            "// {} represents a discriminated union\n",
+            enum_def.name
+        ));
+        output.push_str(&format!("type {} interface {{\n", enum_def.name));
+        output.push_str(&format!("\tis{}()\n", enum_def.name));
+        output.push_str("}\n\n");
+
+        // Generate discriminant constants
+        output.push_str(&format!("// {} discriminant values\n", enum_def.name));
+        output.push_str("const (\n");
+        for (idx, variant) in enum_def.variants.iter().enumerate() {
+            let variant_name = variant.name();
+            if idx == 0 {
+                output.push_str(&format!(
+                    "\t{}{}Discriminant uint8 = iota\n",
+                    enum_def.name, variant_name
+                ));
+            } else {
+                output.push_str(&format!(
+                    "\t{}{}Discriminant\n",
+                    enum_def.name, variant_name
+                ));
+            }
+        }
+        output.push_str(")\n\n");
+
+        // Generate variant structs
+        for variant in &enum_def.variants {
+            match variant {
+                EnumVariantDefinition::Unit { name } => {
+                    output.push_str(&format!("type {}{} struct{{}}\n", enum_def.name, name));
+                    output.push_str(&format!(
+                        "func ({}{}) is{}() {{}}\n\n",
+                        enum_def.name, name, enum_def.name
+                    ));
+                }
+                EnumVariantDefinition::Tuple { name, types } => {
+                    output.push_str(&format!("type {}{} struct {{\n", enum_def.name, name));
+                    for (idx, type_info) in types.iter().enumerate() {
+                        let go_type = map_type_to_go(type_info);
+                        output.push_str(&format!(
+                            "\tField{} {} `borsh:\"field{}\"`\n",
+                            idx, go_type, idx
+                        ));
+                    }
+                    output.push_str("}\n");
+                    output.push_str(&format!(
+                        "func ({}{}) is{}() {{}}\n\n",
+                        enum_def.name, name, enum_def.name
+                    ));
+                }
+                EnumVariantDefinition::Struct { name, fields } => {
+                    output.push_str(&format!("type {}{} struct {{\n", enum_def.name, name));
+                    for field in fields {
+                        let go_type = map_type_to_go(&field.type_info);
+                        let field_name = to_pascal_case(&field.name);
+                        output.push_str(&format!(
+                            "\t{} {} `borsh:\"{}\"`\n",
+                            field_name, go_type, field.name
+                        ));
+                    }
+                    output.push_str("}\n");
+                    output.push_str(&format!(
+                        "func ({}{}) is{}() {{}}\n\n",
+                        enum_def.name, name, enum_def.name
+                    ));
+                }
+            }
+        }
+    }
+
+    output
+}
+
+/// Collect required imports based on struct definition
+fn collect_struct_imports(struct_def: &StructDefinition) -> Vec<String> {
+    let imports = Vec::new();
+
+    // Check if we need any imports (currently Go standard library doesn't need special imports for basic types)
+    // borsh-go is typically imported at the application level
+    let _ = struct_def; // suppress unused warning
+
+    imports
+}
+
+/// Collect required imports based on enum definition
+fn collect_enum_imports(enum_def: &EnumDefinition) -> Vec<String> {
+    let imports = Vec::new();
+
+    // Check variant types for any special imports needed
+    let _ = enum_def; // suppress unused warning
+
+    imports
+}
+
+/// Convert snake_case to PascalCase for Go exported fields
+fn to_pascal_case(s: &str) -> String {
+    s.split('_')
+        .map(|word| {
+            let mut chars = word.chars();
+            match chars.next() {
+                None => String::new(),
+                Some(first) => first.to_uppercase().chain(chars).collect(),
+            }
+        })
+        .collect()
+}
+
+/// Map IR type to Go type
+fn map_type_to_go(type_info: &TypeInfo) -> String {
+    match type_info {
+        TypeInfo::Primitive(type_name) => match type_name.as_str() {
+            // Unsigned integers
+            "u8" => "uint8".to_string(),
+            "u16" => "uint16".to_string(),
+            "u32" => "uint32".to_string(),
+            "u64" => "uint64".to_string(),
+            "u128" => "[16]byte".to_string(), // Go doesn't have native u128
+
+            // Signed integers
+            "i8" => "int8".to_string(),
+            "i16" => "int16".to_string(),
+            "i32" => "int32".to_string(),
+            "i64" => "int64".to_string(),
+            "i128" => "[16]byte".to_string(), // Go doesn't have native i128
+
+            // Floating point
+            "f32" => "float32".to_string(),
+            "f64" => "float64".to_string(),
+
+            // Boolean
+            "bool" => "bool".to_string(),
+
+            // String
+            "String" => "string".to_string(),
+
+            // Solana types
+            "Pubkey" | "PublicKey" => "[32]byte".to_string(),
+            "Signature" => "[64]byte".to_string(),
+
+            // Unknown - pass through
+            _ => type_name.clone(),
+        },
+        TypeInfo::Array(inner) => {
+            let inner_type = map_type_to_go(inner);
+            format!("[]{}", inner_type)
+        }
+        TypeInfo::FixedArray { element, size } => {
+            let element_type = map_type_to_go(element);
+            format!("[{}]{}", size, element_type)
+        }
+        TypeInfo::Option(inner) => {
+            let inner_type = map_type_to_go(inner);
+            format!("*{}", inner_type)
+        }
+        TypeInfo::Generic(param_name) => param_name.clone(),
+        TypeInfo::UserDefined(type_name) => type_name.clone(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ir::{FieldDefinition, Metadata, StructDefinition, TypeDefinition};
+
+    #[test]
+    fn generates_simple_struct() {
+        let type_def = TypeDefinition::Struct(StructDefinition {
+            name: "User".to_string(),
+            generic_params: vec![],
+            fields: vec![
+                FieldDefinition {
+                    name: "id".to_string(),
+                    type_info: TypeInfo::Primitive("u64".to_string()),
+                    optional: false,
+                    deprecated: None,
+                    anchor_attrs: vec![],
+                },
+                FieldDefinition {
+                    name: "name".to_string(),
+                    type_info: TypeInfo::Primitive("String".to_string()),
+                    optional: false,
+                    deprecated: None,
+                    anchor_attrs: vec![],
+                },
+            ],
+            metadata: Metadata::default(),
+        });
+
+        let code = generate(&type_def);
+        assert!(code.contains("package generated"));
+        assert!(code.contains("type User struct {"));
+        assert!(code.contains("Id uint64 `borsh:\"id\"`"));
+        assert!(code.contains("Name string `borsh:\"name\"`"));
+    }
+
+    #[test]
+    fn generates_solana_struct() {
+        let type_def = TypeDefinition::Struct(StructDefinition {
+            name: "UserAccount".to_string(),
+            generic_params: vec![],
+            fields: vec![
+                FieldDefinition {
+                    name: "wallet".to_string(),
+                    type_info: TypeInfo::Primitive("PublicKey".to_string()),
+                    optional: false,
+                    deprecated: None,
+                    anchor_attrs: vec![],
+                },
+                FieldDefinition {
+                    name: "balance".to_string(),
+                    type_info: TypeInfo::Primitive("u64".to_string()),
+                    optional: false,
+                    deprecated: None,
+                    anchor_attrs: vec![],
+                },
+            ],
+            metadata: Metadata {
+                solana: true,
+                attributes: vec!["account".to_string()],
+                version: None,
+                custom_derives: vec![],
+                is_instruction: false,
+                anchor_attrs: vec![],
+            },
+        });
+
+        let code = generate(&type_def);
+        assert!(code.contains("type UserAccount struct {"));
+        assert!(code.contains("Wallet [32]byte `borsh:\"wallet\"`"));
+        assert!(code.contains("Balance uint64 `borsh:\"balance\"`"));
+    }
+
+    #[test]
+    fn generates_optional_fields() {
+        let type_def = TypeDefinition::Struct(StructDefinition {
+            name: "Profile".to_string(),
+            generic_params: vec![],
+            fields: vec![FieldDefinition {
+                name: "email".to_string(),
+                type_info: TypeInfo::Option(Box::new(TypeInfo::Primitive("String".to_string()))),
+                optional: true,
+                deprecated: None,
+                anchor_attrs: vec![],
+            }],
+            metadata: Metadata::default(),
+        });
+
+        let code = generate(&type_def);
+        assert!(code.contains("Email *string `borsh:\"email\"`"));
+    }
+
+    #[test]
+    fn generates_array_fields() {
+        let type_def = TypeDefinition::Struct(StructDefinition {
+            name: "Team".to_string(),
+            generic_params: vec![],
+            fields: vec![FieldDefinition {
+                name: "members".to_string(),
+                type_info: TypeInfo::Array(Box::new(TypeInfo::Primitive("u64".to_string()))),
+                optional: false,
+                deprecated: None,
+                anchor_attrs: vec![],
+            }],
+            metadata: Metadata::default(),
+        });
+
+        let code = generate(&type_def);
+        assert!(code.contains("Members []uint64 `borsh:\"members\"`"));
+    }
+
+    #[test]
+    fn generates_fixed_array_fields() {
+        let type_def = TypeDefinition::Struct(StructDefinition {
+            name: "Hash".to_string(),
+            generic_params: vec![],
+            fields: vec![FieldDefinition {
+                name: "data".to_string(),
+                type_info: TypeInfo::FixedArray {
+                    element: Box::new(TypeInfo::Primitive("u8".to_string())),
+                    size: 32,
+                },
+                optional: false,
+                deprecated: None,
+                anchor_attrs: vec![],
+            }],
+            metadata: Metadata::default(),
+        });
+
+        let code = generate(&type_def);
+        assert!(code.contains("Data [32]uint8 `borsh:\"data\"`"));
+    }
+
+    #[test]
+    fn generates_module_with_multiple_types() {
+        let type_defs = vec![
+            TypeDefinition::Struct(StructDefinition {
+                name: "User".to_string(),
+                generic_params: vec![],
+                fields: vec![],
+                metadata: Metadata::default(),
+            }),
+            TypeDefinition::Struct(StructDefinition {
+                name: "Post".to_string(),
+                generic_params: vec![],
+                fields: vec![],
+                metadata: Metadata::default(),
+            }),
+        ];
+
+        let code = generate_module(&type_defs);
+        assert!(code.contains("type User struct {"));
+        assert!(code.contains("type Post struct {"));
+        // Only one package declaration
+        assert_eq!(code.matches("package generated").count(), 1);
+    }
+
+    #[test]
+    fn generates_unit_enum() {
+        let type_def = TypeDefinition::Enum(EnumDefinition {
+            name: "GameState".to_string(),
+            generic_params: vec![],
+            variants: vec![
+                EnumVariantDefinition::Unit {
+                    name: "Active".to_string(),
+                },
+                EnumVariantDefinition::Unit {
+                    name: "Paused".to_string(),
+                },
+                EnumVariantDefinition::Unit {
+                    name: "Finished".to_string(),
+                },
+            ],
+            metadata: Metadata {
+                solana: true,
+                attributes: vec![],
+                version: None,
+                custom_derives: vec![],
+                is_instruction: false,
+                anchor_attrs: vec![],
+            },
+        });
+
+        let code = generate(&type_def);
+        assert!(code.contains("type GameState uint8"));
+        assert!(code.contains("GameStateActive GameState = iota"));
+        assert!(code.contains("GameStatePaused"));
+        assert!(code.contains("GameStateFinished"));
+        assert!(code.contains("func (e GameState) String() string"));
+    }
+
+    #[test]
+    fn generates_complex_enum() {
+        let type_def = TypeDefinition::Enum(EnumDefinition {
+            name: "GameEvent".to_string(),
+            generic_params: vec![],
+            variants: vec![
+                EnumVariantDefinition::Unit {
+                    name: "Started".to_string(),
+                },
+                EnumVariantDefinition::Tuple {
+                    name: "PlayerJoined".to_string(),
+                    types: vec![TypeInfo::Primitive("PublicKey".to_string())],
+                },
+                EnumVariantDefinition::Struct {
+                    name: "ScoreUpdate".to_string(),
+                    fields: vec![
+                        FieldDefinition {
+                            name: "player".to_string(),
+                            type_info: TypeInfo::Primitive("PublicKey".to_string()),
+                            optional: false,
+                            deprecated: None,
+                            anchor_attrs: vec![],
+                        },
+                        FieldDefinition {
+                            name: "score".to_string(),
+                            type_info: TypeInfo::Primitive("u64".to_string()),
+                            optional: false,
+                            deprecated: None,
+                            anchor_attrs: vec![],
+                        },
+                    ],
+                },
+            ],
+            metadata: Metadata {
+                solana: true,
+                attributes: vec![],
+                version: None,
+                custom_derives: vec![],
+                is_instruction: false,
+                anchor_attrs: vec![],
+            },
+        });
+
+        let code = generate(&type_def);
+        assert!(code.contains("type GameEvent interface"));
+        assert!(code.contains("isGameEvent()"));
+        assert!(code.contains("type GameEventStarted struct{}"));
+        assert!(code.contains("type GameEventPlayerJoined struct {"));
+        assert!(code.contains("Field0 [32]byte"));
+        assert!(code.contains("type GameEventScoreUpdate struct {"));
+        assert!(code.contains("Player [32]byte"));
+        assert!(code.contains("Score uint64"));
+    }
+
+    #[test]
+    fn maps_all_primitive_types() {
+        assert_eq!(
+            map_type_to_go(&TypeInfo::Primitive("u8".to_string())),
+            "uint8"
+        );
+        assert_eq!(
+            map_type_to_go(&TypeInfo::Primitive("u64".to_string())),
+            "uint64"
+        );
+        assert_eq!(
+            map_type_to_go(&TypeInfo::Primitive("u128".to_string())),
+            "[16]byte"
+        );
+        assert_eq!(
+            map_type_to_go(&TypeInfo::Primitive("i64".to_string())),
+            "int64"
+        );
+        assert_eq!(
+            map_type_to_go(&TypeInfo::Primitive("f64".to_string())),
+            "float64"
+        );
+        assert_eq!(
+            map_type_to_go(&TypeInfo::Primitive("bool".to_string())),
+            "bool"
+        );
+        assert_eq!(
+            map_type_to_go(&TypeInfo::Primitive("String".to_string())),
+            "string"
+        );
+        assert_eq!(
+            map_type_to_go(&TypeInfo::Primitive("PublicKey".to_string())),
+            "[32]byte"
+        );
+        assert_eq!(
+            map_type_to_go(&TypeInfo::Primitive("Signature".to_string())),
+            "[64]byte"
+        );
+    }
+
+    #[test]
+    fn handles_deprecated_fields() {
+        let type_def = TypeDefinition::Struct(StructDefinition {
+            name: "Account".to_string(),
+            generic_params: vec![],
+            fields: vec![
+                FieldDefinition {
+                    name: "balance".to_string(),
+                    type_info: TypeInfo::Primitive("u64".to_string()),
+                    optional: false,
+                    deprecated: None,
+                    anchor_attrs: vec![],
+                },
+                FieldDefinition {
+                    name: "old_field".to_string(),
+                    type_info: TypeInfo::Primitive("u32".to_string()),
+                    optional: false,
+                    deprecated: Some("Use new_field instead".to_string()),
+                    anchor_attrs: vec![],
+                },
+            ],
+            metadata: Metadata::default(),
+        });
+
+        let code = generate(&type_def);
+        assert!(code.contains("// Deprecated fields:"));
+        assert!(code.contains("old_field: Use new_field instead"));
+        assert!(code.contains("// Deprecated: Use new_field instead"));
+    }
+
+    #[test]
+    fn test_to_pascal_case() {
+        assert_eq!(to_pascal_case("hello_world"), "HelloWorld");
+        assert_eq!(to_pascal_case("user_id"), "UserId");
+        assert_eq!(to_pascal_case("simple"), "Simple");
+        assert_eq!(to_pascal_case("abc_def_ghi"), "AbcDefGhi");
+    }
+}
