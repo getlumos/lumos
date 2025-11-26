@@ -9,6 +9,7 @@ use colored::*;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use lumos_core::anchor::{IdlGenerator, IdlGeneratorConfig};
 use lumos_core::ast::Item as AstItem;
 use lumos_core::audit_generator::AuditGenerator;
 use lumos_core::corpus_generator::CorpusGenerator;
@@ -172,6 +173,12 @@ enum Commands {
         #[arg(short = 's', long)]
         strict: bool,
     },
+
+    /// Anchor Framework integration commands
+    Anchor {
+        #[command(subcommand)]
+        command: AnchorCommands,
+    },
 }
 
 #[derive(Subcommand)]
@@ -257,6 +264,49 @@ enum FuzzCommands {
     },
 }
 
+#[derive(Subcommand)]
+enum AnchorCommands {
+    /// Generate Anchor IDL from LUMOS schema
+    Idl {
+        /// Path to .lumos schema file
+        schema: PathBuf,
+
+        /// Output file path (default: target/idl/<program_name>.json)
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Program name (default: derived from schema filename)
+        #[arg(short, long)]
+        name: Option<String>,
+
+        /// Program version (default: 0.1.0)
+        #[arg(short = 'V', long, default_value = "0.1.0")]
+        version: String,
+
+        /// Program address (optional)
+        #[arg(short, long)]
+        address: Option<String>,
+
+        /// Pretty print JSON output
+        #[arg(short, long)]
+        pretty: bool,
+    },
+
+    /// Generate Rust code with Anchor account space constants
+    Space {
+        /// Path to .lumos schema file
+        schema: PathBuf,
+
+        /// Output format (text or rust)
+        #[arg(short, long, default_value = "text")]
+        format: String,
+
+        /// Specific account type to calculate (optional)
+        #[arg(short, long)]
+        account: Option<String>,
+    },
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -339,6 +389,29 @@ fn main() -> Result<()> {
             verbose,
             strict,
         } => run_check_compat(&from_schema, &to_schema, &format, verbose, strict),
+
+        Commands::Anchor { command } => match command {
+            AnchorCommands::Idl {
+                schema,
+                output,
+                name,
+                version,
+                address,
+                pretty,
+            } => run_anchor_idl(
+                &schema,
+                output.as_deref(),
+                name.as_deref(),
+                &version,
+                address.as_deref(),
+                pretty,
+            ),
+            AnchorCommands::Space {
+                schema,
+                format,
+                account,
+            } => run_anchor_space(&schema, &format, account.as_deref()),
+        },
     }
 }
 
@@ -2610,6 +2683,184 @@ fn run_check_compat(
         std::process::exit(1); // Breaking changes
     } else if strict && total_warnings > 0 {
         std::process::exit(2); // Warnings in strict mode
+    }
+
+    Ok(())
+}
+
+// ============================================================================
+// Anchor Framework Commands
+// ============================================================================
+
+/// Generate Anchor IDL from LUMOS schema
+fn run_anchor_idl(
+    schema_path: &Path,
+    output_path: Option<&Path>,
+    program_name: Option<&str>,
+    version: &str,
+    address: Option<&str>,
+    pretty: bool,
+) -> Result<()> {
+    // Parse and transform schema
+    let (type_defs, _file_count) = resolve_schema(schema_path)?;
+
+    // Derive program name from schema filename if not provided
+    let name = program_name.map(String::from).unwrap_or_else(|| {
+        schema_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("my_program")
+            .to_string()
+    });
+
+    // Configure IDL generator
+    let config = IdlGeneratorConfig {
+        program_name: name.clone(),
+        version: version.to_string(),
+        address: address.map(String::from),
+    };
+
+    // Generate IDL
+    let generator = IdlGenerator::new(config);
+    let idl = generator.generate(&type_defs);
+
+    // Serialize to JSON
+    let json_output = if pretty {
+        serde_json::to_string_pretty(&idl)?
+    } else {
+        serde_json::to_string(&idl)?
+    };
+
+    // Determine output path
+    if let Some(out_path) = output_path {
+        // Validate output path
+        validate_output_path(out_path)?;
+        fs::write(out_path, &json_output)?;
+        println!("{:>12} {}", "Generated".green().bold(), out_path.display());
+    } else {
+        // Default: target/idl/<program_name>.json
+        let default_path = PathBuf::from("target/idl").join(format!("{}.json", name));
+
+        // Create directory if it doesn't exist
+        if let Some(parent) = default_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+
+        fs::write(&default_path, &json_output)?;
+        println!(
+            "{:>12} {}",
+            "Generated".green().bold(),
+            default_path.display()
+        );
+    }
+
+    // Print summary
+    let account_count = idl.accounts.len();
+    let type_count = idl.types.len();
+
+    println!();
+    println!("{}", "IDL Summary:".bold());
+    println!("  Program: {}", idl.name.cyan());
+    println!("  Version: {}", idl.version);
+    if let Some(ref meta) = idl.metadata {
+        if let Some(ref addr) = meta.address {
+            println!("  Address: {}", addr);
+        }
+    }
+    println!("  Accounts: {}", account_count);
+    println!("  Types: {}", type_count);
+
+    Ok(())
+}
+
+/// Generate Anchor account space constants
+fn run_anchor_space(schema_path: &Path, format: &str, account_name: Option<&str>) -> Result<()> {
+    // Parse and transform schema
+    let (type_defs, _file_count) = resolve_schema(schema_path)?;
+
+    // Create generator for space calculation
+    let generator = IdlGenerator::new(IdlGeneratorConfig::default());
+
+    // Find account types
+    let accounts: Vec<_> = type_defs
+        .iter()
+        .filter_map(|td| {
+            if let TypeDefinition::Struct(struct_def) = td {
+                if struct_def
+                    .metadata
+                    .attributes
+                    .iter()
+                    .any(|a| a == "account")
+                {
+                    if let Some(name) = account_name {
+                        if struct_def.name != name {
+                            return None;
+                        }
+                    }
+                    return Some(struct_def);
+                }
+            }
+            None
+        })
+        .collect();
+
+    if accounts.is_empty() {
+        if let Some(name) = account_name {
+            println!(
+                "{:>12} No account '{}' found in schema",
+                "Warning".yellow().bold(),
+                name
+            );
+        } else {
+            println!(
+                "{:>12} No account types found in schema",
+                "Warning".yellow().bold()
+            );
+            println!("  Hint: Add #[account] attribute to struct definitions");
+        }
+        return Ok(());
+    }
+
+    println!("{:>12} account space...\n", "Calculating".cyan().bold());
+
+    if format == "rust" {
+        // Generate Rust code
+        println!("// Auto-generated account space constants");
+        println!("// Generated by: lumos anchor space\n");
+
+        for account in &accounts {
+            let space = generator.calculate_account_space(account);
+            println!("impl {} {{", account.name);
+            println!("    /// Account size including 8-byte discriminator");
+            println!("    pub const LEN: usize = {};", space);
+            println!("}}\n");
+        }
+    } else {
+        // Text output
+        println!(
+            "{:<30} {:>10} {:>15}",
+            "Account".bold(),
+            "Size".bold(),
+            "Breakdown".bold()
+        );
+        println!("{}", "-".repeat(60));
+
+        for account in &accounts {
+            let space = generator.calculate_account_space(account);
+            let breakdown = format!("8 (disc) + {} (data)", space - 8);
+            println!(
+                "{:<30} {:>10} {:>15}",
+                account.name,
+                format!("{} bytes", space),
+                breakdown
+            );
+        }
+
+        println!();
+        println!("{}", "Note:".bold());
+        println!("  - Size includes 8-byte Anchor discriminator");
+        println!("  - Variable-length fields (String, Vec) show prefix only");
+        println!("  - Max Solana account size: 10,485,760 bytes (10 MiB)");
     }
 
     Ok(())

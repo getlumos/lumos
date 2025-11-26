@@ -113,6 +113,9 @@ pub mod file_resolver;
 /// Module resolver for hierarchical module structures
 pub mod module_resolver;
 
+/// Anchor Framework integration (IDL generation, constraints, instructions)
+pub mod anchor;
+
 /// WASM bindings for browser playground
 #[cfg(feature = "wasm")]
 pub mod wasm;
