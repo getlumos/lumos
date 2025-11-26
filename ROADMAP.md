@@ -350,7 +350,7 @@ lumos generate schema.lumos --lang rust,typescript,python,go,ruby
 - [ ] Add Metaplex standard compatibility for NFT schemas [#58]
 
 **In Progress**:
-- #55 - Anchor Framework Plugin (Phases 1-2 complete, 3-4 remaining)
+- #55 - Anchor Framework Plugin (Phases 1-3 complete, Phase 4 remaining)
   - Phase 1 ✅ (Nov 25, 2025) - IDL Generation and Space Calculation
     - New anchor module with IDL types (Idl, IdlTypeDef, IdlField, IdlType)
     - IdlGenerator with generate(), convert_struct(), convert_enum()
@@ -365,8 +365,13 @@ lumos generate schema.lumos --lang rust,typescript,python,go,ruby
     - parse_anchor_attrs() for #[anchor(...)] parsing
     - generate_accounts_context() for #[derive(Accounts)] generation
     - 8 unit tests (15 total anchor tests)
-  - Phase 3 (pending) - AST/Parser Integration
-  - Phase 4 (pending) - CLI Commands and E2E Tests
+  - Phase 3 ✅ (Nov 26, 2025) - AST/Parser/IR Integration
+    - Added `anchor_attrs: Vec<String>` to FieldDefinition for field-level attrs
+    - Added `is_instruction: bool` and `anchor_attrs` to Metadata for struct-level
+    - Added `extract_anchor_attrs()` in transform to extract #[anchor(...)]
+    - Updated all FieldDefinition/Metadata usages across codebase
+    - Enables anchor module to access parsed attributes from IR
+  - Phase 4 (pending) - E2E Tests and Documentation
 
 ### 6.2 Tooling Ecosystem
 
