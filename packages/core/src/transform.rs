@@ -88,6 +88,12 @@ pub struct TypeAliasResolver {
     resolved: HashMap<String, TypeInfo>,
 }
 
+impl Default for TypeAliasResolver {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TypeAliasResolver {
     /// Create a new empty resolver
     pub fn new() -> Self {
@@ -139,9 +145,7 @@ impl TypeAliasResolver {
         let target = self
             .aliases
             .get(name)
-            .ok_or_else(|| {
-                LumosError::Transform(format!("Unknown type alias: {}", name), None)
-            })?
+            .ok_or_else(|| LumosError::Transform(format!("Unknown type alias: {}", name), None))?
             .clone();
 
         // Transform the target, resolving any nested aliases
@@ -413,10 +417,7 @@ fn transform_type_alias(
     let target = resolver
         .get_resolved(&name)
         .ok_or_else(|| {
-            LumosError::Transform(
-                format!("Type alias '{}' was not resolved", name),
-                None,
-            )
+            LumosError::Transform(format!("Type alias '{}' was not resolved", name), None)
         })?
         .clone();
 
@@ -424,7 +425,10 @@ fn transform_type_alias(
 }
 
 /// Transform a single struct definition
-fn transform_struct(struct_def: AstStruct, resolver: &TypeAliasResolver) -> Result<StructDefinition> {
+fn transform_struct(
+    struct_def: AstStruct,
+    resolver: &TypeAliasResolver,
+) -> Result<StructDefinition> {
     // Extract metadata from attributes BEFORE consuming struct
     let metadata = extract_struct_metadata(&struct_def);
 
@@ -470,7 +474,10 @@ fn transform_enum(enum_def: AstEnum, resolver: &TypeAliasResolver) -> Result<Enu
 }
 
 /// Transform an enum variant
-fn transform_enum_variant(variant: AstEnumVariant, resolver: &TypeAliasResolver) -> Result<EnumVariantDefinition> {
+fn transform_enum_variant(
+    variant: AstEnumVariant,
+    resolver: &TypeAliasResolver,
+) -> Result<EnumVariantDefinition> {
     match variant {
         AstEnumVariant::Unit { name, .. } => Ok(EnumVariantDefinition::Unit { name }),
 
@@ -520,7 +527,11 @@ fn transform_field(field: AstField, resolver: &TypeAliasResolver) -> Result<Fiel
 }
 
 /// Transform type specification with alias resolution
-fn transform_type(type_spec: AstType, optional: bool, resolver: &TypeAliasResolver) -> Result<TypeInfo> {
+fn transform_type(
+    type_spec: AstType,
+    optional: bool,
+    resolver: &TypeAliasResolver,
+) -> Result<TypeInfo> {
     let base_type = match type_spec {
         AstType::Primitive(name) => {
             // Check if it's a known primitive type

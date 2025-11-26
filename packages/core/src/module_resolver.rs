@@ -143,10 +143,7 @@ impl ModuleResolver {
 
         // Get the directory of the current file for resolving relative modules
         let current_dir = file_path.parent().ok_or_else(|| {
-            LumosError::SchemaParse(
-                format!("Invalid file path: {}", file_path.display()),
-                None,
-            )
+            LumosError::SchemaParse(format!("Invalid file path: {}", file_path.display()), None)
         })?;
 
         // Extract child module declarations
@@ -184,8 +181,7 @@ impl ModuleResolver {
         self.loading_stack.pop();
 
         // Add to modules map
-        self.modules
-            .insert(file_path.to_path_buf(), module_node);
+        self.modules.insert(file_path.to_path_buf(), module_node);
 
         Ok(())
     }
@@ -236,11 +232,7 @@ impl ModuleResolver {
     fn format_loading_chain(&self) -> String {
         self.loading_stack
             .iter()
-            .map(|p| {
-                p.file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("unknown")
-            })
+            .map(|p| p.file_name().and_then(|n| n.to_str()).unwrap_or("unknown"))
             .collect::<Vec<_>>()
             .join(" -> ")
     }
@@ -282,10 +274,7 @@ impl ModuleResolver {
 
         // Get the final identifier (the type being imported)
         let type_name = use_stmt.path.final_ident().ok_or_else(|| {
-            LumosError::SchemaParse(
-                format!("Invalid use path: {}", use_stmt.path.to_string()),
-                None,
-            )
+            LumosError::SchemaParse(format!("Invalid use path: {}", use_stmt.path), None)
         })?;
 
         // Resolve the module path
@@ -295,10 +284,7 @@ impl ModuleResolver {
         // Find the type in the target module
         let target_module = self.modules.get(&target_module_path).ok_or_else(|| {
             LumosError::SchemaParse(
-                format!(
-                    "Module not found for path: {}",
-                    use_stmt.path.to_string()
-                ),
+                format!("Module not found for path: {}", use_stmt.path),
                 None,
             )
         })?;
@@ -336,9 +322,7 @@ impl ModuleResolver {
         }
 
         // Check visibility (type must be public if importing from different module)
-        if target_module_path != current_module_path
-            && type_visibility == Visibility::Private
-        {
+        if target_module_path != current_module_path && type_visibility == Visibility::Private {
             return Err(LumosError::SchemaParse(
                 format!(
                     "Type '{}' is private and cannot be imported from '{}'",
@@ -379,16 +363,16 @@ impl ModuleResolver {
                 // Relative to parent module
                 let current_module = self.modules.get(current_module_path).ok_or_else(|| {
                     LumosError::SchemaParse(
-                        format!("Current module not found: {}", current_module_path.display()),
+                        format!(
+                            "Current module not found: {}",
+                            current_module_path.display()
+                        ),
                         None,
                     )
                 })?;
 
                 current_module.parent.clone().ok_or_else(|| {
-                    LumosError::SchemaParse(
-                        "Cannot use 'super' in root module".to_string(),
-                        None,
-                    )
+                    LumosError::SchemaParse("Cannot use 'super' in root module".to_string(), None)
                 })?
             }
             PathSegment::SelfPath => {
@@ -399,7 +383,10 @@ impl ModuleResolver {
                 // Implicit self - relative to current module
                 let current_module = self.modules.get(current_module_path).ok_or_else(|| {
                     LumosError::SchemaParse(
-                        format!("Current module not found: {}", current_module_path.display()),
+                        format!(
+                            "Current module not found: {}",
+                            current_module_path.display()
+                        ),
                         None,
                     )
                 })?;

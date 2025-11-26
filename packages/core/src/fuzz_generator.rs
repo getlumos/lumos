@@ -425,13 +425,13 @@ mod tests {
         let type_defs = vec![
             TypeDefinition::Struct(StructDefinition {
                 name: "Account1".to_string(),
-            generic_params: vec![],
+                generic_params: vec![],
                 fields: vec![],
                 metadata: Metadata::default(),
             }),
             TypeDefinition::Enum(EnumDefinition {
                 name: "State1".to_string(),
-            generic_params: vec![],
+                generic_params: vec![],
                 variants: vec![],
                 metadata: Metadata::default(),
             }),

@@ -60,8 +60,8 @@
 //! ```
 
 use crate::ir::{
-    EnumDefinition, EnumVariantDefinition, StructDefinition, TypeAliasDefinition,
-    TypeDefinition, TypeInfo,
+    EnumDefinition, EnumVariantDefinition, StructDefinition, TypeAliasDefinition, TypeDefinition,
+    TypeInfo,
 };
 use std::collections::HashSet;
 
@@ -145,7 +145,11 @@ fn generate_struct(struct_def: &StructDefinition) -> String {
     let struct_name_with_generics = if struct_def.generic_params.is_empty() {
         struct_def.name.clone()
     } else {
-        format!("{}<{}>", struct_def.name, struct_def.generic_params.join(", "))
+        format!(
+            "{}<{}>",
+            struct_def.name,
+            struct_def.generic_params.join(", ")
+        )
     };
     output.push_str(&format!("pub struct {} {{\n", struct_name_with_generics));
 
@@ -598,7 +602,11 @@ fn generate_struct_with_context(struct_def: &StructDefinition, use_anchor: bool)
     let struct_name_with_generics = if struct_def.generic_params.is_empty() {
         struct_def.name.clone()
     } else {
-        format!("{}<{}>", struct_def.name, struct_def.generic_params.join(", "))
+        format!(
+            "{}<{}>",
+            struct_def.name,
+            struct_def.generic_params.join(", ")
+        )
     };
     output.push_str(&format!("pub struct {} {{\n", struct_name_with_generics));
 
@@ -972,13 +980,13 @@ mod tests {
         let type_defs = vec![
             TypeDefinition::Struct(StructDefinition {
                 name: "User".to_string(),
-            generic_params: vec![],
+                generic_params: vec![],
                 fields: vec![],
                 metadata: Metadata::default(),
             }),
             TypeDefinition::Struct(StructDefinition {
                 name: "Post".to_string(),
-            generic_params: vec![],
+                generic_params: vec![],
                 fields: vec![],
                 metadata: Metadata::default(),
             }),

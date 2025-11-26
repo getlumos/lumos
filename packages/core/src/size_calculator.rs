@@ -267,7 +267,10 @@ impl<'a> SizeCalculator<'a> {
                 // Generic parameters have unknown size until concrete type is provided
                 SizeInfo::Variable {
                     min: 0,
-                    reason: format!("Generic parameter '{}' (size depends on concrete type)", param_name),
+                    reason: format!(
+                        "Generic parameter '{}' (size depends on concrete type)",
+                        param_name
+                    ),
                 }
             }
             TypeInfo::UserDefined(type_name) => {

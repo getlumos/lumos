@@ -448,19 +448,22 @@ impl ModulePath {
             }
         })
     }
+}
 
-    /// Convert to string representation (e.g., "crate::models::User")
-    pub fn to_string(&self) -> String {
-        self.segments
+impl std::fmt::Display for ModulePath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let path_str = self
+            .segments
             .iter()
             .map(|seg| match seg {
-                PathSegment::Crate => "crate".to_string(),
-                PathSegment::Super => "super".to_string(),
-                PathSegment::SelfPath => "self".to_string(),
-                PathSegment::Ident(name) => name.clone(),
+                PathSegment::Crate => "crate",
+                PathSegment::Super => "super",
+                PathSegment::SelfPath => "self",
+                PathSegment::Ident(name) => name.as_str(),
             })
             .collect::<Vec<_>>()
-            .join("::")
+            .join("::");
+        write!(f, "{}", path_str)
     }
 }
 

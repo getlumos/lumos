@@ -357,7 +357,10 @@ fn resolve_schema(schema_path: &Path) -> Result<(Vec<TypeDefinition>, usize)> {
         .with_context(|| format!("Failed to parse schema: {}", schema_path.display()))?;
 
     // Check if file has module declarations
-    let has_mod_declarations = ast.items.iter().any(|item| matches!(item, AstItem::Module(_)));
+    let has_mod_declarations = ast
+        .items
+        .iter()
+        .any(|item| matches!(item, AstItem::Module(_)));
 
     // Check if file has JS-style imports
     let has_imports = !ast.imports.is_empty();
@@ -365,17 +368,17 @@ fn resolve_schema(schema_path: &Path) -> Result<(Vec<TypeDefinition>, usize)> {
     if has_mod_declarations {
         // Use ModuleResolver for hierarchical module system
         let mut resolver = ModuleResolver::new();
-        let ir = resolver
-            .resolve_modules(schema_path)
-            .with_context(|| format!("Failed to resolve modules from: {}", schema_path.display()))?;
+        let ir = resolver.resolve_modules(schema_path).with_context(|| {
+            format!("Failed to resolve modules from: {}", schema_path.display())
+        })?;
         let file_count = resolver.loaded_modules().len();
         Ok((ir, file_count))
     } else if has_imports {
         // Use FileResolver for JS-style imports
         let mut resolver = FileResolver::new();
-        let ir = resolver
-            .resolve_imports(schema_path)
-            .with_context(|| format!("Failed to resolve imports from: {}", schema_path.display()))?;
+        let ir = resolver.resolve_imports(schema_path).with_context(|| {
+            format!("Failed to resolve imports from: {}", schema_path.display())
+        })?;
         let file_count = resolver.loaded_files().len();
         Ok((ir, file_count))
     } else {
@@ -417,11 +420,7 @@ fn run_generate(
 
     // Report loaded files if multiple
     if file_count > 1 && !dry_run {
-        println!(
-            "{:>12} {} files",
-            "Loaded".green().bold(),
-            file_count
-        );
+        println!("{:>12} {} files", "Loaded".green().bold(), file_count);
     }
 
     if ir.is_empty() {

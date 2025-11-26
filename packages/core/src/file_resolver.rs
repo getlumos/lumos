@@ -30,6 +30,12 @@ pub struct FileResolver {
     loading_stack: Vec<PathBuf>,
 }
 
+impl Default for FileResolver {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FileResolver {
     /// Create a new file resolver
     pub fn new() -> Self {
@@ -49,7 +55,7 @@ impl FileResolver {
 
         // First pass: Collect all type aliases from all files
         let mut resolver = TypeAliasResolver::new();
-        for (_path, lumos_file) in &self.loaded_files {
+        for lumos_file in self.loaded_files.values() {
             for item in &lumos_file.items {
                 if let AstItem::TypeAlias(alias_def) = item {
                     resolver.add_alias(alias_def.name.clone(), alias_def.target.clone())?;
@@ -62,7 +68,7 @@ impl FileResolver {
 
         // Second pass: Transform all files with shared resolver (skip per-file validation)
         let mut all_type_defs = Vec::new();
-        for (_path, lumos_file) in &self.loaded_files {
+        for lumos_file in self.loaded_files.values() {
             let type_defs =
                 transform_to_ir_with_resolver_no_validation(lumos_file.clone(), &resolver)?;
             all_type_defs.extend(type_defs);
@@ -108,10 +114,7 @@ impl FileResolver {
 
         // Get the directory of the current file for resolving relative imports
         let current_dir = file_path.parent().ok_or_else(|| {
-            LumosError::SchemaParse(
-                format!("Invalid file path: {}", file_path.display()),
-                None,
-            )
+            LumosError::SchemaParse(format!("Invalid file path: {}", file_path.display()), None)
         })?;
 
         // Recursively load all imported files
@@ -124,7 +127,8 @@ impl FileResolver {
         self.loading_stack.pop();
 
         // Add to cache
-        self.loaded_files.insert(file_path.to_path_buf(), lumos_file);
+        self.loaded_files
+            .insert(file_path.to_path_buf(), lumos_file);
 
         Ok(())
     }
@@ -157,11 +161,7 @@ impl FileResolver {
     fn format_import_chain(&self) -> String {
         self.loading_stack
             .iter()
-            .map(|p| {
-                p.file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("unknown")
-            })
+            .map(|p| p.file_name().and_then(|n| n.to_str()).unwrap_or("unknown"))
             .collect::<Vec<_>>()
             .join(" -> ")
     }

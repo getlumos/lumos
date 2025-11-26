@@ -79,8 +79,8 @@
 //! ```
 
 use crate::ir::{
-    EnumDefinition, EnumVariantDefinition, StructDefinition, TypeAliasDefinition,
-    TypeDefinition, TypeInfo,
+    EnumDefinition, EnumVariantDefinition, StructDefinition, TypeAliasDefinition, TypeDefinition,
+    TypeInfo,
 };
 use std::collections::HashSet;
 
@@ -437,9 +437,9 @@ fn contains_u64_or_i64(type_info: &TypeInfo) -> bool {
             matches!(type_name.as_str(), "u64" | "i64")
         }
         TypeInfo::Generic(_) => false, // Generic parameters are not u64/i64
-        TypeInfo::Array(inner) | TypeInfo::FixedArray { element: inner, .. } | TypeInfo::Option(inner) => {
-            contains_u64_or_i64(inner)
-        }
+        TypeInfo::Array(inner)
+        | TypeInfo::FixedArray { element: inner, .. }
+        | TypeInfo::Option(inner) => contains_u64_or_i64(inner),
         TypeInfo::UserDefined(_) => false, // User-defined types are checked separately
     }
 }
@@ -452,9 +452,16 @@ fn generate_struct_interface(struct_def: &StructDefinition) -> String {
     let interface_name_with_generics = if struct_def.generic_params.is_empty() {
         struct_def.name.clone()
     } else {
-        format!("{}<{}>", struct_def.name, struct_def.generic_params.join(", "))
+        format!(
+            "{}<{}>",
+            struct_def.name,
+            struct_def.generic_params.join(", ")
+        )
     };
-    output.push_str(&format!("export interface {} {{\n", interface_name_with_generics));
+    output.push_str(&format!(
+        "export interface {} {{\n",
+        interface_name_with_generics
+    ));
 
     // Generate fields
     for field in &struct_def.fields {
@@ -775,7 +782,10 @@ fn map_type_to_borsh(type_info: &TypeInfo) -> String {
         TypeInfo::Generic(param_name) => {
             // Generic parameters cannot be serialized directly with Borsh
             // They need concrete types at instantiation time
-            format!("/* Generic parameter '{}' - Borsh schema needed at concrete type level */", param_name)
+            format!(
+                "/* Generic parameter '{}' - Borsh schema needed at concrete type level */",
+                param_name
+            )
         }
         TypeInfo::UserDefined(type_name) => {
             // User-defined types need their schema
@@ -905,13 +915,13 @@ mod tests {
         let type_defs = vec![
             TypeDefinition::Struct(StructDefinition {
                 name: "User".to_string(),
-            generic_params: vec![],
+                generic_params: vec![],
                 fields: vec![],
                 metadata: Metadata::default(),
             }),
             TypeDefinition::Struct(StructDefinition {
                 name: "Post".to_string(),
-            generic_params: vec![],
+                generic_params: vec![],
                 fields: vec![],
                 metadata: Metadata::default(),
             }),

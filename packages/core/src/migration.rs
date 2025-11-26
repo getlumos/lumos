@@ -364,7 +364,10 @@ pub fn generate_rust_migration(diff: &SchemaDiff, old_def: &TypeDefinition) -> S
         }
         TypeDefinition::TypeAlias(_) => {
             // Type aliases are resolved during transformation and don't need migrations
-            format!("// Type alias '{}' - no migration needed (resolved at compile time)\n", diff.type_name)
+            format!(
+                "// Type alias '{}' - no migration needed (resolved at compile time)\n",
+                diff.type_name
+            )
         }
     }
 }
@@ -564,7 +567,10 @@ pub fn generate_typescript_migration(diff: &SchemaDiff, old_def: &TypeDefinition
         }
         TypeDefinition::TypeAlias(_) => {
             // Type aliases are resolved during transformation and don't need migrations
-            format!("// Type alias '{}' - no migration needed (resolved at compile time)\n", diff.type_name)
+            format!(
+                "// Type alias '{}' - no migration needed (resolved at compile time)\n",
+                diff.type_name
+            )
         }
     }
 }

@@ -34,9 +34,8 @@
 //! ```
 
 use crate::ast::{
-    Attribute, AttributeValue, EnumDef, EnumVariant, FieldDef, Import, Item as AstItem,
-    LumosFile, Module, ModulePath, PathSegment, StructDef, TypeAlias, TypeSpec, UseStatement,
-    Visibility,
+    Attribute, AttributeValue, EnumDef, EnumVariant, FieldDef, Import, Item as AstItem, LumosFile,
+    Module, ModulePath, PathSegment, StructDef, TypeAlias, TypeSpec, UseStatement, Visibility,
 };
 use crate::error::{LumosError, Result};
 use regex::Regex;
@@ -75,12 +74,10 @@ fn extract_imports(input: &str) -> Result<(Vec<Import>, String)> {
 
     // Multi-line regex: match import { ... } from "..." across multiple lines
     // Note: Using (?s) flag is not supported in regex crate, so we handle newlines with [\s\S]
-    let import_regex = Regex::new(
-        r#"import\s*\{([^}]+)\}\s*from\s+["']([^"']+)["']\s*;?"#,
-    )
-    .map_err(|e| {
-        LumosError::SchemaParse(format!("Failed to compile import regex: {}", e), None)
-    })?;
+    let import_regex = Regex::new(r#"import\s*\{([^}]+)\}\s*from\s+["']([^"']+)["']\s*;?"#)
+        .map_err(|e| {
+            LumosError::SchemaParse(format!("Failed to compile import regex: {}", e), None)
+        })?;
 
     let mut remaining = input.to_string();
 
@@ -793,7 +790,8 @@ fn parse_type_with_generics(ty: &Type, generic_params: &[String]) -> Result<(Typ
                 if let Some(segment) = type_path.path.segments.last() {
                     if let syn::PathArguments::AngleBracketed(args) = &segment.arguments {
                         if let Some(syn::GenericArgument::Type(inner_ty)) = args.args.first() {
-                            let (inner_type_spec, _) = parse_type_with_generics(inner_ty, generic_params)?;
+                            let (inner_type_spec, _) =
+                                parse_type_with_generics(inner_ty, generic_params)?;
                             return Ok((inner_type_spec, true)); // optional = true
                         }
                     }
@@ -806,7 +804,8 @@ fn parse_type_with_generics(ty: &Type, generic_params: &[String]) -> Result<(Typ
                 if let Some(segment) = type_path.path.segments.last() {
                     if let syn::PathArguments::AngleBracketed(args) = &segment.arguments {
                         if let Some(syn::GenericArgument::Type(inner_ty)) = args.args.first() {
-                            let (inner_type_spec, _) = parse_type_with_generics(inner_ty, generic_params)?;
+                            let (inner_type_spec, _) =
+                                parse_type_with_generics(inner_ty, generic_params)?;
                             return Ok((TypeSpec::Array(Box::new(inner_type_spec)), false));
                         }
                     }
@@ -875,14 +874,12 @@ fn parse_type_with_generics(ty: &Type, generic_params: &[String]) -> Result<(Typ
 fn parse_array_size(expr: &syn::Expr) -> Result<usize> {
     match expr {
         syn::Expr::Lit(expr_lit) => match &expr_lit.lit {
-            syn::Lit::Int(lit_int) => {
-                lit_int.base10_parse::<usize>().map_err(|e| {
-                    LumosError::SchemaParse(
-                        format!("Invalid array size (must be valid usize): {}", e),
-                        None,
-                    )
-                })
-            }
+            syn::Lit::Int(lit_int) => lit_int.base10_parse::<usize>().map_err(|e| {
+                LumosError::SchemaParse(
+                    format!("Invalid array size (must be valid usize): {}", e),
+                    None,
+                )
+            }),
             _ => Err(LumosError::SchemaParse(
                 "Array size must be an integer literal".to_string(),
                 None,

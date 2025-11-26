@@ -166,7 +166,13 @@ fn run() -> Result<ExitCode> {
     let status = Command::new(&lumos_path)
         .args(&lumos_args)
         .status()
-        .with_context(|| format!("Failed to execute: {} {}", lumos_path.display(), lumos_args.join(" ")))?;
+        .with_context(|| {
+            format!(
+                "Failed to execute: {} {}",
+                lumos_path.display(),
+                lumos_args.join(" ")
+            )
+        })?;
 
     Ok(if status.success() {
         ExitCode::SUCCESS
@@ -294,9 +300,7 @@ fn build_lumos_args(args: &LumosArgs, config: &LumosConfig) -> Result<Vec<String
                 .as_ref()
                 .map(|p| p.to_string_lossy().to_string())
                 .or_else(|| config.schema.clone())
-                .ok_or_else(|| {
-                    anyhow::anyhow!("No schema file specified")
-                })?;
+                .ok_or_else(|| anyhow::anyhow!("No schema file specified"))?;
 
             lumos_args.push(schema_path);
         }
@@ -315,9 +319,7 @@ fn build_lumos_args(args: &LumosArgs, config: &LumosConfig) -> Result<Vec<String
                 .as_ref()
                 .map(|p| p.to_string_lossy().to_string())
                 .or_else(|| config.schema.clone())
-                .ok_or_else(|| {
-                    anyhow::anyhow!("No schema file specified")
-                })?;
+                .ok_or_else(|| anyhow::anyhow!("No schema file specified"))?;
 
             lumos_args.push(schema_path);
 
@@ -368,13 +370,7 @@ schema = "schemas/types.lumos"
 output_rust = "src/generated.rs"
 "#;
         let cargo_toml: CargoToml = toml::from_str(toml_content).unwrap();
-        let config = cargo_toml
-            .package
-            .unwrap()
-            .metadata
-            .unwrap()
-            .lumos
-            .unwrap();
+        let config = cargo_toml.package.unwrap().metadata.unwrap().lumos.unwrap();
 
         assert_eq!(config.schema, Some("schemas/types.lumos".to_string()));
         assert_eq!(config.output_rust, Some("src/generated.rs".to_string()));
