@@ -15,7 +15,7 @@ use lumos_core::audit_generator::AuditGenerator;
 use lumos_core::corpus_generator::CorpusGenerator;
 use lumos_core::file_resolver::FileResolver;
 use lumos_core::fuzz_generator::FuzzGenerator;
-use lumos_core::generators::{rust, typescript};
+use lumos_core::generators::{rust, typescript, Language, get_generators};
 use lumos_core::ir::TypeDefinition;
 use lumos_core::migration::{generate_rust_migration, generate_typescript_migration, SchemaDiff};
 use lumos_core::module_resolver::ModuleResolver;
@@ -36,7 +36,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Generate Rust and TypeScript code from schema
+    /// Generate code from schema in multiple languages
     Generate {
         /// Path to .lumos schema file
         schema: PathBuf,
@@ -44,6 +44,15 @@ enum Commands {
         /// Output directory (default: current directory)
         #[arg(short, long)]
         output: Option<PathBuf>,
+
+        /// Target languages (comma-separated: rust,typescript,python,go,ruby)
+        ///
+        /// Supported: rust (rs), typescript (ts)
+        /// Planned: python (py), go, ruby (rb)
+        ///
+        /// Default: rust,typescript
+        #[arg(short = 'l', long, default_value = "rust,typescript")]
+        lang: String,
 
         /// Watch for changes and regenerate automatically
         ///
@@ -314,15 +323,16 @@ fn main() -> Result<()> {
         Commands::Generate {
             schema,
             output,
+            lang,
             watch,
             dry_run,
             backup,
             show_diff,
         } => {
             if watch {
-                run_watch_mode(&schema, output.as_deref())
+                run_watch_mode(&schema, output.as_deref(), &lang)
             } else {
-                run_generate(&schema, output.as_deref(), dry_run, backup, show_diff)
+                run_generate(&schema, output.as_deref(), &lang, dry_run, backup, show_diff)
             }
         }
         Commands::Validate { schema } => run_validate(&schema),
@@ -466,6 +476,7 @@ fn resolve_schema(schema_path: &Path) -> Result<(Vec<TypeDefinition>, usize)> {
 fn run_generate(
     schema_path: &Path,
     output_dir: Option<&Path>,
+    lang: &str,
     dry_run: bool,
     backup: bool,
     show_diff: bool,
@@ -474,6 +485,31 @@ fn run_generate(
 
     // Validate output directory for security
     validate_output_path(output_dir)?;
+
+    // Parse target languages
+    let requested_langs = Language::parse_list(lang);
+    if requested_langs.is_empty() {
+        anyhow::bail!("No valid languages specified. Supported: rust, typescript. Planned: python, go, ruby");
+    }
+
+    // Check for unimplemented languages
+    let unimplemented: Vec<_> = requested_langs.iter()
+        .filter(|l| !l.is_implemented())
+        .collect();
+    if !unimplemented.is_empty() {
+        let names: Vec<_> = unimplemented.iter().map(|l| l.name()).collect();
+        eprintln!(
+            "{}: {} not yet implemented (see roadmap)",
+            "warning".yellow().bold(),
+            names.join(", ")
+        );
+    }
+
+    // Get generators for implemented languages
+    let generators = get_generators(&requested_langs);
+    if generators.is_empty() {
+        anyhow::bail!("No implemented languages in selection. Currently supported: rust, typescript");
+    }
 
     // Dry-run mode header
     if dry_run {
@@ -504,100 +540,90 @@ fn run_generate(
         return Ok(());
     }
 
-    // Generate code
+    // Generate code for each language
     if !dry_run {
-        println!("{:>12} code", "Generating".green().bold());
+        let lang_names: Vec<_> = generators.iter().map(|g| g.language().name()).collect();
+        println!("{:>12} {} code", "Generating".green().bold(), lang_names.join(", "));
     }
 
-    let rust_code = rust::generate_module(&ir);
-    let ts_code = typescript::generate_module(&ir);
-
-    let rust_output = output_dir.join("generated.rs");
-    let ts_output = output_dir.join("generated.ts");
+    // Collect generated code for each language
+    let generated: Vec<(Language, String, PathBuf)> = generators
+        .iter()
+        .map(|gen| {
+            let code = gen.generate_module(&ir);
+            let output_file = output_dir.join(format!("generated.{}", gen.file_extension()));
+            (gen.language(), code, output_file)
+        })
+        .collect();
 
     // Dry-run mode: preview only
     if dry_run {
-        preview_file_changes(&rust_output, &rust_code, "Rust")?;
-        preview_file_changes(&ts_output, &ts_code, "TypeScript")?;
+        for (lang, code, output_path) in &generated {
+            preview_file_changes(output_path, code, lang.name())?;
+        }
 
         println!("\n{}", "No files written (dry-run mode).".yellow());
         println!("Run without --dry-run to apply changes.");
         return Ok(());
     }
 
-    // Backup mode: create backups
+    // Backup mode: create backups for all files
     if backup {
         println!("{:>12} files...", "Backing up".cyan().bold());
-        create_backup_if_exists(&rust_output)?;
-        create_backup_if_exists(&ts_output)?;
+        for (_, _, output_path) in &generated {
+            create_backup_if_exists(output_path)?;
+        }
     }
 
-    // Write Rust file
-    let rust_written = write_with_diff_check(&rust_output, &rust_code, show_diff, "Rust")?;
+    // Write files for each language
+    let mut any_written = false;
+    let mut backup_paths: Vec<PathBuf> = Vec::new();
 
-    if rust_written {
-        println!(
-            "{:>12} {}",
-            "Wrote".green().bold(),
-            rust_output.display().to_string().bold()
-        );
-    } else if show_diff {
-        println!(
-            "{:>12} {}",
-            "Skipped".yellow().bold(),
-            rust_output.display().to_string().dimmed()
-        );
-    }
+    for (lang, code, output_path) in &generated {
+        let written = write_with_diff_check(output_path, code, show_diff, lang.name())?;
 
-    // Write TypeScript file
-    let ts_written = write_with_diff_check(&ts_output, &ts_code, show_diff, "TypeScript")?;
+        if written {
+            println!(
+                "{:>12} {}",
+                "Wrote".green().bold(),
+                output_path.display().to_string().bold()
+            );
+            any_written = true;
 
-    if ts_written {
-        println!(
-            "{:>12} {}",
-            "Wrote".green().bold(),
-            ts_output.display().to_string().bold()
-        );
-    } else if show_diff {
-        println!(
-            "{:>12} {}",
-            "Skipped".yellow().bold(),
-            ts_output.display().to_string().dimmed()
-        );
+            // Track backup paths
+            let backup_ext = format!("{}.backup", lang.file_extension());
+            let backup_path = output_path.with_extension(&backup_ext);
+            if backup && backup_path.exists() {
+                backup_paths.push(backup_path);
+            }
+        } else if show_diff {
+            println!(
+                "{:>12} {}",
+                "Skipped".yellow().bold(),
+                output_path.display().to_string().dimmed()
+            );
+        }
     }
 
     // Success summary
-    if rust_written || ts_written {
+    if any_written {
         println!(
-            "\n{:>12} generated {} type definitions",
+            "\n{:>12} generated {} type definitions in {} languages",
             "Finished".green().bold(),
-            ir.len()
+            ir.len(),
+            generators.len()
         );
     }
 
     // Backup restoration hint
-    if backup && (rust_written || ts_written) {
+    if backup && !backup_paths.is_empty() {
         println!("\n{}", "Backups created. Restore with:".dimmed());
-        if rust_written && rust_output.with_extension("rs.backup").exists() {
+        for backup_path in backup_paths {
+            let original = backup_path.with_extension("");
             println!(
                 "  mv {} {}",
-                rust_output
-                    .with_extension("rs.backup")
-                    .display()
-                    .to_string()
-                    .dimmed(),
-                rust_output.display().to_string().dimmed()
-            );
-        }
-        if ts_written && ts_output.with_extension("ts.backup").exists() {
-            println!(
-                "  mv {} {}",
-                ts_output
-                    .with_extension("ts.backup")
-                    .display()
-                    .to_string()
-                    .dimmed(),
-                ts_output.display().to_string().dimmed()
+                backup_path.display().to_string().dimmed(),
+                original.display().to_string().dimmed()
             );
         }
     }
@@ -1006,13 +1032,14 @@ fn run_check(schema_path: &Path, output_dir: Option<&Path>) -> Result<()> {
 }
 
 /// Watch mode: regenerate on file changes
-fn run_watch_mode(schema_path: &Path, output_dir: Option<&Path>) -> Result<()> {
+fn run_watch_mode(schema_path: &Path, output_dir: Option<&Path>, lang: &str) -> Result<()> {
     use notify::{RecursiveMode, Watcher};
     use std::sync::mpsc::channel;
     use std::time::Duration;
 
     let schema_path = schema_path.to_path_buf();
     let output_dir_buf = output_dir.map(|p| p.to_path_buf());
+    let lang_string = lang.to_string();
 
     println!(
         "{:>12} {} for changes...",
@@ -1023,7 +1050,7 @@ fn run_watch_mode(schema_path: &Path, output_dir: Option<&Path>) -> Result<()> {
     println!();
 
     // Initial generation (no safety flags in watch mode)
-    if let Err(e) = run_generate(&schema_path, output_dir, false, false, false) {
+    if let Err(e) = run_generate(&schema_path, output_dir, &lang_string, false, false, false) {
         eprintln!("{}: {}", "error".red().bold(), e);
     }
 
@@ -1059,7 +1086,7 @@ fn run_watch_mode(schema_path: &Path, output_dir: Option<&Path>) -> Result<()> {
                 println!("{:>12} change detected", "Detected".yellow().bold());
 
                 if let Err(e) =
-                    run_generate(&schema_path, output_dir_buf.as_deref(), false, false, false)
+                    run_generate(&schema_path, output_dir_buf.as_deref(), &lang_string, false, false, false)
                 {
                     eprintln!("{}: {}", "error".red().bold(), e);
                 }

@@ -306,14 +306,41 @@ Transform from schema DSL → full programming language for type-safe Solana wor
 
 **Goal**: Generate schemas in Python, Go, and Ruby alongside Rust and TypeScript
 
-**Issues to create:**
-- [ ] Design multi-language code generation architecture [#67]
-- [ ] Implement Python schema generator with Borsh serialization [#68]
+**Status**: 3/7 complete (~43%)
+
+**Issues:**
+- [x] Design multi-language code generation architecture [#67] ✅ **COMPLETE**
+- [x] Implement Python schema generator with Borsh serialization [#68] ✅ **COMPLETE**
 - [ ] Implement Go schema generator with Borsh serialization [#69]
 - [ ] Implement Ruby schema generator with Borsh serialization [#70]
 - [ ] Add language-specific type mapping documentation [#71]
 - [ ] Create cross-language schema compatibility tests [#72]
-- [ ] Add `--lang` flag to `lumos generate` command [#73]
+- [x] Add `--lang` flag to `lumos generate` command [#73] ✅ **COMPLETE**
+
+**Completed**:
+- #67 (Nov 26, 2025) - Multi-language code generation architecture
+  - Created unified `CodeGenerator` trait for polymorphic generation
+  - Implemented `Language` enum with Rust, TypeScript, Python, Go, Ruby variants
+  - Added factory functions: `get_generator()`, `try_get_generator()`, `get_generators()`
+  - Added `generate_for_languages()` for batch generation
+  - New `generators/mod.rs` module (570 lines, 17 unit tests)
+
+- #68 (Nov 26, 2025) - Python schema generator with Borsh
+  - Created `generators/python.rs` (800+ lines, 10 unit tests)
+  - Python dataclasses with type hints (`@dataclass`, `field: Type`)
+  - Integration with `borsh-construct` library for serialization
+  - Supports all IR types: structs, enums (unit, tuple, struct variants)
+  - Type mapping: u8-u128→int, String→str, PublicKey→Pubkey
+  - Generates Borsh schemas with CStruct, Vec, Option, Bytes
+  - Handles deprecated fields with docstring warnings
+  - IntEnum generation for simple unit enums
+
+- #73 (Nov 26, 2025) - CLI --lang flag
+  - Added `--lang` flag to `lumos generate` command
+  - Default: "rust,typescript" for backward compatibility
+  - Supports comma-separated language list: `--lang rust,typescript,python`
+  - Graceful handling of unimplemented languages (Go, Ruby)
+  - Updated watch mode to respect language selection
 
 **Success Metric**: One `.lumos` file generates type-safe schemas in 5 languages (Rust, TypeScript, Python, Go, Ruby)
 
@@ -802,7 +829,7 @@ Core language free forever, monetize via cloud platform and premium extensions
 
 ### Phase 5: Advanced Features 🚧 (In Progress - Nov 2025)
 
-**Overall Progress**: 13/23 features complete (57%)
+**Overall Progress**: 16/23 features complete (70%)
 
 **5.1 Schema Evolution (100% complete) ✅:**
 - [x] Schema versioning with #[version] attribute (#40)
@@ -825,8 +852,11 @@ Core language free forever, monetize via cloud platform and premium extensions
 - [x] Nested module support (#53)
 - [x] Generic struct/enum definitions (#54)
 
-**5.4 Multi-Language Code Generation (0% complete):**
-- No issues started yet
+**5.4 Multi-Language Code Generation (43% complete):**
+- [x] Multi-language architecture (#67)
+- [x] Python schema generator (#68)
+- [x] CLI --lang flag (#73)
+- [ ] Go generator (#69), Ruby generator (#70), docs (#71), tests (#72)
 
 **6.2 Tooling Ecosystem (100% complete) ✅:**
 - [x] cargo lumos subcommand (#59)
@@ -942,6 +972,9 @@ See an opportunity to help? Check our [Contributing Guide](CONTRIBUTING.md) or:
 **Last Updated**: November 26, 2025
 
 **Recent Updates**:
+- Nov 26, 2025: **Python schema generator COMPLETE** (#68) - Phase 5.4 at 43% 🎉 - Full dataclass generation with borsh-construct
+- Nov 26, 2025: **Multi-language architecture COMPLETE** (#67) - CodeGenerator trait + Language enum
+- Nov 26, 2025: **CLI --lang flag COMPLETE** (#73) - Generate code for multiple languages
 - Nov 25, 2025: **PHASE 6.2 TOOLING ECOSYSTEM COMPLETE** 🎉🎉🎉 - All 4 issues closed (#59-#62)
 - Nov 25, 2025: **cargo lumos subcommand COMPLETE** (#59) - Full cargo integration with Cargo.toml config support
 - Nov 25, 2025: **PHASE 5.3 ADVANCED TYPE SYSTEM COMPLETE** 🎉🎉🎉 - All 5 issues closed (#50-#54)

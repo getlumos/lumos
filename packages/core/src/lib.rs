@@ -74,14 +74,18 @@ pub mod ir;
 /// Transform AST into IR
 pub mod transform;
 
-/// Rust code generator
-pub mod generators {
-    /// Generate Rust code from IR
-    pub mod rust;
-
-    /// Generate TypeScript code from IR
-    pub mod typescript;
-}
+/// Multi-language code generators
+///
+/// Provides a unified interface for generating code in multiple languages:
+/// - Rust (Anchor/Borsh)
+/// - TypeScript (@coral-xyz/borsh)
+/// - Python (planned)
+/// - Go (planned)
+/// - Ruby (planned)
+///
+/// See [`generators::Language`] for supported languages and
+/// [`generators::CodeGenerator`] trait for the generation interface.
+pub mod generators;
 
 /// Error types for LUMOS core
 pub mod error;

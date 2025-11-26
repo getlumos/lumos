@@ -8,9 +8,9 @@
 //!
 //! - **Rust** - Anchor/Borsh compatible structs and enums
 //! - **TypeScript** - Interfaces with Borsh schemas for web3.js
-//! - **Python** - Dataclasses with borsh-python serialization (planned)
-//! - **Go** - Structs with go-borsh serialization (planned)
-//! - **Ruby** - Classes with borsh-rb serialization (planned)
+//! - **Python** - Dataclasses with borsh-python serialization
+//! - **Go** - Structs with go-borsh serialization
+//! - **Ruby** - Classes with borsh-rb serialization
 //!
 //! ## Architecture
 //!
@@ -66,11 +66,11 @@ pub enum Language {
     Rust,
     /// TypeScript with @coral-xyz/borsh
     TypeScript,
-    /// Python with borsh-python (planned)
+    /// Python with borsh-python
     Python,
-    /// Go with go-borsh (planned)
+    /// Go with go-borsh
     Go,
-    /// Ruby with borsh-rb (planned)
+    /// Ruby with borsh-rb
     Ruby,
 }
 
@@ -82,6 +82,7 @@ impl Language {
             Language::TypeScript,
             Language::Python,
             Language::Go,
+            Language::Ruby,
         ]
     }
 
@@ -100,7 +101,7 @@ impl Language {
     pub fn is_implemented(&self) -> bool {
         matches!(
             self,
-            Language::Rust | Language::TypeScript | Language::Python | Language::Go
+            Language::Rust | Language::TypeScript | Language::Python | Language::Go | Language::Ruby
         )
     }
 
@@ -226,11 +227,9 @@ pub trait CodeGenerator: Send + Sync {
 // Re-export existing generators
 pub mod go;
 pub mod python;
+pub mod ruby;
 pub mod rust;
 pub mod typescript;
-
-// Planned generators (uncomment when implemented)
-// pub mod ruby;
 
 /// Rust code generator implementing `CodeGenerator` trait
 pub struct RustGenerator;
@@ -300,6 +299,23 @@ impl CodeGenerator for GoGenerator {
     }
 }
 
+/// Ruby code generator implementing `CodeGenerator` trait
+pub struct RubyGenerator;
+
+impl CodeGenerator for RubyGenerator {
+    fn language(&self) -> Language {
+        Language::Ruby
+    }
+
+    fn generate_module(&self, type_defs: &[TypeDefinition]) -> String {
+        ruby::generate_module(type_defs)
+    }
+
+    fn generate(&self, type_def: &TypeDefinition) -> String {
+        ruby::generate(type_def)
+    }
+}
+
 /// Get a code generator for the specified language
 ///
 /// # Arguments
@@ -330,9 +346,7 @@ pub fn get_generator(language: Language) -> Box<dyn CodeGenerator> {
         Language::TypeScript => Box::new(TypeScriptGenerator),
         Language::Python => Box::new(PythonGenerator),
         Language::Go => Box::new(GoGenerator),
-        Language::Ruby => {
-            panic!("Ruby generator not yet implemented. See issue #70")
-        }
+        Language::Ruby => Box::new(RubyGenerator),
     }
 }
 
@@ -348,9 +362,7 @@ pub fn get_generator(language: Language) -> Box<dyn CodeGenerator> {
 /// // Implemented languages
 /// assert!(try_get_generator(Language::Rust).is_some());
 /// assert!(try_get_generator(Language::Go).is_some());
-///
-/// // Not yet implemented
-/// assert!(try_get_generator(Language::Ruby).is_none());
+/// assert!(try_get_generator(Language::Ruby).is_some());
 /// ```
 pub fn try_get_generator(language: Language) -> Option<Box<dyn CodeGenerator>> {
     match language {
@@ -358,14 +370,13 @@ pub fn try_get_generator(language: Language) -> Option<Box<dyn CodeGenerator>> {
         Language::TypeScript => Some(Box::new(TypeScriptGenerator)),
         Language::Python => Some(Box::new(PythonGenerator)),
         Language::Go => Some(Box::new(GoGenerator)),
-        Language::Ruby => None,
+        Language::Ruby => Some(Box::new(RubyGenerator)),
     }
 }
 
 /// Get generators for multiple languages
 ///
-/// Filters out unimplemented languages and returns generators for
-/// all supported languages in the list.
+/// Returns generators for all specified languages in the list.
 ///
 /// # Example
 ///
@@ -375,8 +386,8 @@ pub fn try_get_generator(language: Language) -> Option<Box<dyn CodeGenerator>> {
 /// let langs = vec![Language::Rust, Language::TypeScript, Language::Python, Language::Go, Language::Ruby];
 /// let generators = get_generators(&langs);
 ///
-/// // Ruby is filtered out (not implemented), Rust/TypeScript/Python/Go are included
-/// assert_eq!(generators.len(), 4);
+/// // All 5 languages are implemented
+/// assert_eq!(generators.len(), 5);
 /// ```
 pub fn get_generators(languages: &[Language]) -> Vec<Box<dyn CodeGenerator>> {
     languages
@@ -467,7 +478,7 @@ mod tests {
         assert!(Language::TypeScript.is_implemented());
         assert!(Language::Python.is_implemented());
         assert!(Language::Go.is_implemented());
-        assert!(!Language::Ruby.is_implemented());
+        assert!(Language::Ruby.is_implemented());
     }
 
     #[test]
@@ -490,11 +501,11 @@ mod tests {
         assert!(try_get_generator(Language::TypeScript).is_some());
         assert!(try_get_generator(Language::Python).is_some());
         assert!(try_get_generator(Language::Go).is_some());
-        assert!(try_get_generator(Language::Ruby).is_none());
+        assert!(try_get_generator(Language::Ruby).is_some());
     }
 
     #[test]
-    fn test_get_generators_filters_unimplemented() {
+    fn test_get_generators_all_implemented() {
         let langs = vec![
             Language::Rust,
             Language::TypeScript,
@@ -504,12 +515,13 @@ mod tests {
         ];
         let generators = get_generators(&langs);
 
-        // Rust, TypeScript, Python, and Go are implemented (Ruby is filtered)
-        assert_eq!(generators.len(), 4);
+        // All 5 languages are implemented
+        assert_eq!(generators.len(), 5);
         assert_eq!(generators[0].language(), Language::Rust);
         assert_eq!(generators[1].language(), Language::TypeScript);
         assert_eq!(generators[2].language(), Language::Python);
         assert_eq!(generators[3].language(), Language::Go);
+        assert_eq!(generators[4].language(), Language::Ruby);
     }
 
     #[test]
@@ -642,6 +654,35 @@ mod tests {
     }
 
     #[test]
+    fn test_ruby_generator_output() {
+        let gen = RubyGenerator;
+        let type_defs = vec![TypeDefinition::Struct(StructDefinition {
+            name: "User".to_string(),
+            generic_params: vec![],
+            fields: vec![FieldDefinition {
+                name: "id".to_string(),
+                type_info: TypeInfo::Primitive("u64".to_string()),
+                optional: false,
+                deprecated: None,
+                anchor_attrs: vec![],
+            }],
+            metadata: Metadata::default(),
+        })];
+
+        let code = gen.generate_module(&type_defs);
+        assert!(code.contains("# Auto-generated by LUMOS"));
+        assert!(code.contains("class User"));
+        assert!(code.contains("attr_accessor :id"));
+    }
+
+    #[test]
+    fn test_get_generator_ruby() {
+        let gen = get_generator(Language::Ruby);
+        assert_eq!(gen.language(), Language::Ruby);
+        assert_eq!(gen.file_extension(), "rb");
+    }
+
+    #[test]
     fn test_output_filename() {
         let rust_gen = RustGenerator;
         let ts_gen = TypeScriptGenerator;
@@ -653,11 +694,12 @@ mod tests {
     #[test]
     fn test_language_supported() {
         let supported = Language::supported();
-        assert_eq!(supported.len(), 4);
+        assert_eq!(supported.len(), 5);
         assert!(supported.contains(&Language::Rust));
         assert!(supported.contains(&Language::TypeScript));
         assert!(supported.contains(&Language::Python));
         assert!(supported.contains(&Language::Go));
+        assert!(supported.contains(&Language::Ruby));
     }
 
     #[test]
