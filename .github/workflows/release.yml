@@ -8,57 +8,85 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+# Required for creating releases and uploading assets
+permissions:
+  contents: write
+
 jobs:
-  create-release:
-    name: Create GitHub Release
+  # Validate secrets before starting expensive builds
+  validate-secrets:
+    name: Validate Secrets
     runs-on: ubuntu-latest
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-      version: ${{ steps.get_version.outputs.version }}
-
     steps:
-      - name: Get version from tag
-        id: get_version
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
+      - name: Check CARGO_REGISTRY_TOKEN
+        run: |
+          if [ -z "${{ secrets.CARGO_REGISTRY_TOKEN }}" ]; then
+            echo "::error::CARGO_REGISTRY_TOKEN secret is not set!"
+            echo "Please add your crates.io token at: https://github.com/getlumos/lumos/settings/secrets/actions"
+            echo "Generate token at: https://crates.io/me/tokens (needs publish-update scope)"
+            exit 1
+          fi
+          echo "CARGO_REGISTRY_TOKEN is configured"
 
   build-binaries:
     name: Build Release Binaries
-    needs: create-release
+    needs: validate-secrets
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         include:
+          # lumos CLI binaries
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
+            package: lumos-cli
             artifact_name: lumos
             asset_name: lumos-linux-x86_64
           - os: ubuntu-latest
             target: x86_64-unknown-linux-musl
+            package: lumos-cli
             artifact_name: lumos
             asset_name: lumos-linux-x86_64-musl
           - os: macos-latest
             target: x86_64-apple-darwin
+            package: lumos-cli
             artifact_name: lumos
             asset_name: lumos-macos-x86_64
           - os: macos-latest
             target: aarch64-apple-darwin
+            package: lumos-cli
             artifact_name: lumos
             asset_name: lumos-macos-arm64
           - os: windows-latest
             target: x86_64-pc-windows-msvc
+            package: lumos-cli
             artifact_name: lumos.exe
             asset_name: lumos-windows-x86_64.exe
+          # lumos-lsp binaries
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            package: lumos-lsp
+            artifact_name: lumos-lsp
+            asset_name: lumos-lsp-linux-x86_64
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            package: lumos-lsp
+            artifact_name: lumos-lsp
+            asset_name: lumos-lsp-linux-x86_64-musl
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            package: lumos-lsp
+            artifact_name: lumos-lsp
+            asset_name: lumos-lsp-macos-x86_64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            package: lumos-lsp
+            artifact_name: lumos-lsp
+            asset_name: lumos-lsp-macos-arm64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            package: lumos-lsp
+            artifact_name: lumos-lsp.exe
+            asset_name: lumos-lsp-windows-x86_64.exe
 
     steps:
       - name: Checkout code
@@ -74,7 +102,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y musl-tools
 
       - name: Build release binary
-        run: cargo build --release --target ${{ matrix.target }} --package lumos-cli
+        run: cargo build --release --target ${{ matrix.target }} --package ${{ matrix.package }}
 
       - name: Strip binary (Unix)
         if: matrix.os != 'windows-latest'
@@ -94,27 +122,93 @@ jobs:
           7z a ${{ matrix.asset_name }}.zip ${{ matrix.artifact_name }}
           move ${{ matrix.asset_name }}.zip ../../../
 
-      - name: Upload Release Asset (Unix)
-        if: matrix.os != 'windows-latest'
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./${{ matrix.asset_name }}.tar.gz
-          asset_name: ${{ matrix.asset_name }}.tar.gz
-          asset_content_type: application/gzip
+          name: ${{ matrix.asset_name }}
+          path: |
+            ${{ matrix.asset_name }}.tar.gz
+            ${{ matrix.asset_name }}.zip
+          if-no-files-found: ignore
 
-      - name: Upload Release Asset (Windows)
-        if: matrix.os == 'windows-latest'
-        uses: actions/upload-release-asset@v1
+  create-release:
+    name: Create GitHub Release
+    needs: build-binaries
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release-assets
+          find artifacts -type f \( -name "*.tar.gz" -o -name "*.zip" \) -exec mv {} release-assets/ \;
+          ls -la release-assets/
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          VERSION=${{ steps.get_version.outputs.version }}
+          cat << 'EOF' > release_notes.md
+          ## LUMOS v${{ steps.get_version.outputs.version }}
+
+          ### Installation
+
+          **Via Cargo (recommended):**
+          ```bash
+          cargo install lumos-cli
+          cargo install lumos-lsp  # Optional: LSP server for editor integration
+          ```
+
+          **Via npm (no Rust required):**
+          ```bash
+          npm install -g @getlumos/cli
+          ```
+
+          **Direct download:**
+          Download the appropriate binary for your platform from the assets below.
+
+          ### Packages
+
+          | Package | crates.io | Description |
+          |---------|-----------|-------------|
+          | lumos-core | [![crates.io](https://img.shields.io/crates/v/lumos-core.svg)](https://crates.io/crates/lumos-core) | Core library |
+          | lumos-cli | [![crates.io](https://img.shields.io/crates/v/lumos-cli.svg)](https://crates.io/crates/lumos-cli) | CLI tool |
+          | lumos-lsp | [![crates.io](https://img.shields.io/crates/v/lumos-lsp.svg)](https://crates.io/crates/lumos-lsp) | Language Server |
+
+          ### Binaries
+
+          | Platform | CLI | LSP Server |
+          |----------|-----|------------|
+          | Linux x64 | `lumos-linux-x86_64.tar.gz` | `lumos-lsp-linux-x86_64.tar.gz` |
+          | Linux x64 (musl) | `lumos-linux-x86_64-musl.tar.gz` | `lumos-lsp-linux-x86_64-musl.tar.gz` |
+          | macOS x64 | `lumos-macos-x86_64.tar.gz` | `lumos-lsp-macos-x86_64.tar.gz` |
+          | macOS ARM64 | `lumos-macos-arm64.tar.gz` | `lumos-lsp-macos-arm64.tar.gz` |
+          | Windows x64 | `lumos-windows-x86_64.zip` | `lumos-lsp-windows-x86_64.zip` |
+
+          ---
+          **Full Changelog**: https://github.com/getlumos/lumos/compare/v${{ steps.get_version.outputs.version }}...HEAD
+          EOF
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release v${{ steps.get_version.outputs.version }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+          files: release-assets/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./${{ matrix.asset_name }}.zip
-          asset_name: ${{ matrix.asset_name }}.zip
-          asset_content_type: application/zip
 
   publish-crates:
     name: Publish to crates.io
@@ -130,59 +224,25 @@ jobs:
 
       - name: Publish lumos-core
         run: cargo publish --package lumos-core --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        continue-on-error: false
 
       - name: Wait for lumos-core to propagate
         run: sleep 30
 
+      - name: Publish lumos-lsp
+        run: cargo publish --package lumos-lsp --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        continue-on-error: false
+
+      - name: Wait for lumos-lsp to propagate
+        run: sleep 30
+
       - name: Publish lumos-cli
         run: cargo publish --package lumos-cli --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        continue-on-error: false
+
+  # NOTE: cargo-lumos is not published to crates.io
+  # It's installed via: cargo install --git https://github.com/getlumos/lumos cargo-lumos
+  # Or built locally from the monorepo
 
   # NOTE: VSCode extension publishing disabled - extension lives in separate repo
   # See: https://github.com/getlumos/vscode-lumos
-  # Uncomment and update if moving to monorepo structure
-  #
-  # publish-vscode-extension:
-  #   name: Publish VSCode Extension
-  #   needs: create-release
-  #   runs-on: ubuntu-latest
-  #   if: hashFiles('vscode-lumos/package.json') != ''
-  #
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
-  #
-  #     - name: Setup Node.js
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: '18'
-  #         cache: 'npm'
-  #         cache-dependency-path: vscode-lumos/package-lock.json
-  #
-  #     - name: Install dependencies
-  #       working-directory: vscode-lumos
-  #       run: npm ci
-  #
-  #     - name: Install vsce
-  #       run: npm install -g @vscode/vsce
-  #
-  #     - name: Compile extension
-  #       working-directory: vscode-lumos
-  #       run: npm run compile
-  #
-  #     - name: Package extension
-  #       working-directory: vscode-lumos
-  #       run: vsce package
-  #
-  #     - name: Publish to VS Marketplace
-  #       working-directory: vscode-lumos
-  #       run: vsce publish -p ${{ secrets.VSCE_TOKEN }}
-  #
-  #     - name: Upload VSIX to Release
-  #       uses: actions/upload-release-asset@v1
-  #       env:
-  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  #       with:
-  #         upload_url: ${{ needs.create-release.outputs.upload_url }}
-  #         asset_path: vscode-lumos/lumos-${{ needs.create-release.outputs.version }}.vsix
-  #         asset_name: lumos-vscode-extension-${{ needs.create-release.outputs.version }}.vsix
-  #         asset_content_type: application/octet-stream
