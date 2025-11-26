@@ -698,4 +698,215 @@ mod tests {
         assert!(attrs.contains(&AnchorAccountAttr::Payer("user".to_string())));
         assert!(attrs.contains(&AnchorAccountAttr::Space("8 + 100".to_string())));
     }
+
+    #[test]
+    fn test_e2e_parse_transform_anchor_attrs() {
+        // Test full pipeline: parse .lumos → transform → extract anchor attrs
+        use crate::parser::parse_lumos_file;
+        use crate::transform::transform_to_ir;
+
+        let source = r#"
+            #[solana]
+            #[instruction]
+            struct Initialize {
+                #[anchor(init, payer = authority, space = 8 + 32)]
+                my_account: MyAccount,
+
+                #[anchor(mut)]
+                authority: Signer,
+
+                system_program: SystemProgram,
+            }
+
+            #[solana]
+            #[account]
+            struct MyAccount {
+                owner: PublicKey,
+            }
+
+            // Anchor built-in types (defined for type validation)
+            #[solana]
+            struct Signer {}
+
+            #[solana]
+            struct SystemProgram {}
+        "#;
+
+        // Parse
+        let ast = parse_lumos_file(source).expect("Failed to parse");
+
+        // Transform to IR
+        let ir = transform_to_ir(ast).expect("Failed to transform");
+
+        // Find the Initialize struct
+        let initialize = ir
+            .iter()
+            .find(|t| t.name() == "Initialize")
+            .expect("Initialize not found");
+
+        // Verify it's marked as instruction
+        if let crate::ir::TypeDefinition::Struct(s) = initialize {
+            assert!(s.metadata.is_instruction, "Should be marked as instruction");
+
+            // Find my_account field and verify anchor attrs
+            let my_account = s
+                .fields
+                .iter()
+                .find(|f| f.name == "my_account")
+                .expect("my_account field not found");
+
+            assert_eq!(my_account.anchor_attrs.len(), 1);
+            let attrs = parse_anchor_attrs(&my_account.anchor_attrs[0]);
+            assert!(attrs.contains(&AnchorAccountAttr::Init));
+            assert!(attrs.contains(&AnchorAccountAttr::Payer("authority".to_string())));
+
+            // Find authority field
+            let authority = s
+                .fields
+                .iter()
+                .find(|f| f.name == "authority")
+                .expect("authority field not found");
+
+            assert_eq!(authority.anchor_attrs.len(), 1);
+            let attrs = parse_anchor_attrs(&authority.anchor_attrs[0]);
+            assert!(attrs.contains(&AnchorAccountAttr::Mut));
+        } else {
+            panic!("Expected struct");
+        }
+    }
+
+    #[test]
+    fn test_e2e_generate_accounts_from_ir() {
+        // Test generating Accounts context from IR
+        use crate::parser::parse_lumos_file;
+        use crate::transform::transform_to_ir;
+
+        let source = r#"
+            #[solana]
+            #[instruction]
+            struct CreateVault {
+                #[anchor(init, payer = owner, space = 8 + 64, seeds = [b"vault", owner.key().as_ref()], bump)]
+                vault: Vault,
+
+                #[anchor(mut)]
+                owner: Signer,
+
+                system_program: SystemProgram,
+            }
+
+            #[solana]
+            #[account]
+            struct Vault {
+                owner: PublicKey,
+                balance: u64,
+            }
+
+            // Anchor built-in types (defined for type validation)
+            #[solana]
+            struct Signer {}
+
+            #[solana]
+            struct SystemProgram {}
+        "#;
+
+        let ast = parse_lumos_file(source).expect("Failed to parse");
+        let ir = transform_to_ir(ast).expect("Failed to transform");
+
+        // Find CreateVault
+        let create_vault = ir
+            .iter()
+            .find(|t| t.name() == "CreateVault")
+            .expect("CreateVault not found");
+
+        if let crate::ir::TypeDefinition::Struct(s) = create_vault {
+            // Build InstructionContext manually from IR
+            let mut accounts = Vec::new();
+
+            for field in &s.fields {
+                let mut attrs = Vec::new();
+                for attr_str in &field.anchor_attrs {
+                    attrs.extend(parse_anchor_attrs(attr_str));
+                }
+
+                let account_type = infer_account_type(&field.type_info);
+
+                accounts.push(InstructionAccount {
+                    name: field.name.clone(),
+                    account_type,
+                    attrs,
+                    optional: field.optional,
+                    docs: vec![],
+                });
+            }
+
+            let ctx = InstructionContext {
+                name: s.name.clone(),
+                accounts,
+                args: vec![],
+            };
+
+            // Generate Accounts context
+            let generated = generate_accounts_context(&ctx);
+
+            // Verify output
+            assert!(generated.contains("#[derive(Accounts)]"));
+            assert!(generated.contains("pub struct CreateVault<'info>"));
+            assert!(generated.contains("pub vault:"));
+            assert!(generated.contains("pub owner: Signer<'info>"));
+            assert!(generated.contains("#[account(init"));
+            assert!(generated.contains("payer = owner"));
+            assert!(generated.contains("seeds = [b\"vault\""));
+            assert!(generated.contains("bump"));
+        }
+    }
+
+    #[test]
+    fn test_pda_seeds_with_args() {
+        let ctx = InstructionContext {
+            name: "CreatePool".to_string(),
+            accounts: vec![InstructionAccount {
+                name: "pool".to_string(),
+                account_type: AnchorAccountType::Account("Pool".to_string()),
+                attrs: vec![
+                    AnchorAccountAttr::Init,
+                    AnchorAccountAttr::Seeds(vec![
+                        SeedComponent::Literal("pool".to_string()),
+                        SeedComponent::Arg("pool_id".to_string()),
+                    ]),
+                    AnchorAccountAttr::Bump,
+                    AnchorAccountAttr::Payer("authority".to_string()),
+                    AnchorAccountAttr::Space("8 + Pool::LEN".to_string()),
+                ],
+                optional: false,
+                docs: vec![],
+            }],
+            args: vec![InstructionArg {
+                name: "pool_id".to_string(),
+                ty: TypeInfo::Primitive("u64".to_string()),
+            }],
+        };
+
+        let generated = generate_accounts_context(&ctx);
+
+        // Should have #[instruction] attribute for args
+        assert!(generated.contains("#[instruction(pool_id: u64)]"));
+        assert!(generated.contains("seeds = [b\"pool\", pool_id.as_ref()]"));
+    }
+
+    #[test]
+    fn test_complex_constraints() {
+        let attrs = parse_anchor_attrs(
+            "mut, has_one = owner, constraint = \"vault.balance >= amount\", close = owner",
+        );
+
+        assert_eq!(attrs.len(), 4);
+        assert!(attrs.contains(&AnchorAccountAttr::Mut));
+        assert!(attrs.contains(&AnchorAccountAttr::HasOne("owner".to_string())));
+        assert!(attrs.contains(&AnchorAccountAttr::Close("owner".to_string())));
+
+        let constraint = attrs
+            .iter()
+            .find(|a| matches!(a, AnchorAccountAttr::Constraint(_)));
+        assert!(constraint.is_some());
+    }
 }

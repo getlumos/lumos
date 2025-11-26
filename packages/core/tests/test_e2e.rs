@@ -587,3 +587,128 @@ fn test_e2e_generic_types_compile() {
 
     println!("✓ E2E generic types test passed (parse → IR → Rust compile + TypeScript syntax)");
 }
+
+#[test]
+fn test_e2e_instruction_context_generation() {
+    // Test the complete pipeline for Anchor instruction context generation
+    use lumos_core::anchor::{
+        generate_accounts_context, parse_anchor_attrs, AnchorAccountType, InstructionAccount,
+        InstructionContext,
+    };
+
+    let lumos_code = r#"
+        #[solana]
+        #[instruction]
+        struct InitializeVault {
+            #[anchor(init, payer = authority, space = 8 + 64)]
+            vault: VaultAccount,
+
+            #[anchor(mut)]
+            authority: Signer,
+
+            system_program: SystemProgram,
+        }
+
+        #[solana]
+        #[account]
+        struct VaultAccount {
+            owner: PublicKey,
+            balance: u64,
+        }
+
+        // Anchor built-in types
+        #[solana]
+        struct Signer {}
+
+        #[solana]
+        struct SystemProgram {}
+    "#;
+
+    // Parse
+    let ast = parse_lumos_file(lumos_code).expect("Failed to parse");
+
+    // Transform to IR
+    let ir = transform_to_ir(ast).expect("Failed to transform");
+
+    // Find the InitializeVault instruction struct
+    let init_vault = ir
+        .iter()
+        .find(|t| t.name() == "InitializeVault")
+        .expect("InitializeVault not found");
+
+    if let lumos_core::ir::TypeDefinition::Struct(s) = init_vault {
+        // Verify it's marked as instruction
+        assert!(s.metadata.is_instruction, "Should be marked as instruction");
+
+        // Build InstructionContext from IR
+        let mut accounts = Vec::new();
+
+        for field in &s.fields {
+            let mut attrs = Vec::new();
+            for attr_str in &field.anchor_attrs {
+                attrs.extend(parse_anchor_attrs(attr_str));
+            }
+
+            // Infer account type
+            let account_type = match field.type_info {
+                lumos_core::ir::TypeInfo::UserDefined(ref name) => match name.as_str() {
+                    "Signer" => AnchorAccountType::Signer,
+                    "SystemProgram" => AnchorAccountType::Program("System".to_string()),
+                    _ => AnchorAccountType::Account(name.clone()),
+                },
+                _ => AnchorAccountType::AccountInfo,
+            };
+
+            accounts.push(InstructionAccount {
+                name: field.name.clone(),
+                account_type,
+                attrs,
+                optional: field.optional,
+                docs: vec![],
+            });
+        }
+
+        let ctx = InstructionContext {
+            name: s.name.clone(),
+            accounts,
+            args: vec![],
+        };
+
+        // Generate Accounts context
+        let generated = generate_accounts_context(&ctx);
+
+        // Verify generated Anchor Accounts struct
+        assert!(
+            generated.contains("#[derive(Accounts)]"),
+            "Should have Accounts derive"
+        );
+        assert!(
+            generated.contains("pub struct InitializeVault<'info>"),
+            "Should have struct with lifetime"
+        );
+        assert!(
+            generated.contains("pub vault: Account<'info, VaultAccount>"),
+            "Should have vault field"
+        );
+        assert!(
+            generated.contains("pub authority: Signer<'info>"),
+            "Should have authority as Signer"
+        );
+        assert!(
+            generated.contains("pub system_program: Program<'info, System>"),
+            "Should have system_program"
+        );
+        assert!(generated.contains("#[account(init"), "Should have init attribute");
+        assert!(
+            generated.contains("payer = authority"),
+            "Should have payer attribute"
+        );
+        assert!(generated.contains("space = 8 + 64"), "Should have space attribute");
+
+        println!("Generated Accounts context:\n{}", generated);
+    } else {
+        panic!("Expected struct");
+    }
+
+    println!("✓ E2E instruction context generation test passed");
+}

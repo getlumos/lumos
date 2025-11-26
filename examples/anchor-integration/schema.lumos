@@ -1,0 +1,113 @@
+// Anchor Integration Example
+// Demonstrates LUMOS anchor attribute support for generating
+// Anchor #[derive(Accounts)] contexts
+
+// ============================================================
+// Account Definitions
+// ============================================================
+
+#[solana]
+#[account]
+struct VaultAccount {
+    owner: PublicKey,
+    balance: u64,
+    bump: u8,
+    created_at: i64,
+}
+
+#[solana]
+#[account]
+struct ConfigAccount {
+    authority: PublicKey,
+    fee_basis_points: u16,
+    is_paused: bool,
+}
+
+// ============================================================
+// Instruction Contexts
+// ============================================================
+
+// Initialize a new vault with PDA
+#[solana]
+#[instruction]
+struct InitializeVault {
+    // Initialize new account with PDA seeds
+    #[anchor(init, payer = owner, space = 8 + 32 + 8 + 1 + 8, seeds = [b"vault", owner.key().as_ref()], bump)]
+    vault: VaultAccount,
+
+    // Mutable signer who pays for account creation
+    #[anchor(mut)]
+    owner: Signer,
+
+    // Required for account creation
+    system_program: SystemProgram,
+}
+
+// Deposit lamports into vault
+#[solana]
+#[instruction]
+struct Deposit {
+    // Vault account must match owner and be mutable
+    #[anchor(mut, has_one = owner, constraint = "!config.is_paused")]
+    vault: VaultAccount,
+
+    // Config for fee checking
+    config: ConfigAccount,
+
+    // Owner must sign the transaction
+    #[anchor(mut)]
+    owner: Signer,
+
+    system_program: SystemProgram,
+}
+
+// Withdraw lamports from vault
+#[solana]
+#[instruction]
+struct Withdraw {
+    // Vault must be mutable and owned by signer
+    #[anchor(mut, has_one = owner, seeds = [b"vault", owner.key().as_ref()], bump = vault.bump)]
+    vault: VaultAccount,
+
+    // Destination receives the funds
+    #[anchor(mut)]
+    destination: Signer,
+
+    // Owner must authorize
+    owner: Signer,
+}
+
+// Close vault and return lamports
+#[solana]
+#[instruction]
+struct CloseVault {
+    // Close account and send lamports to destination
+    #[anchor(mut, has_one = owner, close = destination)]
+    vault: VaultAccount,
+
+    // Receives remaining lamports
+    #[anchor(mut)]
+    destination: Signer,
+
+    owner: Signer,
+}
+
+// Update config (admin only)
+#[solana]
+#[instruction]
+struct UpdateConfig {
+    #[anchor(mut, has_one = authority)]
+    config: ConfigAccount,
+
+    authority: Signer,
+}
+
+// ============================================================
+// Anchor Built-in Types (for type validation)
+// ============================================================
+
+#[solana]
+struct Signer {}
+
+#[solana]
+struct SystemProgram {}
