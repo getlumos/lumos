@@ -1,0 +1,119 @@
+name: Sync Changelog to Docs
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to sync (e.g., v0.3.0)'
+        required: true
+        type: string
+
+jobs:
+  sync-changelog:
+    runs-on: ubuntu-latest
+    # Only run for version tags (v*), skip LSP releases
+    if: startsWith(github.event.release.tag_name || github.event.inputs.tag, 'v') && !contains(github.event.release.tag_name || github.event.inputs.tag, 'lsp')
+
+    steps:
+      - name: Get release info
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            TAG="${{ github.event.release.tag_name }}"
+          fi
+
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+          # Get release info from GitHub API
+          RELEASE_INFO=$(gh api repos/${{ github.repository }}/releases/tags/$TAG)
+
+          # Extract title and body
+          TITLE=$(echo "$RELEASE_INFO" | jq -r '.name // .tag_name')
+          BODY=$(echo "$RELEASE_INFO" | jq -r '.body // "No release notes provided."')
+          PUBLISHED_AT=$(echo "$RELEASE_INFO" | jq -r '.published_at')
+          DATE=$(echo "$PUBLISHED_AT" | cut -d'T' -f1)
+
+          # Create safe version for filename (v0.3.0 -> v030)
+          SAFE_VERSION=$(echo "$TAG" | tr -d '.')
+
+          echo "title=$TITLE" >> $GITHUB_OUTPUT
+          echo "date=$DATE" >> $GITHUB_OUTPUT
+          echo "safe_version=$SAFE_VERSION" >> $GITHUB_OUTPUT
+
+          # Store body in a file (multiline support)
+          echo "$BODY" > /tmp/release_body.md
+
+          echo "Release: $TAG - $TITLE ($DATE)"
+
+      - name: Checkout docs-lumos
+        uses: actions/checkout@v4
+        with:
+          repository: getlumos/docs-lumos
+          token: ${{ secrets.DOCS_SYNC_TOKEN }}
+          path: docs-lumos
+
+      - name: Create changelog entry
+        run: |
+          TAG="${{ steps.release.outputs.tag }}"
+          TITLE="${{ steps.release.outputs.title }}"
+          DATE="${{ steps.release.outputs.date }}"
+          SAFE_VERSION="${{ steps.release.outputs.safe_version }}"
+
+          # Create changelog directory if not exists
+          mkdir -p docs-lumos/src/content/docs/changelog
+
+          # Generate changelog file
+          cat > "docs-lumos/src/content/docs/changelog/${SAFE_VERSION}.md" << EOF
+          ---
+          title: "${TITLE}"
+          description: "Release notes for LUMOS ${TAG}"
+          date: ${DATE}
+          ---
+
+          $(cat /tmp/release_body.md)
+
+          ---
+
+          **Links:**
+          - [GitHub Release](https://github.com/getlumos/lumos/releases/tag/${TAG})
+          - [Compare changes](https://github.com/getlumos/lumos/compare/$(git -C docs-lumos log --format=%H -1 2>/dev/null || echo "main")...${TAG})
+          EOF
+
+          # Remove leading spaces from heredoc
+          sed -i 's/^          //' "docs-lumos/src/content/docs/changelog/${SAFE_VERSION}.md"
+
+          echo "Created changelog entry:"
+          cat "docs-lumos/src/content/docs/changelog/${SAFE_VERSION}.md"
+
+      - name: Commit and push to docs-lumos
+        working-directory: docs-lumos
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          TAG="${{ steps.release.outputs.tag }}"
+          SAFE_VERSION="${{ steps.release.outputs.safe_version }}"
+
+          git add "src/content/docs/changelog/${SAFE_VERSION}.md"
+
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No changes to commit (changelog entry already exists)"
+            exit 0
+          fi
+
+          git commit -m "docs: add changelog for ${TAG}
+
+          Auto-synced from GitHub Release.
+          Source: https://github.com/getlumos/lumos/releases/tag/${TAG}"
+
+          git push
+
+          echo "✅ Changelog synced to docs-lumos!"
+          echo "🔗 Will be live at: https://docs.lumos-lang.org/changelog/${SAFE_VERSION}/"
