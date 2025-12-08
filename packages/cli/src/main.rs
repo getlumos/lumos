@@ -27,6 +27,17 @@ use lumos_core::security_analyzer::SecurityAnalyzer;
 use lumos_core::size_calculator::SizeCalculator;
 use lumos_core::transform::transform_to_ir;
 
+/// Target framework for code generation
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TargetMode {
+    /// Auto-detect based on #[account] attribute
+    Auto,
+    /// Force native Solana (pure Borsh, no Anchor)
+    Native,
+    /// Force Anchor framework
+    Anchor,
+}
+
 #[derive(Parser)]
 #[command(name = "lumos")]
 #[command(about = "Type-safe schema language for Solana development", long_about = None)]
@@ -56,6 +67,14 @@ enum Commands {
         /// Default: rust,typescript
         #[arg(short = 'l', long, default_value = "rust,typescript")]
         lang: String,
+
+        /// Target framework for code generation
+        ///
+        /// - auto: Detect based on #[account] attribute (default)
+        /// - native: Force pure Borsh, no Anchor dependencies
+        /// - anchor: Use Anchor framework (requires #[account])
+        #[arg(short = 't', long, default_value = "auto")]
+        target: String,
 
         /// Watch for changes and regenerate automatically
         ///
@@ -363,18 +382,20 @@ fn main() -> Result<()> {
             schema,
             output,
             lang,
+            target,
             watch,
             dry_run,
             backup,
             show_diff,
         } => {
             if watch {
-                run_watch_mode(&schema, output.as_deref(), &lang)
+                run_watch_mode(&schema, output.as_deref(), &lang, &target)
             } else {
                 run_generate(
                     &schema,
                     output.as_deref(),
                     &lang,
+                    &target,
                     dry_run,
                     backup,
                     show_diff,
@@ -540,11 +561,23 @@ fn run_generate(
     schema_path: &Path,
     output_dir: Option<&Path>,
     lang: &str,
+    target: &str,
     dry_run: bool,
     backup: bool,
     show_diff: bool,
 ) -> Result<()> {
     let output_dir = output_dir.unwrap_or_else(|| Path::new("."));
+
+    // Validate target framework
+    let target_mode = match target.to_lowercase().as_str() {
+        "auto" => TargetMode::Auto,
+        "native" => TargetMode::Native,
+        "anchor" => TargetMode::Anchor,
+        _ => anyhow::bail!(
+            "Invalid target '{}'. Supported: auto, native, anchor",
+            target
+        ),
+    };
 
     // Validate output directory for security
     validate_output_path(output_dir)?;
@@ -593,7 +626,7 @@ fn run_generate(
         println!("{:>12} schema and dependencies", "Resolving".cyan().bold());
     }
 
-    let (ir, file_count) = resolve_schema(schema_path)?;
+    let (mut ir, file_count) = resolve_schema(schema_path)?;
 
     // Report loaded files if multiple
     if file_count > 1 && !dry_run {
@@ -606,6 +639,57 @@ fn run_generate(
             "warning".yellow().bold()
         );
         return Ok(());
+    }
+
+    // Handle target mode
+    let has_account_attrs = ir.iter().any(|t| match t {
+        TypeDefinition::Struct(s) => s.metadata.attributes.contains(&"account".to_string()),
+        TypeDefinition::Enum(e) => e.metadata.attributes.contains(&"account".to_string()),
+        TypeDefinition::TypeAlias(_) => false,
+    });
+
+    match target_mode {
+        TargetMode::Native => {
+            if has_account_attrs {
+                eprintln!(
+                    "{}: Schema contains #[account] attributes but target is 'native'",
+                    "warning".yellow().bold()
+                );
+                eprintln!(
+                    "         Remove #[account] or use --target auto for Anchor integration"
+                );
+                // Strip account attributes for native mode
+                for type_def in &mut ir {
+                    match type_def {
+                        TypeDefinition::Struct(s) => {
+                            s.metadata.attributes.retain(|a| a != "account");
+                        }
+                        TypeDefinition::Enum(e) => {
+                            e.metadata.attributes.retain(|a| a != "account");
+                        }
+                        TypeDefinition::TypeAlias(_) => {}
+                    }
+                }
+            }
+            if !dry_run {
+                println!(
+                    "{:>12} native Solana mode (pure Borsh)",
+                    "Using".cyan().bold()
+                );
+            }
+        }
+        TargetMode::Anchor => {
+            if !has_account_attrs {
+                eprintln!(
+                    "{}: Target is 'anchor' but no #[account] attributes found",
+                    "warning".yellow().bold()
+                );
+                eprintln!("         Add #[account] to structs or use --target auto");
+            }
+        }
+        TargetMode::Auto => {
+            // Auto-detect: no action needed, generator handles it
+        }
     }
 
     // Generate code for each language
@@ -1104,7 +1188,12 @@ fn run_check(schema_path: &Path, output_dir: Option<&Path>) -> Result<()> {
 }
 
 /// Watch mode: regenerate on file changes
-fn run_watch_mode(schema_path: &Path, output_dir: Option<&Path>, lang: &str) -> Result<()> {
+fn run_watch_mode(
+    schema_path: &Path,
+    output_dir: Option<&Path>,
+    lang: &str,
+    target: &str,
+) -> Result<()> {
     use notify::{RecursiveMode, Watcher};
     use std::sync::mpsc::channel;
     use std::time::Duration;
@@ -1112,6 +1201,7 @@ fn run_watch_mode(schema_path: &Path, output_dir: Option<&Path>, lang: &str) -> 
     let schema_path = schema_path.to_path_buf();
     let output_dir_buf = output_dir.map(|p| p.to_path_buf());
     let lang_string = lang.to_string();
+    let target_string = target.to_string();
 
     println!(
         "{:>12} {} for changes...",
@@ -1122,7 +1212,15 @@ fn run_watch_mode(schema_path: &Path, output_dir: Option<&Path>, lang: &str) -> 
     println!();
 
     // Initial generation (no safety flags in watch mode)
-    if let Err(e) = run_generate(&schema_path, output_dir, &lang_string, false, false, false) {
+    if let Err(e) = run_generate(
+        &schema_path,
+        output_dir,
+        &lang_string,
+        &target_string,
+        false,
+        false,
+        false,
+    ) {
         eprintln!("{}: {}", "error".red().bold(), e);
     }
 
@@ -1161,6 +1259,7 @@ fn run_watch_mode(schema_path: &Path, output_dir: Option<&Path>, lang: &str) -> 
                     &schema_path,
                     output_dir_buf.as_deref(),
                     &lang_string,
+                    &target_string,
                     false,
                     false,
                     false,
