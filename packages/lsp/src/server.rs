@@ -10,10 +10,12 @@ use tower_lsp::{Client, LanguageServer};
 
 mod completion;
 mod diagnostics;
+mod formatting;
 mod hover;
 
 use completion::CompletionHandler;
 use diagnostics::DiagnosticsHandler;
+use formatting::FormattingHandler;
 use hover::HoverHandler;
 
 /// LUMOS Language Server state
@@ -33,6 +35,9 @@ pub struct LumosLanguageServer {
 
     /// Hover handler
     hover: HoverHandler,
+
+    /// Formatting handler
+    formatting: FormattingHandler,
 }
 
 impl LumosLanguageServer {
@@ -44,6 +49,7 @@ impl LumosLanguageServer {
             diagnostics: DiagnosticsHandler::new(),
             completion: CompletionHandler::new(),
             hover: HoverHandler::new(),
+            formatting: FormattingHandler::new(),
         }
     }
 
@@ -201,10 +207,16 @@ impl LanguageServer for LumosLanguageServer {
         let uri = params.text_document.uri.to_string();
         let document = self.documents.get(&uri);
 
-        if let Some(_doc) = document {
-            // For now, return no edits (formatting will be implemented later)
-            // TODO: Implement rustfmt-style formatting for .lumos files
-            Ok(Some(vec![]))
+        if let Some(doc) = document {
+            // Format the document
+            match self.formatting.format(&doc) {
+                Ok(edits) => Ok(Some(edits)),
+                Err(e) => {
+                    tracing::error!("Formatting error: {}", e);
+                    // Return None on error (no formatting applied)
+                    Ok(None)
+                }
+            }
         } else {
             Ok(None)
         }
