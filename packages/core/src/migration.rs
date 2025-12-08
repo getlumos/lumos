@@ -358,10 +358,7 @@ fn type_info_display(type_info: &TypeInfo) -> String {
 pub fn generate_rust_migration(diff: &SchemaDiff, old_def: &TypeDefinition) -> String {
     match old_def {
         TypeDefinition::Struct(old_struct) => generate_rust_struct_migration(diff, old_struct),
-        TypeDefinition::Enum(_) => {
-            // Enum migrations are not yet fully supported
-            format!("// TODO: Enum migration for {}\n", diff.type_name)
-        }
+        TypeDefinition::Enum(old_enum) => generate_rust_enum_migration(diff, old_enum),
         TypeDefinition::TypeAlias(_) => {
             // Type aliases are resolved during transformation and don't need migrations
             format!(
@@ -486,6 +483,209 @@ fn generate_rust_struct_migration(diff: &SchemaDiff, old_struct: &StructDefiniti
     code.join("")
 }
 
+/// Generate Rust migration code for enums
+fn generate_rust_enum_migration(diff: &SchemaDiff, old_enum: &EnumDefinition) -> String {
+    let from_version = diff
+        .from_version
+        .as_deref()
+        .unwrap_or("unknown")
+        .replace('.', "_");
+
+    let old_enum_name = format!("{}V{}", diff.type_name, from_version);
+    let new_enum_name = &diff.type_name;
+
+    let mut code = Vec::new();
+
+    // Add header comment
+    code.push(format!(
+        "// Auto-generated migration code by LUMOS\n\
+         // Enum migration from v{} to v{}\n",
+        diff.from_version.as_deref().unwrap_or("unknown"),
+        diff.to_version.as_deref().unwrap_or("current")
+    ));
+
+    // Generate old enum definition
+    code.push("\n// Old version enum definition\n".to_string());
+    code.push("#[derive(BorshSerialize, BorshDeserialize)]\n".to_string());
+    code.push(format!("pub enum {} {{\n", old_enum_name));
+
+    // Generate old variants
+    for variant in &old_enum.variants {
+        match variant {
+            crate::ir::EnumVariantDefinition::Unit { name } => {
+                code.push(format!("    {},\n", name));
+            }
+            crate::ir::EnumVariantDefinition::Tuple { name, types } => {
+                let type_strs: Vec<String> =
+                    types.iter().map(|t| map_type_to_rust(t, false)).collect();
+                code.push(format!("    {}({}),\n", name, type_strs.join(", ")));
+            }
+            crate::ir::EnumVariantDefinition::Struct { name, fields } => {
+                code.push(format!("    {} {{\n", name));
+                for field in fields {
+                    let rust_type = map_type_to_rust(&field.type_info, field.optional);
+                    code.push(format!("        {}: {},\n", field.name, rust_type));
+                }
+                code.push("    },\n".to_string());
+            }
+        }
+    }
+    code.push("}\n".to_string());
+
+    // Determine which variants were removed and need default mapping
+    let old_variant_names: HashSet<&str> = old_enum.variants.iter().map(|v| v.name()).collect();
+    let mut removed_variants = Vec::new();
+    let mut added_variants = Vec::new();
+
+    for change in &diff.changes {
+        match change {
+            SchemaChange::VariantRemoved { name } => {
+                removed_variants.push(name.as_str());
+            }
+            SchemaChange::VariantAdded { name } => {
+                added_variants.push(name.as_str());
+            }
+            _ => {}
+        }
+    }
+
+    // Build the set of new variant names
+    let mut new_variant_names: HashSet<&str> = old_variant_names.clone();
+    for removed in &removed_variants {
+        new_variant_names.remove(removed);
+    }
+    for added in &added_variants {
+        new_variant_names.insert(added);
+    }
+
+    // Choose a default variant for removed variants
+    // Priority: first common variant, or first added variant, or a placeholder
+    let default_variant = new_variant_names
+        .iter()
+        .next()
+        .or_else(|| added_variants.first())
+        .copied()
+        .unwrap_or("Default");
+
+    // Generate From impl
+    code.push(format!(
+        "\nimpl From<{}> for {} {{\n",
+        old_enum_name, new_enum_name
+    ));
+    code.push(format!(
+        "    /// Migrate from v{} to v{}\n",
+        diff.from_version.as_deref().unwrap_or("unknown"),
+        diff.to_version.as_deref().unwrap_or("current")
+    ));
+
+    // Add change documentation
+    if !diff.changes.is_empty() {
+        code.push("    ///\n".to_string());
+        code.push("    /// Changes:\n".to_string());
+        for change in &diff.changes {
+            match change {
+                SchemaChange::VariantAdded { name } => {
+                    code.push(format!("    /// - Added variant: {}\n", name));
+                }
+                SchemaChange::VariantRemoved { name } => {
+                    code.push(format!(
+                        "    /// - Removed variant: {} (mapped to {})\n",
+                        name, default_variant
+                    ));
+                }
+                _ => {}
+            }
+        }
+    }
+
+    code.push(format!("    fn from(old: {}) -> Self {{\n", old_enum_name));
+    code.push("        match old {\n".to_string());
+
+    // Map each old variant
+    for variant in &old_enum.variants {
+        let variant_name = variant.name();
+
+        if removed_variants.contains(&variant_name) {
+            // Map removed variants to default
+            match variant {
+                crate::ir::EnumVariantDefinition::Unit { .. } => {
+                    code.push(format!(
+                        "            {}::{} => Self::{}, // Removed: mapped to default\n",
+                        old_enum_name, variant_name, default_variant
+                    ));
+                }
+                crate::ir::EnumVariantDefinition::Tuple { types, .. } => {
+                    let placeholders: Vec<String> = types
+                        .iter()
+                        .enumerate()
+                        .map(|(i, _)| format!("_{}", i))
+                        .collect();
+                    code.push(format!(
+                        "            {}::{}({}) => Self::{}, // Removed: mapped to default\n",
+                        old_enum_name,
+                        variant_name,
+                        placeholders.join(", "),
+                        default_variant
+                    ));
+                }
+                crate::ir::EnumVariantDefinition::Struct { fields, .. } => {
+                    let field_names: Vec<String> =
+                        fields.iter().map(|f| format!("{}:_", f.name)).collect();
+                    code.push(format!(
+                        "            {}::{} {{ {} }} => Self::{}, // Removed: mapped to default\n",
+                        old_enum_name,
+                        variant_name,
+                        field_names.join(", "),
+                        default_variant
+                    ));
+                }
+            }
+        } else {
+            // Keep existing variants (1:1 mapping)
+            match variant {
+                crate::ir::EnumVariantDefinition::Unit { .. } => {
+                    code.push(format!(
+                        "            {}::{} => Self::{},\n",
+                        old_enum_name, variant_name, variant_name
+                    ));
+                }
+                crate::ir::EnumVariantDefinition::Tuple { types, .. } => {
+                    let var_names: Vec<String> = types
+                        .iter()
+                        .enumerate()
+                        .map(|(i, _)| format!("v{}", i))
+                        .collect();
+                    code.push(format!(
+                        "            {}::{}({}) => Self::{}({}),\n",
+                        old_enum_name,
+                        variant_name,
+                        var_names.join(", "),
+                        variant_name,
+                        var_names.join(", ")
+                    ));
+                }
+                crate::ir::EnumVariantDefinition::Struct { fields, .. } => {
+                    let field_names: Vec<&str> = fields.iter().map(|f| f.name.as_str()).collect();
+                    code.push(format!(
+                        "            {}::{} {{ {} }} => Self::{} {{ {} }},\n",
+                        old_enum_name,
+                        variant_name,
+                        field_names.join(", "),
+                        variant_name,
+                        field_names.join(", ")
+                    ));
+                }
+            }
+        }
+    }
+
+    code.push("        }\n".to_string());
+    code.push("    }\n".to_string());
+    code.push("}\n".to_string());
+
+    code.join("")
+}
+
 /// Map TypeInfo to Rust type string
 fn map_type_to_rust(type_info: &TypeInfo, optional: bool) -> String {
     let base_type = match type_info {
@@ -561,10 +761,7 @@ pub fn generate_typescript_migration(diff: &SchemaDiff, old_def: &TypeDefinition
         TypeDefinition::Struct(old_struct) => {
             generate_typescript_struct_migration(diff, old_struct)
         }
-        TypeDefinition::Enum(_) => {
-            // Enum migrations are not yet fully supported
-            format!("// TODO: Enum migration for {}\n", diff.type_name)
-        }
+        TypeDefinition::Enum(old_enum) => generate_typescript_enum_migration(diff, old_enum),
         TypeDefinition::TypeAlias(_) => {
             // Type aliases are resolved during transformation and don't need migrations
             format!(
@@ -696,6 +893,203 @@ fn generate_typescript_struct_migration(
     code.join("")
 }
 
+/// Generate TypeScript migration code for enums
+fn generate_typescript_enum_migration(diff: &SchemaDiff, old_enum: &EnumDefinition) -> String {
+    let from_version = diff
+        .from_version
+        .as_deref()
+        .unwrap_or("unknown")
+        .replace('.', "_");
+
+    let old_type_name = format!("{}V{}", diff.type_name, from_version);
+    let new_type_name = &diff.type_name;
+    let fn_name = format!("migrate{}FromV{}", diff.type_name, from_version);
+
+    let mut code = Vec::new();
+
+    // Add header comment
+    code.push(format!(
+        "// Auto-generated migration code by LUMOS\n\
+         // Enum migration from v{} to v{}\n\n",
+        diff.from_version.as_deref().unwrap_or("unknown"),
+        diff.to_version.as_deref().unwrap_or("current")
+    ));
+
+    // Generate old enum type definition (discriminated union)
+    code.push("// Old version enum type\n".to_string());
+
+    // Generate type for each variant
+    for variant in &old_enum.variants {
+        match variant {
+            crate::ir::EnumVariantDefinition::Unit { name } => {
+                code.push(format!(
+                    "type {}V{}{} = {{ kind: '{}' }};\n",
+                    diff.type_name, from_version, name, name
+                ));
+            }
+            crate::ir::EnumVariantDefinition::Tuple { name, types } => {
+                code.push(format!(
+                    "type {}V{}{} = {{ kind: '{}'; fields: [{}] }};\n",
+                    diff.type_name,
+                    from_version,
+                    name,
+                    name,
+                    types
+                        .iter()
+                        .map(|t| map_type_to_typescript(t, false))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ));
+            }
+            crate::ir::EnumVariantDefinition::Struct { name, fields } => {
+                let field_types: Vec<String> = fields
+                    .iter()
+                    .map(|f| {
+                        let ts_type = map_type_to_typescript(&f.type_info, f.optional);
+                        let optional_marker = if f.optional { "?" } else { "" };
+                        format!("{}{}: {}", f.name, optional_marker, ts_type)
+                    })
+                    .collect();
+                code.push(format!(
+                    "type {}V{}{} = {{ kind: '{}'; {} }};\n",
+                    diff.type_name,
+                    from_version,
+                    name,
+                    name,
+                    field_types.join("; ")
+                ));
+            }
+        }
+    }
+
+    // Union of all old variants
+    let variant_names: Vec<String> = old_enum
+        .variants
+        .iter()
+        .map(|v| format!("{}V{}{}", diff.type_name, from_version, v.name()))
+        .collect();
+    code.push(format!(
+        "export type {} = {};\n\n",
+        old_type_name,
+        variant_names.join(" | ")
+    ));
+
+    // Determine which variants were removed and need default mapping
+    let old_variant_names: HashSet<&str> = old_enum.variants.iter().map(|v| v.name()).collect();
+    let mut removed_variants = Vec::new();
+    let mut added_variants = Vec::new();
+
+    for change in &diff.changes {
+        match change {
+            SchemaChange::VariantRemoved { name } => {
+                removed_variants.push(name.as_str());
+            }
+            SchemaChange::VariantAdded { name } => {
+                added_variants.push(name.as_str());
+            }
+            _ => {}
+        }
+    }
+
+    // Build the set of new variant names
+    let mut new_variant_names: HashSet<&str> = old_variant_names.clone();
+    for removed in &removed_variants {
+        new_variant_names.remove(removed);
+    }
+    for added in &added_variants {
+        new_variant_names.insert(added);
+    }
+
+    // Choose a default variant for removed variants
+    let default_variant = new_variant_names
+        .iter()
+        .next()
+        .or_else(|| added_variants.first())
+        .copied()
+        .unwrap_or("Default");
+
+    // Generate migration function
+    code.push("/**\n".to_string());
+    code.push(format!(
+        " * Migrate {} from v{} to v{}\n",
+        diff.type_name,
+        diff.from_version.as_deref().unwrap_or("unknown"),
+        diff.to_version.as_deref().unwrap_or("current")
+    ));
+
+    // Add change documentation
+    if !diff.changes.is_empty() {
+        code.push(" *\n".to_string());
+        code.push(" * Changes:\n".to_string());
+        for change in &diff.changes {
+            match change {
+                SchemaChange::VariantAdded { name } => {
+                    code.push(format!(" * - Added variant: {}\n", name));
+                }
+                SchemaChange::VariantRemoved { name } => {
+                    code.push(format!(
+                        " * - Removed variant: {} (mapped to {})\n",
+                        name, default_variant
+                    ));
+                }
+                _ => {}
+            }
+        }
+    }
+
+    code.push(" */\n".to_string());
+    code.push(format!(
+        "export function {}(old: {}): {} {{\n",
+        fn_name, old_type_name, new_type_name
+    ));
+    code.push("  switch (old.kind) {\n".to_string());
+
+    // Map each old variant
+    for variant in &old_enum.variants {
+        let variant_name = variant.name();
+
+        if removed_variants.contains(&variant_name) {
+            // Map removed variants to default
+            code.push(format!(
+                "    case '{}': // Removed: mapped to default\n",
+                variant_name
+            ));
+            code.push(format!("      return {{ kind: '{}' }};\n", default_variant));
+        } else {
+            // Keep existing variants (1:1 mapping)
+            match variant {
+                crate::ir::EnumVariantDefinition::Unit { .. } => {
+                    code.push(format!("    case '{}':\n", variant_name));
+                    code.push(format!("      return {{ kind: '{}' }};\n", variant_name));
+                }
+                crate::ir::EnumVariantDefinition::Tuple { .. } => {
+                    code.push(format!("    case '{}':\n", variant_name));
+                    code.push(format!(
+                        "      return {{ kind: '{}', fields: old.fields }};\n",
+                        variant_name
+                    ));
+                }
+                crate::ir::EnumVariantDefinition::Struct { fields, .. } => {
+                    code.push(format!("    case '{}':\n", variant_name));
+                    code.push(format!(
+                        "      return {{\n        kind: '{}',\n",
+                        variant_name
+                    ));
+                    for field in fields {
+                        code.push(format!("        {}: old.{},\n", field.name, field.name));
+                    }
+                    code.push("      };\n".to_string());
+                }
+            }
+        }
+    }
+
+    code.push("  }\n".to_string());
+    code.push("}\n".to_string());
+
+    code.join("")
+}
+
 /// Map TypeInfo to TypeScript type string
 fn map_type_to_typescript(type_info: &TypeInfo, optional: bool) -> String {
     let base_type = match type_info {
@@ -776,7 +1170,7 @@ fn get_typescript_default_value_for_type(type_info: &TypeInfo) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ir::Visibility;
+    use crate::ir::{EnumDefinition, EnumVariantDefinition, Metadata, Visibility};
 
     fn create_test_struct(name: &str, fields: Vec<(&str, TypeInfo, bool)>) -> StructDefinition {
         StructDefinition {
@@ -789,6 +1183,7 @@ mod tests {
                     type_info,
                     optional,
                     deprecated: None,
+                    span: None,
                     anchor_attrs: vec![],
                 })
                 .collect(),
@@ -992,5 +1387,247 @@ mod tests {
             .iter()
             .any(|c| matches!(c, SchemaChange::FieldRemoved { .. })));
         assert_eq!(diff.safety(), MigrationSafety::Unsafe);
+    }
+
+    #[test]
+    fn test_enum_variant_added() {
+        let v1 = EnumDefinition {
+            name: "GameState".to_string(),
+            generic_params: vec![],
+            variants: vec![
+                EnumVariantDefinition::Unit {
+                    name: "Active".to_string(),
+                },
+                EnumVariantDefinition::Unit {
+                    name: "Paused".to_string(),
+                },
+            ],
+            metadata: Metadata {
+                solana: true,
+                version: Some("1.0.0".to_string()),
+                ..Default::default()
+            },
+            visibility: crate::ir::Visibility::Public,
+            module_path: vec![],
+        };
+
+        let v2 = EnumDefinition {
+            name: "GameState".to_string(),
+            generic_params: vec![],
+            variants: vec![
+                EnumVariantDefinition::Unit {
+                    name: "Active".to_string(),
+                },
+                EnumVariantDefinition::Unit {
+                    name: "Paused".to_string(),
+                },
+                EnumVariantDefinition::Unit {
+                    name: "Finished".to_string(),
+                },
+            ],
+            metadata: Metadata {
+                solana: true,
+                version: Some("1.1.0".to_string()),
+                ..Default::default()
+            },
+            visibility: crate::ir::Visibility::Public,
+            module_path: vec![],
+        };
+
+        let diff =
+            SchemaDiff::compute(&TypeDefinition::Enum(v1), &TypeDefinition::Enum(v2)).unwrap();
+
+        assert_eq!(diff.changes.len(), 1);
+        assert!(matches!(
+            diff.changes[0],
+            SchemaChange::VariantAdded { ref name } if name == "Finished"
+        ));
+        assert_eq!(diff.safety(), MigrationSafety::Safe);
+    }
+
+    #[test]
+    fn test_enum_variant_removed() {
+        let v1 = EnumDefinition {
+            name: "GameState".to_string(),
+            generic_params: vec![],
+            variants: vec![
+                EnumVariantDefinition::Unit {
+                    name: "Active".to_string(),
+                },
+                EnumVariantDefinition::Unit {
+                    name: "Paused".to_string(),
+                },
+                EnumVariantDefinition::Unit {
+                    name: "Deprecated".to_string(),
+                },
+            ],
+            metadata: Metadata {
+                solana: true,
+                version: Some("1.0.0".to_string()),
+                ..Default::default()
+            },
+            visibility: crate::ir::Visibility::Public,
+            module_path: vec![],
+        };
+
+        let v2 = EnumDefinition {
+            name: "GameState".to_string(),
+            generic_params: vec![],
+            variants: vec![
+                EnumVariantDefinition::Unit {
+                    name: "Active".to_string(),
+                },
+                EnumVariantDefinition::Unit {
+                    name: "Paused".to_string(),
+                },
+            ],
+            metadata: Metadata {
+                solana: true,
+                version: Some("1.1.0".to_string()),
+                ..Default::default()
+            },
+            visibility: crate::ir::Visibility::Public,
+            module_path: vec![],
+        };
+
+        let diff =
+            SchemaDiff::compute(&TypeDefinition::Enum(v1), &TypeDefinition::Enum(v2)).unwrap();
+
+        assert_eq!(diff.changes.len(), 1);
+        assert!(matches!(
+            diff.changes[0],
+            SchemaChange::VariantRemoved { ref name } if name == "Deprecated"
+        ));
+        assert_eq!(diff.safety(), MigrationSafety::Unsafe);
+    }
+
+    #[test]
+    fn test_enum_migration_rust_generation() {
+        let old_enum = EnumDefinition {
+            name: "GameState".to_string(),
+            generic_params: vec![],
+            variants: vec![
+                EnumVariantDefinition::Unit {
+                    name: "Active".to_string(),
+                },
+                EnumVariantDefinition::Unit {
+                    name: "Paused".to_string(),
+                },
+                EnumVariantDefinition::Unit {
+                    name: "Deprecated".to_string(),
+                },
+            ],
+            metadata: Metadata {
+                solana: true,
+                version: Some("1.0.0".to_string()),
+                ..Default::default()
+            },
+            visibility: crate::ir::Visibility::Public,
+            module_path: vec![],
+        };
+
+        let new_enum = EnumDefinition {
+            name: "GameState".to_string(),
+            generic_params: vec![],
+            variants: vec![
+                EnumVariantDefinition::Unit {
+                    name: "Active".to_string(),
+                },
+                EnumVariantDefinition::Unit {
+                    name: "Paused".to_string(),
+                },
+                EnumVariantDefinition::Unit {
+                    name: "Finished".to_string(),
+                },
+            ],
+            metadata: Metadata {
+                solana: true,
+                version: Some("1.1.0".to_string()),
+                ..Default::default()
+            },
+            visibility: crate::ir::Visibility::Public,
+            module_path: vec![],
+        };
+
+        let diff = SchemaDiff::compute(
+            &TypeDefinition::Enum(old_enum.clone()),
+            &TypeDefinition::Enum(new_enum),
+        )
+        .unwrap();
+
+        let migration = generate_rust_migration(&diff, &TypeDefinition::Enum(old_enum));
+
+        // Verify generated code contains key elements
+        assert!(migration.contains("impl From<GameStateV1_0_0> for GameState"));
+        assert!(migration.contains("GameStateV1_0_0::Active => Self::Active"));
+        assert!(migration.contains("GameStateV1_0_0::Paused => Self::Paused"));
+        assert!(migration.contains("GameStateV1_0_0::Deprecated")); // Removed variant
+        assert!(migration.contains("// Removed: mapped to default"));
+    }
+
+    #[test]
+    fn test_enum_migration_typescript_generation() {
+        let old_enum = EnumDefinition {
+            name: "GameState".to_string(),
+            generic_params: vec![],
+            variants: vec![
+                EnumVariantDefinition::Unit {
+                    name: "Active".to_string(),
+                },
+                EnumVariantDefinition::Unit {
+                    name: "Paused".to_string(),
+                },
+                EnumVariantDefinition::Unit {
+                    name: "Deprecated".to_string(),
+                },
+            ],
+            metadata: Metadata {
+                solana: true,
+                version: Some("1.0.0".to_string()),
+                ..Default::default()
+            },
+            visibility: crate::ir::Visibility::Public,
+            module_path: vec![],
+        };
+
+        let new_enum = EnumDefinition {
+            name: "GameState".to_string(),
+            generic_params: vec![],
+            variants: vec![
+                EnumVariantDefinition::Unit {
+                    name: "Active".to_string(),
+                },
+                EnumVariantDefinition::Unit {
+                    name: "Paused".to_string(),
+                },
+                EnumVariantDefinition::Unit {
+                    name: "Finished".to_string(),
+                },
+            ],
+            metadata: Metadata {
+                solana: true,
+                version: Some("1.1.0".to_string()),
+                ..Default::default()
+            },
+            visibility: crate::ir::Visibility::Public,
+            module_path: vec![],
+        };
+
+        let diff = SchemaDiff::compute(
+            &TypeDefinition::Enum(old_enum.clone()),
+            &TypeDefinition::Enum(new_enum),
+        )
+        .unwrap();
+
+        let migration = generate_typescript_migration(&diff, &TypeDefinition::Enum(old_enum));
+
+        // Verify generated code contains key elements
+        assert!(migration.contains("export function migrateGameStateFromV1_0_0"));
+        assert!(migration.contains("export type GameStateV1_0_0"));
+        assert!(migration.contains("switch (old.kind)"));
+        assert!(migration.contains("case 'Active'"));
+        assert!(migration.contains("case 'Paused'"));
+        assert!(migration.contains("case 'Deprecated'")); // Removed variant
+        assert!(migration.contains("// Removed: mapped to default"));
     }
 }

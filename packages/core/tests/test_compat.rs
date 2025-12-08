@@ -21,6 +21,7 @@ fn create_struct(
             type_info,
             optional,
             deprecated: None,
+            span: None,
             anchor_attrs: vec![],
         })
         .collect();

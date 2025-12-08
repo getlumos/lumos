@@ -20,6 +20,15 @@ impl SourceLocation {
         Self { line, column }
     }
 
+    /// Create from proc_macro2::Span
+    pub fn from_span(span: proc_macro2::Span) -> Self {
+        let start = span.start();
+        Self {
+            line: start.line,
+            column: start.column + 1, // proc_macro2 uses 0-indexed columns
+        }
+    }
+
     /// Format location as "line:column"
     pub fn format(&self) -> String {
         format!("{}:{}", self.line, self.column)

@@ -32,6 +32,7 @@ fn field(name: &str, type_info: TypeInfo) -> FieldDefinition {
         type_info,
         optional: false,
         deprecated: None,
+        span: None,
         anchor_attrs: vec![],
     }
 }

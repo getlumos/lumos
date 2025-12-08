@@ -374,6 +374,7 @@ mod generator_errors {
             ))))),
             optional: true,
             deprecated: None,
+            span: None,
             anchor_attrs: vec![],
         };
 
@@ -417,6 +418,7 @@ mod generator_errors {
                         type_info: TypeInfo::Primitive("String".to_string()),
                         optional: false,
                         deprecated: None,
+                        span: None,
                         anchor_attrs: vec![],
                     }],
                 },

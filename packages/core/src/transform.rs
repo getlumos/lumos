@@ -534,6 +534,7 @@ fn transform_enum_variant(
 fn transform_field(field: AstField, resolver: &TypeAliasResolver) -> Result<FieldDefinition> {
     let name = field.name;
     let optional = field.optional;
+    let span = field.span;
 
     // Extract deprecation info from attributes
     let deprecated = extract_deprecation(&field.attributes);
@@ -550,6 +551,7 @@ fn transform_field(field: AstField, resolver: &TypeAliasResolver) -> Result<Fiel
         optional,
         deprecated,
         anchor_attrs,
+        span,
     })
 }
 
@@ -849,7 +851,13 @@ pub fn validate_user_defined_types(type_defs: &[TypeDefinition]) -> Result<()> {
             TypeDefinition::Struct(s) => {
                 // Validate struct fields
                 for field in &s.fields {
-                    validate_type_info(&field.type_info, &defined_types, &s.name, &field.name)?;
+                    validate_type_info(
+                        &field.type_info,
+                        &defined_types,
+                        &s.name,
+                        &field.name,
+                        field.span,
+                    )?;
                 }
             }
             TypeDefinition::Enum(e) => {
@@ -863,7 +871,7 @@ pub fn validate_user_defined_types(type_defs: &[TypeDefinition]) -> Result<()> {
                             // Validate tuple variant types
                             for (idx, type_info) in types.iter().enumerate() {
                                 let context = format!("{}.{}[{}]", e.name, name, idx);
-                                validate_type_info(type_info, &defined_types, &context, "")?;
+                                validate_type_info(type_info, &defined_types, &context, "", None)?;
                             }
                         }
                         EnumVariantDefinition::Struct { name, fields } => {
@@ -875,6 +883,7 @@ pub fn validate_user_defined_types(type_defs: &[TypeDefinition]) -> Result<()> {
                                     &defined_types,
                                     &context,
                                     &field.name,
+                                    field.span,
                                 )?;
                             }
                         }
@@ -883,7 +892,7 @@ pub fn validate_user_defined_types(type_defs: &[TypeDefinition]) -> Result<()> {
             }
             TypeDefinition::TypeAlias(a) => {
                 // Type aliases are already resolved - validate their target type
-                validate_type_info(&a.target, &defined_types, &a.name, "")?;
+                validate_type_info(&a.target, &defined_types, &a.name, "", None)?;
             }
         }
     }
@@ -899,13 +908,15 @@ pub fn validate_user_defined_types(type_defs: &[TypeDefinition]) -> Result<()> {
 /// * `defined_types` - Set of all defined type names
 /// * `parent_context` - Parent type name for error messages (e.g., "Player")
 /// * `field_name` - Field name for error messages (e.g., "inventory")
+/// * `span` - Optional source location for error reporting
 fn validate_type_info(
     type_info: &TypeInfo,
     defined_types: &std::collections::HashSet<String>,
     parent_context: &str,
     field_name: &str,
+    span: Option<proc_macro2::Span>,
 ) -> Result<()> {
-    use crate::error::LumosError;
+    use crate::error::{LumosError, SourceLocation};
 
     match type_info {
         TypeInfo::Primitive(_) => {
@@ -929,22 +940,22 @@ fn validate_type_info(
                         "Undefined type '{}' referenced in '{}'",
                         type_name, location
                     ),
-                    None, // TODO: Add actual source location from AST spans
+                    span.map(SourceLocation::from_span),
                 ));
             }
             Ok(())
         }
         TypeInfo::Array(inner) => {
             // Recursively validate array element type
-            validate_type_info(inner, defined_types, parent_context, field_name)
+            validate_type_info(inner, defined_types, parent_context, field_name, span)
         }
         TypeInfo::FixedArray { element, .. } => {
             // Recursively validate fixed array element type
-            validate_type_info(element, defined_types, parent_context, field_name)
+            validate_type_info(element, defined_types, parent_context, field_name, span)
         }
         TypeInfo::Option(inner) => {
             // Recursively validate optional type
-            validate_type_info(inner, defined_types, parent_context, field_name)
+            validate_type_info(inner, defined_types, parent_context, field_name, span)
         }
     }
 }

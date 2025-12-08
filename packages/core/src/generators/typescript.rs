@@ -1058,6 +1058,7 @@ mod tests {
                     type_info: TypeInfo::Primitive("u64".to_string()),
                     optional: false,
                     deprecated: None,
+                    span: None,
                     anchor_attrs: vec![],
                 },
                 FieldDefinition {
@@ -1065,6 +1066,7 @@ mod tests {
                     type_info: TypeInfo::Primitive("String".to_string()),
                     optional: false,
                     deprecated: None,
+                    span: None,
                     anchor_attrs: vec![],
                 },
             ],
@@ -1091,6 +1093,7 @@ mod tests {
                     type_info: TypeInfo::Primitive("PublicKey".to_string()),
                     optional: false,
                     deprecated: None,
+                    span: None,
                     anchor_attrs: vec![],
                 },
                 FieldDefinition {
@@ -1098,6 +1101,7 @@ mod tests {
                     type_info: TypeInfo::Primitive("u64".to_string()),
                     optional: false,
                     deprecated: None,
+                    span: None,
                     anchor_attrs: vec![],
                 },
             ],
@@ -1134,6 +1138,7 @@ mod tests {
                 type_info: TypeInfo::Option(Box::new(TypeInfo::Primitive("String".to_string()))),
                 optional: true,
                 deprecated: None,
+                span: None,
                 anchor_attrs: vec![],
             }],
             metadata: Metadata::default(),
@@ -1156,6 +1161,7 @@ mod tests {
                 type_info: TypeInfo::Array(Box::new(TypeInfo::Primitive("u64".to_string()))),
                 optional: false,
                 deprecated: None,
+                span: None,
                 anchor_attrs: vec![],
             }],
             metadata: Metadata {
@@ -1214,6 +1220,7 @@ mod tests {
                     type_info: TypeInfo::Primitive("u128".to_string()),
                     optional: false,
                     deprecated: None,
+                    span: None,
                     anchor_attrs: vec![],
                 },
                 FieldDefinition {
@@ -1221,6 +1228,7 @@ mod tests {
                     type_info: TypeInfo::Primitive("i128".to_string()),
                     optional: false,
                     deprecated: None,
+                    span: None,
                     anchor_attrs: vec![],
                 },
             ],
@@ -1330,6 +1338,7 @@ mod tests {
                             type_info: TypeInfo::Primitive("Pubkey".to_string()),
                             optional: false,
                             deprecated: None,
+                            span: None,
                             anchor_attrs: vec![],
                         },
                         FieldDefinition {
@@ -1337,6 +1346,7 @@ mod tests {
                             type_info: TypeInfo::Primitive("u32".to_string()),
                             optional: false,
                             deprecated: None,
+                            span: None,
                             anchor_attrs: vec![],
                         },
                     ],
@@ -1349,6 +1359,7 @@ mod tests {
                             type_info: TypeInfo::Primitive("Pubkey".to_string()),
                             optional: false,
                             deprecated: None,
+                            span: None,
                             anchor_attrs: vec![],
                         },
                         FieldDefinition {
@@ -1356,6 +1367,7 @@ mod tests {
                             type_info: TypeInfo::Primitive("u64".to_string()),
                             optional: false,
                             deprecated: None,
+                            span: None,
                             anchor_attrs: vec![],
                         },
                     ],
@@ -1397,6 +1409,7 @@ mod tests {
                     type_info: TypeInfo::Primitive("u64".to_string()),
                     optional: false,
                     deprecated: None,
+                    span: None,
                     anchor_attrs: vec![],
                 },
                 FieldDefinition {
@@ -1404,6 +1417,7 @@ mod tests {
                     type_info: TypeInfo::Primitive("String".to_string()),
                     optional: false,
                     deprecated: None,
+                    span: None,
                     anchor_attrs: vec![],
                 },
             ],
@@ -1435,6 +1449,7 @@ mod tests {
                 type_info: TypeInfo::Primitive("PublicKey".to_string()),
                 optional: false,
                 deprecated: None,
+                span: None,
                 anchor_attrs: vec![],
             }],
             metadata: Metadata {
@@ -1466,6 +1481,7 @@ mod tests {
                     type_info: TypeInfo::Primitive("u32".to_string()),
                     optional: false,
                     deprecated: None,
+                    span: None,
                     anchor_attrs: vec![],
                 },
                 FieldDefinition {
@@ -1473,6 +1489,7 @@ mod tests {
                     type_info: TypeInfo::Primitive("bool".to_string()),
                     optional: false,
                     deprecated: None,
+                    span: None,
                     anchor_attrs: vec![],
                 },
                 FieldDefinition {
@@ -1480,6 +1497,7 @@ mod tests {
                     type_info: TypeInfo::Primitive("String".to_string()),
                     optional: false,
                     deprecated: None,
+                    span: None,
                     anchor_attrs: vec![],
                 },
             ],
@@ -1513,6 +1531,7 @@ mod tests {
                     type_info: TypeInfo::Primitive("u64".to_string()),
                     optional: false,
                     deprecated: None,
+                    span: None,
                     anchor_attrs: vec![],
                 },
                 FieldDefinition {
@@ -1520,6 +1539,7 @@ mod tests {
                     type_info: TypeInfo::Primitive("String".to_string()),
                     optional: false,
                     deprecated: None,
+                    span: None,
                     anchor_attrs: vec![],
                 },
             ],
@@ -1551,6 +1571,7 @@ mod tests {
                 type_info: TypeInfo::Primitive("u32".to_string()),
                 optional: false,
                 deprecated: None,
+                span: None,
                 anchor_attrs: vec![],
             }],
             metadata: Metadata {

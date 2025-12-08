@@ -135,6 +135,9 @@ pub struct FieldDefinition {
     /// Raw anchor attribute strings (e.g., ["init, payer = authority, space = 8 + 32"])
     /// These are parsed by the anchor module during code generation
     pub anchor_attrs: Vec<String>,
+
+    /// Source location for error reporting
+    pub span: Option<proc_macro2::Span>,
 }
 
 /// Type information

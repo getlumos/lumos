@@ -562,6 +562,7 @@ mod tests {
                     type_info: TypeInfo::Primitive("String".to_string()),
                     optional: false,
                     deprecated: None,
+                    span: None,
                     anchor_attrs: vec![],
                 },
                 FieldDefinition {
@@ -569,6 +570,7 @@ mod tests {
                     type_info: TypeInfo::Primitive("String".to_string()),
                     optional: false,
                     deprecated: None,
+                    span: None,
                     anchor_attrs: vec![],
                 },
                 FieldDefinition {
@@ -576,6 +578,7 @@ mod tests {
                     type_info: TypeInfo::Primitive("String".to_string()),
                     optional: false,
                     deprecated: None,
+                    span: None,
                     anchor_attrs: vec![],
                 },
                 FieldDefinition {
@@ -583,6 +586,7 @@ mod tests {
                     type_info: TypeInfo::Primitive("u16".to_string()),
                     optional: false,
                     deprecated: None,
+                    span: None,
                     anchor_attrs: vec![],
                 },
             ],

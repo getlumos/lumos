@@ -358,6 +358,7 @@ mod tests {
                     type_info: TypeInfo::Primitive("PublicKey".to_string()),
                     optional: false,
                     deprecated: None,
+                    span: None,
                     anchor_attrs: vec![],
                 },
                 FieldDefinition {
@@ -365,6 +366,7 @@ mod tests {
                     type_info: TypeInfo::Primitive("u64".to_string()),
                     optional: false,
                     deprecated: None,
+                    span: None,
                     anchor_attrs: vec![],
                 },
             ],
