@@ -27,6 +27,17 @@ cd lumos
 cargo install --path packages/lsp
 ```
 
+## Error Monitoring (Optional)
+
+The LSP server includes optional Sentry error monitoring for production deployments. Enable it by setting the `SENTRY_DSN` environment variable:
+
+```bash
+export SENTRY_DSN="https://your-dsn@sentry.io/project-id"
+lumos-lsp
+```
+
+When disabled (default), the LSP server runs normally without any external reporting. Error monitoring helps track and debug issues in production environments.
+
 ## Editor Setup
 
 ### VS Code
