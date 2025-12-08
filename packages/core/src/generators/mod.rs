@@ -11,6 +11,7 @@
 //! - **Python** - Dataclasses with borsh-python serialization
 //! - **Go** - Structs with go-borsh serialization
 //! - **Ruby** - Classes with borsh-rb serialization
+//! - **Seahorse** - Seahorse-compatible Python for Solana programs
 //!
 //! ## Architecture
 //!
@@ -23,6 +24,7 @@
 //!                    │  PythonGenerator   │
 //!                    │    GoGenerator     │
 //!                    │   RubyGenerator    │
+//!                    │ SeahorseGenerator  │
 //!                    └────────────────────┘
 //! ```
 //!
@@ -72,6 +74,8 @@ pub enum Language {
     Go,
     /// Ruby with borsh-rb
     Ruby,
+    /// Seahorse Python for Solana programs
+    Seahorse,
 }
 
 impl Language {
@@ -83,6 +87,7 @@ impl Language {
             Language::Python,
             Language::Go,
             Language::Ruby,
+            Language::Seahorse,
         ]
     }
 
@@ -94,6 +99,7 @@ impl Language {
             Language::Python,
             Language::Go,
             Language::Ruby,
+            Language::Seahorse,
         ]
     }
 
@@ -106,6 +112,7 @@ impl Language {
                 | Language::Python
                 | Language::Go
                 | Language::Ruby
+                | Language::Seahorse
         )
     }
 
@@ -117,6 +124,7 @@ impl Language {
             Language::Python => "py",
             Language::Go => "go",
             Language::Ruby => "rb",
+            Language::Seahorse => "py",
         }
     }
 
@@ -128,6 +136,7 @@ impl Language {
             Language::Python => "python",
             Language::Go => "go",
             Language::Ruby => "ruby",
+            Language::Seahorse => "seahorse",
         }
     }
 
@@ -139,6 +148,7 @@ impl Language {
             "python" | "py" => Some(Language::Python),
             "go" | "golang" => Some(Language::Go),
             "ruby" | "rb" => Some(Language::Ruby),
+            "seahorse" => Some(Language::Seahorse),
             _ => None,
         }
     }
@@ -233,6 +243,7 @@ pub mod go;
 pub mod python;
 pub mod ruby;
 pub mod rust;
+pub mod seahorse;
 pub mod typescript;
 
 /// Rust code generator implementing `CodeGenerator` trait
@@ -320,6 +331,23 @@ impl CodeGenerator for RubyGenerator {
     }
 }
 
+/// Seahorse Python code generator implementing `CodeGenerator` trait
+pub struct SeahorseGenerator;
+
+impl CodeGenerator for SeahorseGenerator {
+    fn language(&self) -> Language {
+        Language::Seahorse
+    }
+
+    fn generate_module(&self, type_defs: &[TypeDefinition]) -> String {
+        seahorse::generate_module(type_defs)
+    }
+
+    fn generate(&self, type_def: &TypeDefinition) -> String {
+        seahorse::generate(type_def)
+    }
+}
+
 /// Get a code generator for the specified language
 ///
 /// # Arguments
@@ -351,6 +379,7 @@ pub fn get_generator(language: Language) -> Box<dyn CodeGenerator> {
         Language::Python => Box::new(PythonGenerator),
         Language::Go => Box::new(GoGenerator),
         Language::Ruby => Box::new(RubyGenerator),
+        Language::Seahorse => Box::new(SeahorseGenerator),
     }
 }
 
@@ -375,6 +404,7 @@ pub fn try_get_generator(language: Language) -> Option<Box<dyn CodeGenerator>> {
         Language::Python => Some(Box::new(PythonGenerator)),
         Language::Go => Some(Box::new(GoGenerator)),
         Language::Ruby => Some(Box::new(RubyGenerator)),
+        Language::Seahorse => Some(Box::new(SeahorseGenerator)),
     }
 }
 
@@ -511,6 +541,7 @@ mod tests {
         assert!(try_get_generator(Language::Python).is_some());
         assert!(try_get_generator(Language::Go).is_some());
         assert!(try_get_generator(Language::Ruby).is_some());
+        assert!(try_get_generator(Language::Seahorse).is_some());
     }
 
     #[test]
@@ -521,16 +552,18 @@ mod tests {
             Language::Python,
             Language::Go,
             Language::Ruby,
+            Language::Seahorse,
         ];
         let generators = get_generators(&langs);
 
-        // All 5 languages are implemented
-        assert_eq!(generators.len(), 5);
+        // All 6 languages are implemented
+        assert_eq!(generators.len(), 6);
         assert_eq!(generators[0].language(), Language::Rust);
         assert_eq!(generators[1].language(), Language::TypeScript);
         assert_eq!(generators[2].language(), Language::Python);
         assert_eq!(generators[3].language(), Language::Go);
         assert_eq!(generators[4].language(), Language::Ruby);
+        assert_eq!(generators[5].language(), Language::Seahorse);
     }
 
     #[test]
@@ -714,18 +747,68 @@ mod tests {
     #[test]
     fn test_language_supported() {
         let supported = Language::supported();
-        assert_eq!(supported.len(), 5);
+        assert_eq!(supported.len(), 6);
         assert!(supported.contains(&Language::Rust));
         assert!(supported.contains(&Language::TypeScript));
         assert!(supported.contains(&Language::Python));
         assert!(supported.contains(&Language::Go));
         assert!(supported.contains(&Language::Ruby));
+        assert!(supported.contains(&Language::Seahorse));
     }
 
     #[test]
     fn test_language_all() {
         let all = Language::all();
-        assert_eq!(all.len(), 5);
+        assert_eq!(all.len(), 6);
+    }
+
+    #[test]
+    fn test_seahorse_generator() {
+        let gen = get_generator(Language::Seahorse);
+        assert_eq!(gen.language(), Language::Seahorse);
+        assert_eq!(gen.file_extension(), "py");
+    }
+
+    #[test]
+    fn test_seahorse_generator_output() {
+        let gen = SeahorseGenerator;
+        let type_defs = vec![TypeDefinition::Struct(StructDefinition {
+            name: "PlayerAccount".to_string(),
+            generic_params: vec![],
+            fields: vec![
+                FieldDefinition {
+                    name: "wallet".to_string(),
+                    type_info: TypeInfo::Primitive("PublicKey".to_string()),
+                    optional: false,
+                    deprecated: None,
+                    anchor_attrs: vec![],
+                },
+                FieldDefinition {
+                    name: "level".to_string(),
+                    type_info: TypeInfo::Primitive("u16".to_string()),
+                    optional: false,
+                    deprecated: None,
+                    anchor_attrs: vec![],
+                },
+            ],
+            metadata: Metadata {
+                solana: true,
+                attributes: vec!["account".to_string()],
+                version: None,
+                custom_derives: vec![],
+                is_instruction: false,
+                anchor_attrs: vec![],
+            },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
+        })];
+
+        let code = gen.generate_module(&type_defs);
+        assert!(code.contains("from seahorse.prelude import *"));
+        assert!(code.contains("@account"));
+        assert!(code.contains("class PlayerAccount:"));
+        assert!(code.contains("wallet: Pubkey"));
+        assert!(code.contains("level: u16"));
     }
 
     #[test]
