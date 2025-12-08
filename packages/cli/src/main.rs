@@ -15,7 +15,7 @@ use lumos_core::audit_generator::AuditGenerator;
 use lumos_core::corpus_generator::CorpusGenerator;
 use lumos_core::file_resolver::FileResolver;
 use lumos_core::fuzz_generator::FuzzGenerator;
-use lumos_core::generators::{rust, typescript, Language, get_generators};
+use lumos_core::generators::{get_generators, rust, typescript, Language};
 use lumos_core::ir::TypeDefinition;
 use lumos_core::migration::{generate_rust_migration, generate_typescript_migration, SchemaDiff};
 use lumos_core::module_resolver::ModuleResolver;
@@ -332,7 +332,14 @@ fn main() -> Result<()> {
             if watch {
                 run_watch_mode(&schema, output.as_deref(), &lang)
             } else {
-                run_generate(&schema, output.as_deref(), &lang, dry_run, backup, show_diff)
+                run_generate(
+                    &schema,
+                    output.as_deref(),
+                    &lang,
+                    dry_run,
+                    backup,
+                    show_diff,
+                )
             }
         }
         Commands::Validate { schema } => run_validate(&schema),
@@ -489,11 +496,14 @@ fn run_generate(
     // Parse target languages
     let requested_langs = Language::parse_list(lang);
     if requested_langs.is_empty() {
-        anyhow::bail!("No valid languages specified. Supported: rust, typescript. Planned: python, go, ruby");
+        anyhow::bail!(
+            "No valid languages specified. Supported: rust, typescript. Planned: python, go, ruby"
+        );
     }
 
     // Check for unimplemented languages
-    let unimplemented: Vec<_> = requested_langs.iter()
+    let unimplemented: Vec<_> = requested_langs
+        .iter()
         .filter(|l| !l.is_implemented())
         .collect();
     if !unimplemented.is_empty() {
@@ -508,7 +518,9 @@ fn run_generate(
     // Get generators for implemented languages
     let generators = get_generators(&requested_langs);
     if generators.is_empty() {
-        anyhow::bail!("No implemented languages in selection. Currently supported: rust, typescript");
+        anyhow::bail!(
+            "No implemented languages in selection. Currently supported: rust, typescript"
+        );
     }
 
     // Dry-run mode header
@@ -543,7 +555,11 @@ fn run_generate(
     // Generate code for each language
     if !dry_run {
         let lang_names: Vec<_> = generators.iter().map(|g| g.language().name()).collect();
-        println!("{:>12} {} code", "Generating".green().bold(), lang_names.join(", "));
+        println!(
+            "{:>12} {} code",
+            "Generating".green().bold(),
+            lang_names.join(", ")
+        );
     }
 
     // Collect generated code for each language
@@ -1085,9 +1101,14 @@ fn run_watch_mode(schema_path: &Path, output_dir: Option<&Path>, lang: &str) -> 
                 println!();
                 println!("{:>12} change detected", "Detected".yellow().bold());
 
-                if let Err(e) =
-                    run_generate(&schema_path, output_dir_buf.as_deref(), &lang_string, false, false, false)
-                {
+                if let Err(e) = run_generate(
+                    &schema_path,
+                    output_dir_buf.as_deref(),
+                    &lang_string,
+                    false,
+                    false,
+                    false,
+                ) {
                     eprintln!("{}: {}", "error".red().bold(), e);
                 }
 

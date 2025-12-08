@@ -437,18 +437,18 @@ mod tests {
                 generic_params: vec![],
                 fields: vec![],
                 metadata: Metadata::default(),
-            visibility: Visibility::Public,
+                visibility: Visibility::Public,
 
-            module_path: Vec::new(),
+                module_path: Vec::new(),
             }),
             TypeDefinition::Enum(EnumDefinition {
                 name: "State1".to_string(),
                 generic_params: vec![],
                 variants: vec![],
                 metadata: Metadata::default(),
-            visibility: Visibility::Public,
+                visibility: Visibility::Public,
 
-            module_path: Vec::new(),
+                module_path: Vec::new(),
             }),
         ];
 

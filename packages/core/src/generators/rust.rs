@@ -101,7 +101,10 @@ fn generate_type_alias(alias_def: &TypeAliasDefinition) -> String {
     // Generate the type alias with visibility
     let vis = visibility_prefix(alias_def.visibility);
     let rust_type = map_type_to_rust(&alias_def.target);
-    output.push_str(&format!("{}type {} = {};\n", vis, alias_def.name, rust_type));
+    output.push_str(&format!(
+        "{}type {} = {};\n",
+        vis, alias_def.name, rust_type
+    ));
 
     output
 }
@@ -1015,18 +1018,18 @@ mod tests {
                 generic_params: vec![],
                 fields: vec![],
                 metadata: Metadata::default(),
-            visibility: Visibility::Public,
+                visibility: Visibility::Public,
 
-            module_path: Vec::new(),
+                module_path: Vec::new(),
             }),
             TypeDefinition::Struct(StructDefinition {
                 name: "Post".to_string(),
                 generic_params: vec![],
                 fields: vec![],
                 metadata: Metadata::default(),
-            visibility: Visibility::Public,
+                visibility: Visibility::Public,
 
-            module_path: Vec::new(),
+                module_path: Vec::new(),
             }),
         ];
 

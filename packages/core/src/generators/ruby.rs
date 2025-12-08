@@ -277,9 +277,7 @@ fn generate_struct_class(struct_def: &StructDefinition) -> String {
         output.push_str("  # @param opts [Hash] Field values\n");
         for field in &struct_def.fields {
             let ruby_type = map_type_to_ruby(&field.type_info);
-            let type_doc = if field.optional
-                && !matches!(&field.type_info, TypeInfo::Option(_))
-            {
+            let type_doc = if field.optional && !matches!(&field.type_info, TypeInfo::Option(_)) {
                 format!("{}, nil", ruby_type)
             } else {
                 ruby_type
@@ -287,10 +285,7 @@ fn generate_struct_class(struct_def: &StructDefinition) -> String {
 
             // Add deprecation warning in YARD
             if let Some(msg) = &field.deprecated {
-                output.push_str(&format!(
-                    "  # @deprecated {}\n",
-                    msg
-                ));
+                output.push_str(&format!("  # @deprecated {}\n", msg));
             }
             output.push_str(&format!(
                 "  # @option opts [{}] :{}\n",
@@ -303,10 +298,7 @@ fn generate_struct_class(struct_def: &StructDefinition) -> String {
         output.push_str("  def initialize(opts = {})\n");
         for field in &struct_def.fields {
             let field_name = to_snake_case(&field.name);
-            output.push_str(&format!(
-                "    @{} = opts[:{}]\n",
-                field_name, field_name
-            ));
+            output.push_str(&format!("    @{} = opts[:{}]\n", field_name, field_name));
         }
         output.push_str("  end\n");
 
@@ -393,10 +385,7 @@ fn generate_enum_module(enum_def: &EnumDefinition) -> String {
         for variant in &enum_def.variants {
             match variant {
                 EnumVariantDefinition::Unit { name } => {
-                    output.push_str(&format!(
-                        "  {} = Struct.new(:discriminant) do\n",
-                        name
-                    ));
+                    output.push_str(&format!("  {} = Struct.new(:discriminant) do\n", name));
                     output.push_str(&format!(
                         "    def initialize\n      super({}_DISCRIMINANT)\n    end\n",
                         to_screaming_snake_case(name)
@@ -404,9 +393,8 @@ fn generate_enum_module(enum_def: &EnumDefinition) -> String {
                     output.push_str("  end\n\n");
                 }
                 EnumVariantDefinition::Tuple { name, types } => {
-                    let fields: Vec<String> = (0..types.len())
-                        .map(|i| format!(":field{}", i))
-                        .collect();
+                    let fields: Vec<String> =
+                        (0..types.len()).map(|i| format!(":field{}", i)).collect();
                     output.push_str(&format!(
                         "  {} = Struct.new(:discriminant, {}) do\n",
                         name,
@@ -420,12 +408,10 @@ fn generate_enum_module(enum_def: &EnumDefinition) -> String {
                     }
 
                     // Initialize with discriminant
-                    let init_params: Vec<String> = (0..types.len())
-                        .map(|i| format!("field{}", i))
-                        .collect();
-                    let init_args: Vec<String> = (0..types.len())
-                        .map(|i| format!("field{}", i))
-                        .collect();
+                    let init_params: Vec<String> =
+                        (0..types.len()).map(|i| format!("field{}", i)).collect();
+                    let init_args: Vec<String> =
+                        (0..types.len()).map(|i| format!("field{}", i)).collect();
                     output.push_str(&format!(
                         "    def initialize({})\n      super({}_DISCRIMINANT, {})\n    end\n",
                         init_params.join(", "),
@@ -456,14 +442,10 @@ fn generate_enum_module(enum_def: &EnumDefinition) -> String {
                     }
 
                     // Initialize with discriminant
-                    let init_params: Vec<String> = fields
-                        .iter()
-                        .map(|f| to_snake_case(&f.name))
-                        .collect();
-                    let init_args: Vec<String> = fields
-                        .iter()
-                        .map(|f| to_snake_case(&f.name))
-                        .collect();
+                    let init_params: Vec<String> =
+                        fields.iter().map(|f| to_snake_case(&f.name)).collect();
+                    let init_args: Vec<String> =
+                        fields.iter().map(|f| to_snake_case(&f.name)).collect();
                     output.push_str(&format!(
                         "    def initialize({})\n      super({}_DISCRIMINANT, {})\n    end\n",
                         init_params.join(", "),
@@ -559,7 +541,7 @@ fn map_type_to_borsh(type_info: &TypeInfo) -> String {
             "bool" => ":bool".to_string(),
             "String" => ":string".to_string(),
             "Pubkey" | "PublicKey" => "[:u8, 32]".to_string(), // 32-byte array
-            "Signature" => "[:u8, 64]".to_string(),           // 64-byte array
+            "Signature" => "[:u8, 64]".to_string(),            // 64-byte array
             _ => format!("# Unknown: {}", type_name),
         },
         TypeInfo::Array(inner) => {
@@ -723,18 +705,18 @@ mod tests {
                 generic_params: vec![],
                 fields: vec![],
                 metadata: Metadata::default(),
-            visibility: Visibility::Public,
+                visibility: Visibility::Public,
 
-            module_path: Vec::new(),
+                module_path: Vec::new(),
             }),
             TypeDefinition::Struct(StructDefinition {
                 name: "Post".to_string(),
                 generic_params: vec![],
                 fields: vec![],
                 metadata: Metadata::default(),
-            visibility: Visibility::Public,
+                visibility: Visibility::Public,
 
-            module_path: Vec::new(),
+                module_path: Vec::new(),
             }),
         ];
 

@@ -338,11 +338,12 @@ fn generate_struct_dataclass(struct_def: &StructDefinition) -> String {
         for field in &struct_def.fields {
             let py_type = map_type_to_python(&field.type_info);
             // Avoid double "| None" when field is optional AND type is already Option
-            let type_annotation = if field.optional && !matches!(&field.type_info, TypeInfo::Option(_)) {
-                format!("{} | None", py_type)
-            } else {
-                py_type
-            };
+            let type_annotation =
+                if field.optional && !matches!(&field.type_info, TypeInfo::Option(_)) {
+                    format!("{} | None", py_type)
+                } else {
+                    py_type
+                };
 
             output.push_str(&format!("    {}: {}\n", field.name, type_annotation));
         }
@@ -465,7 +466,8 @@ fn generate_enum_borsh_schema(enum_def: &EnumDefinition) -> String {
                         output.push_str(&format!("    \"{}\" / CStruct(\n", name));
                         for (idx, type_info) in types.iter().enumerate() {
                             let borsh_type = map_type_to_borsh(type_info);
-                            output.push_str(&format!("        \"field{}\" / {},\n", idx, borsh_type));
+                            output
+                                .push_str(&format!("        \"field{}\" / {},\n", idx, borsh_type));
                         }
                         output.push_str("    ),\n");
                     }
@@ -474,10 +476,7 @@ fn generate_enum_borsh_schema(enum_def: &EnumDefinition) -> String {
                     output.push_str(&format!("    \"{}\" / CStruct(\n", name));
                     for field in fields {
                         let borsh_type = map_type_to_borsh(&field.type_info);
-                        output.push_str(&format!(
-                            "        \"{}\" / {},\n",
-                            field.name, borsh_type
-                        ));
+                        output.push_str(&format!("        \"{}\" / {},\n", field.name, borsh_type));
                     }
                     output.push_str("    ),\n");
                 }
@@ -807,18 +806,18 @@ mod tests {
                 generic_params: vec![],
                 fields: vec![],
                 metadata: Metadata::default(),
-            visibility: Visibility::Public,
+                visibility: Visibility::Public,
 
-            module_path: Vec::new(),
+                module_path: Vec::new(),
             }),
             TypeDefinition::Struct(StructDefinition {
                 name: "Post".to_string(),
                 generic_params: vec![],
                 fields: vec![],
                 metadata: Metadata::default(),
-            visibility: Visibility::Public,
+                visibility: Visibility::Public,
 
-            module_path: Vec::new(),
+                module_path: Vec::new(),
             }),
         ];
 
@@ -917,34 +916,76 @@ mod tests {
         assert!(code.contains("class GameEventScoreUpdate:"));
         assert!(code.contains("player: Pubkey"));
         assert!(code.contains("score: int"));
-        assert!(code.contains("GameEvent = GameEventStarted | GameEventPlayerJoined | GameEventScoreUpdate"));
+        assert!(code.contains(
+            "GameEvent = GameEventStarted | GameEventPlayerJoined | GameEventScoreUpdate"
+        ));
         assert!(code.contains("GAMEEVENT_SCHEMA = Enum("));
     }
 
     #[test]
     fn maps_all_primitive_types() {
-        assert_eq!(map_type_to_python(&TypeInfo::Primitive("u8".to_string())), "int");
-        assert_eq!(map_type_to_python(&TypeInfo::Primitive("u64".to_string())), "int");
-        assert_eq!(map_type_to_python(&TypeInfo::Primitive("u128".to_string())), "int");
-        assert_eq!(map_type_to_python(&TypeInfo::Primitive("i64".to_string())), "int");
-        assert_eq!(map_type_to_python(&TypeInfo::Primitive("f64".to_string())), "float");
-        assert_eq!(map_type_to_python(&TypeInfo::Primitive("bool".to_string())), "bool");
-        assert_eq!(map_type_to_python(&TypeInfo::Primitive("String".to_string())), "str");
-        assert_eq!(map_type_to_python(&TypeInfo::Primitive("PublicKey".to_string())), "Pubkey");
+        assert_eq!(
+            map_type_to_python(&TypeInfo::Primitive("u8".to_string())),
+            "int"
+        );
+        assert_eq!(
+            map_type_to_python(&TypeInfo::Primitive("u64".to_string())),
+            "int"
+        );
+        assert_eq!(
+            map_type_to_python(&TypeInfo::Primitive("u128".to_string())),
+            "int"
+        );
+        assert_eq!(
+            map_type_to_python(&TypeInfo::Primitive("i64".to_string())),
+            "int"
+        );
+        assert_eq!(
+            map_type_to_python(&TypeInfo::Primitive("f64".to_string())),
+            "float"
+        );
+        assert_eq!(
+            map_type_to_python(&TypeInfo::Primitive("bool".to_string())),
+            "bool"
+        );
+        assert_eq!(
+            map_type_to_python(&TypeInfo::Primitive("String".to_string())),
+            "str"
+        );
+        assert_eq!(
+            map_type_to_python(&TypeInfo::Primitive("PublicKey".to_string())),
+            "Pubkey"
+        );
     }
 
     #[test]
     fn maps_borsh_types() {
-        assert_eq!(map_type_to_borsh(&TypeInfo::Primitive("u8".to_string())), "U8");
-        assert_eq!(map_type_to_borsh(&TypeInfo::Primitive("u64".to_string())), "U64");
-        assert_eq!(map_type_to_borsh(&TypeInfo::Primitive("String".to_string())), "String");
-        assert_eq!(map_type_to_borsh(&TypeInfo::Primitive("PublicKey".to_string())), "Bytes(32)");
         assert_eq!(
-            map_type_to_borsh(&TypeInfo::Array(Box::new(TypeInfo::Primitive("u64".to_string())))),
+            map_type_to_borsh(&TypeInfo::Primitive("u8".to_string())),
+            "U8"
+        );
+        assert_eq!(
+            map_type_to_borsh(&TypeInfo::Primitive("u64".to_string())),
+            "U64"
+        );
+        assert_eq!(
+            map_type_to_borsh(&TypeInfo::Primitive("String".to_string())),
+            "String"
+        );
+        assert_eq!(
+            map_type_to_borsh(&TypeInfo::Primitive("PublicKey".to_string())),
+            "Bytes(32)"
+        );
+        assert_eq!(
+            map_type_to_borsh(&TypeInfo::Array(Box::new(TypeInfo::Primitive(
+                "u64".to_string()
+            )))),
             "Vec(U64)"
         );
         assert_eq!(
-            map_type_to_borsh(&TypeInfo::Option(Box::new(TypeInfo::Primitive("u64".to_string())))),
+            map_type_to_borsh(&TypeInfo::Option(Box::new(TypeInfo::Primitive(
+                "u64".to_string()
+            )))),
             "Option(U64)"
         );
     }

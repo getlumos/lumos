@@ -698,12 +698,18 @@ fn test_e2e_instruction_context_generation() {
             generated.contains("pub system_program: Program<'info, System>"),
             "Should have system_program"
         );
-        assert!(generated.contains("#[account(init"), "Should have init attribute");
+        assert!(
+            generated.contains("#[account(init"),
+            "Should have init attribute"
+        );
         assert!(
             generated.contains("payer = authority"),
             "Should have payer attribute"
         );
-        assert!(generated.contains("space = 8 + 64"), "Should have space attribute");
+        assert!(
+            generated.contains("space = 8 + 64"),
+            "Should have space attribute"
+        );
 
         println!("Generated Accounts context:\n{}", generated);
     } else {

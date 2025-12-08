@@ -4,7 +4,9 @@
 //! Tests for schema compatibility checking
 
 use lumos_core::compat::{CompatibilityChecker, IssueLevel};
-use lumos_core::ir::{FieldDefinition, Metadata, StructDefinition, TypeDefinition, TypeInfo, Visibility};
+use lumos_core::ir::{
+    FieldDefinition, Metadata, StructDefinition, TypeDefinition, TypeInfo, Visibility,
+};
 
 /// Helper to create a simple struct type definition
 fn create_struct(

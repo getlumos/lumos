@@ -425,7 +425,7 @@ fn transform_type_alias(
         name,
         target,
         visibility: Visibility::Public, // Type aliases are always public by default
-        module_path: Vec::new(),         // Will be set by module resolver if needed
+        module_path: Vec::new(),        // Will be set by module resolver if needed
     })
 }
 

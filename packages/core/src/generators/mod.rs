@@ -101,7 +101,11 @@ impl Language {
     pub fn is_implemented(&self) -> bool {
         matches!(
             self,
-            Language::Rust | Language::TypeScript | Language::Python | Language::Go | Language::Ruby
+            Language::Rust
+                | Language::TypeScript
+                | Language::Python
+                | Language::Go
+                | Language::Ruby
         )
     }
 
@@ -437,7 +441,10 @@ mod tests {
     fn test_language_from_name() {
         assert_eq!(Language::from_name("rust"), Some(Language::Rust));
         assert_eq!(Language::from_name("RS"), Some(Language::Rust));
-        assert_eq!(Language::from_name("typescript"), Some(Language::TypeScript));
+        assert_eq!(
+            Language::from_name("typescript"),
+            Some(Language::TypeScript)
+        );
         assert_eq!(Language::from_name("ts"), Some(Language::TypeScript));
         assert_eq!(Language::from_name("python"), Some(Language::Python));
         assert_eq!(Language::from_name("py"), Some(Language::Python));
@@ -543,8 +550,7 @@ mod tests {
             module_path: Vec::new(),
         })];
 
-        let results =
-            generate_for_languages(&type_defs, &[Language::Rust, Language::TypeScript]);
+        let results = generate_for_languages(&type_defs, &[Language::Rust, Language::TypeScript]);
 
         assert_eq!(results.len(), 2);
         assert_eq!(results[0].0, Language::Rust);
