@@ -315,7 +315,10 @@ mod tests {
         assert_eq!(MetaplexType::TokenMetadata.struct_name(), "Metadata");
         assert_eq!(MetaplexType::Creator.struct_name(), "Creator");
         assert_eq!(MetaplexType::Collection.struct_name(), "Collection");
-        assert_eq!(MetaplexType::MasterEditionV2.struct_name(), "MasterEditionV2");
+        assert_eq!(
+            MetaplexType::MasterEditionV2.struct_name(),
+            "MasterEditionV2"
+        );
     }
 
     #[test]

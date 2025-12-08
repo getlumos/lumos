@@ -185,7 +185,9 @@ pub mod metaplex_constraints {{
     fn generate_rust_enum(&self, enum_def: &EnumDefinition) -> String {
         let mut output = String::new();
 
-        output.push_str("#[derive(Debug, Clone, Copy, PartialEq, Eq, BorshSerialize, BorshDeserialize)]\n");
+        output.push_str(
+            "#[derive(Debug, Clone, Copy, PartialEq, Eq, BorshSerialize, BorshDeserialize)]\n",
+        );
         output.push_str(&format!("pub enum {} {{\n", enum_def.name));
 
         for (i, variant) in enum_def.variants.iter().enumerate() {
@@ -295,7 +297,9 @@ pub mod metaplex_validation {
             output.push_str("import { PublicKey } from '@solana/web3.js';\n");
             output.push_str("import * as borsh from '@coral-xyz/borsh';\n");
             output.push_str("// For full Metaplex SDK compatibility:\n");
-            output.push_str("// import { Metadata } from '@metaplex-foundation/mpl-token-metadata';\n");
+            output.push_str(
+                "// import { Metadata } from '@metaplex-foundation/mpl-token-metadata';\n",
+            );
             output.push('\n');
         }
 
@@ -381,9 +385,8 @@ export const METAPLEX_CONSTRAINTS = {{
                         "  /** Metadata URI (max {} chars) */\n",
                         constraints::MAX_URI_LENGTH
                     )),
-                    "seller_fee_basis_points" => {
-                        output.push_str("  /** @warning u16 precision - royalty (100% = 10000) */\n")
-                    }
+                    "seller_fee_basis_points" => output
+                        .push_str("  /** @warning u16 precision - royalty (100% = 10000) */\n"),
                     _ => {}
                 }
             }

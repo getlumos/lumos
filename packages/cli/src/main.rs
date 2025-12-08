@@ -13,7 +13,6 @@ use lumos_core::anchor::{
     generate_accounts_context, parse_anchor_attrs, AnchorAccountType, IdlGenerator,
     IdlGeneratorConfig, InstructionAccount, InstructionContext,
 };
-use lumos_core::metaplex::{MetaplexGenerator, MetaplexValidator, Severity};
 use lumos_core::ast::Item as AstItem;
 use lumos_core::audit_generator::AuditGenerator;
 use lumos_core::corpus_generator::CorpusGenerator;
@@ -21,6 +20,7 @@ use lumos_core::file_resolver::FileResolver;
 use lumos_core::fuzz_generator::FuzzGenerator;
 use lumos_core::generators::{get_generators, rust, typescript, Language};
 use lumos_core::ir::TypeDefinition;
+use lumos_core::metaplex::{MetaplexGenerator, MetaplexValidator, Severity};
 use lumos_core::migration::{generate_rust_migration, generate_typescript_migration, SchemaDiff};
 use lumos_core::module_resolver::ModuleResolver;
 use lumos_core::parser::parse_lumos_file;
@@ -3650,11 +3650,7 @@ fn run_metaplex_generate(
         } else {
             fs::write(&rust_path, &rust_code)
                 .with_context(|| format!("Failed to write {}", rust_path.display()))?;
-            println!(
-                "{:>12} {}",
-                "Generated".green().bold(),
-                rust_path.display()
-            );
+            println!("{:>12} {}", "Generated".green().bold(), rust_path.display());
         }
     }
 
@@ -3669,11 +3665,7 @@ fn run_metaplex_generate(
         } else {
             fs::write(&ts_path, &ts_code)
                 .with_context(|| format!("Failed to write {}", ts_path.display()))?;
-            println!(
-                "{:>12} {}",
-                "Generated".green().bold(),
-                ts_path.display()
-            );
+            println!("{:>12} {}", "Generated".green().bold(), ts_path.display());
         }
     }
 
