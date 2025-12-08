@@ -489,7 +489,252 @@ fn generate_struct_interface(struct_def: &StructDefinition) -> String {
 
     output.push_str("}\n");
 
+    // Generate derive helper functions if custom_derives exist
+    if !struct_def.metadata.custom_derives.is_empty() {
+        output.push('\n');
+        output.push_str(&generate_derive_helpers(struct_def));
+    }
+
     output
+}
+
+/// Generate TypeScript helper functions for Rust derives
+fn generate_derive_helpers(struct_def: &StructDefinition) -> String {
+    let mut output = String::new();
+    let name = &struct_def.name;
+    let derives = &struct_def.metadata.custom_derives;
+
+    // PartialEq → equals function
+    if derives.iter().any(|d| d == "PartialEq" || d == "Eq") {
+        output.push_str(&generate_equals_function(struct_def));
+        output.push('\n');
+    }
+
+    // Hash → hashCode function
+    if derives.iter().any(|d| d == "Hash") {
+        output.push_str(&generate_hash_function(name));
+        output.push('\n');
+    }
+
+    // Default → default factory function
+    if derives.iter().any(|d| d == "Default") {
+        output.push_str(&generate_default_function(struct_def));
+        output.push('\n');
+    }
+
+    // Ord → compareTo function
+    if derives.iter().any(|d| d == "Ord" || d == "PartialOrd") {
+        output.push_str(&generate_compare_function(struct_def));
+        output.push('\n');
+    }
+
+    output
+}
+
+/// Generate equals function for PartialEq derive
+fn generate_equals_function(struct_def: &StructDefinition) -> String {
+    let name = &struct_def.name;
+    let mut output = String::new();
+
+    output.push_str(&format!(
+        "/** Compare two {} objects for equality (PartialEq derive) */\n",
+        name
+    ));
+    output.push_str(&format!(
+        "export function {}Equals(a: {}, b: {}): boolean {{\n",
+        to_camel_case(name),
+        name,
+        name
+    ));
+
+    if struct_def.fields.is_empty() {
+        output.push_str("  return true;\n");
+    } else {
+        output.push_str("  return (\n");
+        for (i, field) in struct_def.fields.iter().enumerate() {
+            let field_name = &field.name;
+            let comparison = generate_field_equality(&field.type_info, field_name);
+            if i == 0 {
+                output.push_str(&format!("    {}", comparison));
+            } else {
+                output.push_str(&format!(" &&\n    {}", comparison));
+            }
+        }
+        output.push_str("\n  );\n");
+    }
+
+    output.push_str("}\n");
+    output
+}
+
+/// Generate field equality comparison based on type
+fn generate_field_equality(type_info: &TypeInfo, field_name: &str) -> String {
+    match type_info {
+        TypeInfo::Primitive(t) if t == "PublicKey" || t == "Pubkey" => {
+            format!("a.{}.equals(b.{})", field_name, field_name)
+        }
+        TypeInfo::Array(_) => {
+            format!(
+                "a.{}.length === b.{}.length && a.{}.every((v, i) => v === b.{}[i])",
+                field_name, field_name, field_name, field_name
+            )
+        }
+        TypeInfo::Option(inner) => {
+            let inner_eq = generate_field_equality(inner, field_name);
+            format!(
+                "(a.{} === undefined && b.{} === undefined) || (a.{} !== undefined && b.{} !== undefined && {})",
+                field_name, field_name, field_name, field_name, inner_eq
+            )
+        }
+        _ => format!("a.{} === b.{}", field_name, field_name),
+    }
+}
+
+/// Generate hashCode function for Hash derive
+fn generate_hash_function(name: &str) -> String {
+    let mut output = String::new();
+
+    output.push_str(&format!(
+        "/** Generate hash code for {} (Hash derive) */\n",
+        name
+    ));
+    output.push_str(&format!(
+        "export function {}HashCode(obj: {}): number {{\n",
+        to_camel_case(name),
+        name
+    ));
+    output.push_str("  let hash = 0;\n");
+    output.push_str("  const str = JSON.stringify(obj);\n");
+    output.push_str("  for (let i = 0; i < str.length; i++) {\n");
+    output.push_str("    const char = str.charCodeAt(i);\n");
+    output.push_str("    hash = ((hash << 5) - hash) + char;\n");
+    output.push_str("    hash = hash & hash; // Convert to 32bit integer\n");
+    output.push_str("  }\n");
+    output.push_str("  return hash;\n");
+    output.push_str("}\n");
+
+    output
+}
+
+/// Generate default factory function for Default derive
+fn generate_default_function(struct_def: &StructDefinition) -> String {
+    let name = &struct_def.name;
+    let mut output = String::new();
+
+    output.push_str(&format!(
+        "/** Create default {} instance (Default derive) */\n",
+        name
+    ));
+    output.push_str(&format!(
+        "export function {}Default(): {} {{\n",
+        to_camel_case(name),
+        name
+    ));
+    output.push_str("  return {\n");
+
+    for field in &struct_def.fields {
+        let default_value = get_default_value(&field.type_info);
+        output.push_str(&format!("    {}: {},\n", field.name, default_value));
+    }
+
+    output.push_str("  };\n");
+    output.push_str("}\n");
+
+    output
+}
+
+/// Get default value for a type
+fn get_default_value(type_info: &TypeInfo) -> String {
+    match type_info {
+        TypeInfo::Primitive(t) => match t.as_str() {
+            "u8" | "u16" | "u32" | "u64" | "i8" | "i16" | "i32" | "i64" | "f32" | "f64" => {
+                "0".to_string()
+            }
+            "u128" | "i128" => "BigInt(0)".to_string(),
+            "bool" => "false".to_string(),
+            "String" => "\"\"".to_string(),
+            "PublicKey" | "Pubkey" => "PublicKey.default()".to_string(),
+            _ => "undefined as any".to_string(),
+        },
+        TypeInfo::Array(_) | TypeInfo::FixedArray { .. } => "[]".to_string(),
+        TypeInfo::Option(_) => "undefined".to_string(),
+        TypeInfo::Generic(_) => "undefined as any".to_string(),
+        TypeInfo::UserDefined(name) => format!("{}Default()", to_camel_case(name)),
+    }
+}
+
+/// Generate compareTo function for Ord derive
+fn generate_compare_function(struct_def: &StructDefinition) -> String {
+    let name = &struct_def.name;
+    let mut output = String::new();
+
+    output.push_str(&format!(
+        "/** Compare two {} objects for ordering (Ord derive) */\n",
+        name
+    ));
+    output.push_str(&format!(
+        "export function {}Compare(a: {}, b: {}): number {{\n",
+        to_camel_case(name),
+        name,
+        name
+    ));
+
+    if struct_def.fields.is_empty() {
+        output.push_str("  return 0;\n");
+    } else {
+        output.push_str("  let cmp: number;\n");
+        for field in &struct_def.fields {
+            let comparison = generate_field_comparison(&field.type_info, &field.name);
+            output.push_str(&format!("  cmp = {};\n", comparison));
+            output.push_str("  if (cmp !== 0) return cmp;\n");
+        }
+        output.push_str("  return 0;\n");
+    }
+
+    output.push_str("}\n");
+    output
+}
+
+/// Generate field comparison for ordering
+fn generate_field_comparison(type_info: &TypeInfo, field_name: &str) -> String {
+    match type_info {
+        TypeInfo::Primitive(t) => match t.as_str() {
+            "String" => format!(
+                "a.{}.localeCompare(b.{})",
+                field_name, field_name
+            ),
+            "bool" => format!(
+                "(a.{} === b.{} ? 0 : a.{} ? 1 : -1)",
+                field_name, field_name, field_name
+            ),
+            "PublicKey" | "Pubkey" => format!(
+                "a.{}.toBuffer().compare(b.{}.toBuffer())",
+                field_name, field_name
+            ),
+            _ => format!(
+                "(a.{} < b.{} ? -1 : a.{} > b.{} ? 1 : 0)",
+                field_name, field_name, field_name, field_name
+            ),
+        },
+        TypeInfo::Option(_) => format!(
+            "(a.{} === undefined ? (b.{} === undefined ? 0 : -1) : (b.{} === undefined ? 1 : (a.{} < b.{} ? -1 : a.{} > b.{} ? 1 : 0)))",
+            field_name, field_name, field_name, field_name, field_name, field_name, field_name
+        ),
+        _ => format!(
+            "(a.{} < b.{} ? -1 : a.{} > b.{} ? 1 : 0)",
+            field_name, field_name, field_name, field_name
+        ),
+    }
+}
+
+/// Convert PascalCase to camelCase
+fn to_camel_case(s: &str) -> String {
+    if s.is_empty() {
+        return String::new();
+    }
+    let mut chars = s.chars();
+    let first = chars.next().unwrap_or_default().to_lowercase();
+    first.chain(chars).collect()
 }
 
 /// Generate Borsh schema for struct serialization
@@ -1139,5 +1384,197 @@ mod tests {
         assert!(code.contains("borsh.u32('max_players')"));
         assert!(code.contains("borsh.publicKey('player')"));
         assert!(code.contains("borsh.u64('new_score')"));
+    }
+
+    #[test]
+    fn generates_partial_eq_derive_helper() {
+        let type_def = TypeDefinition::Struct(StructDefinition {
+            name: "Player".to_string(),
+            generic_params: vec![],
+            fields: vec![
+                FieldDefinition {
+                    name: "id".to_string(),
+                    type_info: TypeInfo::Primitive("u64".to_string()),
+                    optional: false,
+                    deprecated: None,
+                    anchor_attrs: vec![],
+                },
+                FieldDefinition {
+                    name: "name".to_string(),
+                    type_info: TypeInfo::Primitive("String".to_string()),
+                    optional: false,
+                    deprecated: None,
+                    anchor_attrs: vec![],
+                },
+            ],
+            metadata: Metadata {
+                solana: false,
+                attributes: vec![],
+                version: None,
+                custom_derives: vec!["PartialEq".to_string()],
+                is_instruction: false,
+                anchor_attrs: vec![],
+            },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
+        });
+
+        let code = generate(&type_def);
+        assert!(code.contains("export function playerEquals(a: Player, b: Player): boolean"));
+        assert!(code.contains("a.id === b.id"));
+        assert!(code.contains("a.name === b.name"));
+    }
+
+    #[test]
+    fn generates_hash_derive_helper() {
+        let type_def = TypeDefinition::Struct(StructDefinition {
+            name: "Token".to_string(),
+            generic_params: vec![],
+            fields: vec![FieldDefinition {
+                name: "mint".to_string(),
+                type_info: TypeInfo::Primitive("PublicKey".to_string()),
+                optional: false,
+                deprecated: None,
+                anchor_attrs: vec![],
+            }],
+            metadata: Metadata {
+                solana: false,
+                attributes: vec![],
+                version: None,
+                custom_derives: vec!["Hash".to_string()],
+                is_instruction: false,
+                anchor_attrs: vec![],
+            },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
+        });
+
+        let code = generate(&type_def);
+        assert!(code.contains("export function tokenHashCode(obj: Token): number"));
+        assert!(code.contains("let hash = 0"));
+        assert!(code.contains("JSON.stringify(obj)"));
+    }
+
+    #[test]
+    fn generates_default_derive_helper() {
+        let type_def = TypeDefinition::Struct(StructDefinition {
+            name: "Config".to_string(),
+            generic_params: vec![],
+            fields: vec![
+                FieldDefinition {
+                    name: "count".to_string(),
+                    type_info: TypeInfo::Primitive("u32".to_string()),
+                    optional: false,
+                    deprecated: None,
+                    anchor_attrs: vec![],
+                },
+                FieldDefinition {
+                    name: "enabled".to_string(),
+                    type_info: TypeInfo::Primitive("bool".to_string()),
+                    optional: false,
+                    deprecated: None,
+                    anchor_attrs: vec![],
+                },
+                FieldDefinition {
+                    name: "label".to_string(),
+                    type_info: TypeInfo::Primitive("String".to_string()),
+                    optional: false,
+                    deprecated: None,
+                    anchor_attrs: vec![],
+                },
+            ],
+            metadata: Metadata {
+                solana: false,
+                attributes: vec![],
+                version: None,
+                custom_derives: vec!["Default".to_string()],
+                is_instruction: false,
+                anchor_attrs: vec![],
+            },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
+        });
+
+        let code = generate(&type_def);
+        assert!(code.contains("export function configDefault(): Config"));
+        assert!(code.contains("count: 0"));
+        assert!(code.contains("enabled: false"));
+        assert!(code.contains("label: \"\""));
+    }
+
+    #[test]
+    fn generates_ord_derive_helper() {
+        let type_def = TypeDefinition::Struct(StructDefinition {
+            name: "Score".to_string(),
+            generic_params: vec![],
+            fields: vec![
+                FieldDefinition {
+                    name: "points".to_string(),
+                    type_info: TypeInfo::Primitive("u64".to_string()),
+                    optional: false,
+                    deprecated: None,
+                    anchor_attrs: vec![],
+                },
+                FieldDefinition {
+                    name: "rank".to_string(),
+                    type_info: TypeInfo::Primitive("String".to_string()),
+                    optional: false,
+                    deprecated: None,
+                    anchor_attrs: vec![],
+                },
+            ],
+            metadata: Metadata {
+                solana: false,
+                attributes: vec![],
+                version: None,
+                custom_derives: vec!["Ord".to_string()],
+                is_instruction: false,
+                anchor_attrs: vec![],
+            },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
+        });
+
+        let code = generate(&type_def);
+        assert!(code.contains("export function scoreCompare(a: Score, b: Score): number"));
+        assert!(code.contains("let cmp: number"));
+        assert!(code.contains("a.rank.localeCompare(b.rank)"));
+    }
+
+    #[test]
+    fn generates_multiple_derive_helpers() {
+        let type_def = TypeDefinition::Struct(StructDefinition {
+            name: "Item".to_string(),
+            generic_params: vec![],
+            fields: vec![FieldDefinition {
+                name: "value".to_string(),
+                type_info: TypeInfo::Primitive("u32".to_string()),
+                optional: false,
+                deprecated: None,
+                anchor_attrs: vec![],
+            }],
+            metadata: Metadata {
+                solana: false,
+                attributes: vec![],
+                version: None,
+                custom_derives: vec![
+                    "PartialEq".to_string(),
+                    "Hash".to_string(),
+                    "Default".to_string(),
+                    "Ord".to_string(),
+                ],
+                is_instruction: false,
+                anchor_attrs: vec![],
+            },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
+        });
+
+        let code = generate(&type_def);
+        // All four helpers should be generated
+        assert!(code.contains("export function itemEquals"));
+        assert!(code.contains("export function itemHashCode"));
+        assert!(code.contains("export function itemDefault"));
+        assert!(code.contains("export function itemCompare"));
     }
 }
