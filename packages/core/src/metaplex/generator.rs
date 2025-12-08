@@ -66,7 +66,7 @@ impl MetaplexGenerator {
             output.push_str("use solana_program::pubkey::Pubkey;\n");
             output.push_str("// For full Metaplex compatibility, also use:\n");
             output.push_str("// use mpl_token_metadata::state::*;\n");
-            output.push_str("\n");
+            output.push('\n');
         }
 
         // Constants
@@ -264,6 +264,7 @@ pub mod metaplex_validation {
     }
 
     /// Convert TypeInfo to Rust type string
+    #[allow(clippy::only_used_in_recursion)]
     fn rust_type(&self, type_info: &TypeInfo) -> String {
         match type_info {
             TypeInfo::Primitive(name) => match name.as_str() {
@@ -295,7 +296,7 @@ pub mod metaplex_validation {
             output.push_str("import * as borsh from '@coral-xyz/borsh';\n");
             output.push_str("// For full Metaplex SDK compatibility:\n");
             output.push_str("// import { Metadata } from '@metaplex-foundation/mpl-token-metadata';\n");
-            output.push_str("\n");
+            output.push('\n');
         }
 
         // Constants
@@ -434,58 +435,58 @@ export const METAPLEX_CONSTRAINTS = {{
 
     /// Generate TypeScript validation helpers
     fn generate_typescript_validators(&self) -> String {
-        format!(
-            r#"
+        r#"
 /** Validation helpers for Metaplex metadata */
-export const MetaplexValidation = {{
+export const MetaplexValidation = {
   /** Validate NFT name length */
-  validateName(name: string): void {{
-    if (name.length > METAPLEX_CONSTRAINTS.MAX_NAME_LENGTH) {{
-      throw new Error(`Name exceeds ${{METAPLEX_CONSTRAINTS.MAX_NAME_LENGTH}} characters`);
-    }}
-  }},
+  validateName(name: string): void {
+    if (name.length > METAPLEX_CONSTRAINTS.MAX_NAME_LENGTH) {
+      throw new Error(`Name exceeds ${METAPLEX_CONSTRAINTS.MAX_NAME_LENGTH} characters`);
+    }
+  },
 
   /** Validate NFT symbol length */
-  validateSymbol(symbol: string): void {{
-    if (symbol.length > METAPLEX_CONSTRAINTS.MAX_SYMBOL_LENGTH) {{
-      throw new Error(`Symbol exceeds ${{METAPLEX_CONSTRAINTS.MAX_SYMBOL_LENGTH}} characters`);
-    }}
-  }},
+  validateSymbol(symbol: string): void {
+    if (symbol.length > METAPLEX_CONSTRAINTS.MAX_SYMBOL_LENGTH) {
+      throw new Error(`Symbol exceeds ${METAPLEX_CONSTRAINTS.MAX_SYMBOL_LENGTH} characters`);
+    }
+  },
 
   /** Validate URI length */
-  validateUri(uri: string): void {{
-    if (uri.length > METAPLEX_CONSTRAINTS.MAX_URI_LENGTH) {{
-      throw new Error(`URI exceeds ${{METAPLEX_CONSTRAINTS.MAX_URI_LENGTH}} characters`);
-    }}
-  }},
+  validateUri(uri: string): void {
+    if (uri.length > METAPLEX_CONSTRAINTS.MAX_URI_LENGTH) {
+      throw new Error(`URI exceeds ${METAPLEX_CONSTRAINTS.MAX_URI_LENGTH} characters`);
+    }
+  },
 
   /** Validate seller fee basis points */
-  validateSellerFee(fee: number): void {{
-    if (fee > METAPLEX_CONSTRAINTS.MAX_SELLER_FEE_BASIS_POINTS) {{
-      throw new Error(`Seller fee exceeds maximum of ${{METAPLEX_CONSTRAINTS.MAX_SELLER_FEE_BASIS_POINTS}}`);
-    }}
-  }},
+  validateSellerFee(fee: number): void {
+    if (fee > METAPLEX_CONSTRAINTS.MAX_SELLER_FEE_BASIS_POINTS) {
+      throw new Error(`Seller fee exceeds maximum of ${METAPLEX_CONSTRAINTS.MAX_SELLER_FEE_BASIS_POINTS}`);
+    }
+  },
 
   /** Validate creator shares sum to 100 */
-  validateCreatorShares(shares: number[]): void {{
+  validateCreatorShares(shares: number[]): void {
     const total = shares.reduce((a, b) => a + b, 0);
-    if (total !== 100) {{
-      throw new Error(`Creator shares sum to ${{total}} instead of 100`);
-    }}
-  }},
+    if (total !== 100) {
+      throw new Error(`Creator shares sum to ${total} instead of 100`);
+    }
+  },
 
   /** Validate creator count */
-  validateCreatorCount(count: number): void {{
-    if (count > METAPLEX_CONSTRAINTS.MAX_CREATORS) {{
-      throw new Error(`Too many creators: ${{count}} (max ${{METAPLEX_CONSTRAINTS.MAX_CREATORS}})`);
-    }}
-  }},
-}};
+  validateCreatorCount(count: number): void {
+    if (count > METAPLEX_CONSTRAINTS.MAX_CREATORS) {
+      throw new Error(`Too many creators: ${count} (max ${METAPLEX_CONSTRAINTS.MAX_CREATORS})`);
+    }
+  },
+};
 "#
-        )
+        .to_string()
     }
 
     /// Convert TypeInfo to TypeScript type
+    #[allow(clippy::only_used_in_recursion)]
     fn typescript_type(&self, type_info: &TypeInfo) -> String {
         match type_info {
             TypeInfo::Primitive(name) => match name.as_str() {
@@ -506,6 +507,7 @@ export const MetaplexValidation = {{
     }
 
     /// Convert TypeInfo to Borsh type string
+    #[allow(clippy::only_used_in_recursion)]
     fn typescript_borsh_type(&self, type_info: &TypeInfo) -> String {
         match type_info {
             TypeInfo::Primitive(name) => match name.as_str() {

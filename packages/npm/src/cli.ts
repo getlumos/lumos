@@ -6,6 +6,7 @@
 
 import { Command } from 'commander';
 import { generate, validate } from './index';
+import type { GenerateOptions } from './types';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -27,7 +28,7 @@ program
   .description('Generate Rust and TypeScript code from schema')
   .option('--output-rust <path>', 'Output path for Rust code')
   .option('--output-typescript <path>', 'Output path for TypeScript code')
-  .action(async (schemaPath: string, options: any) => {
+  .action(async (schemaPath: string, options: GenerateOptions) => {
     try {
       console.log(`🔧 Generating code from ${schemaPath}...`);
 

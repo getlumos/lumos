@@ -199,8 +199,8 @@ pub enum MetaplexAttribute {
 }
 
 impl MetaplexAttribute {
-    /// Parse from string
-    pub fn from_str(s: &str) -> Option<Self> {
+    /// Parse from string (not to be confused with std::str::FromStr)
+    pub fn parse_from_str(s: &str) -> Option<Self> {
         match s.trim() {
             "metadata" => Some(MetaplexAttribute::Metadata),
             "creator" => Some(MetaplexAttribute::Creator),
@@ -284,26 +284,26 @@ mod tests {
     #[test]
     fn test_metaplex_attribute_parsing() {
         assert_eq!(
-            MetaplexAttribute::from_str("metadata"),
+            MetaplexAttribute::parse_from_str("metadata"),
             Some(MetaplexAttribute::Metadata)
         );
         assert_eq!(
-            MetaplexAttribute::from_str("creator"),
+            MetaplexAttribute::parse_from_str("creator"),
             Some(MetaplexAttribute::Creator)
         );
         assert_eq!(
-            MetaplexAttribute::from_str("name"),
+            MetaplexAttribute::parse_from_str("name"),
             Some(MetaplexAttribute::Name)
         );
         assert_eq!(
-            MetaplexAttribute::from_str("seller_fee_basis_points"),
+            MetaplexAttribute::parse_from_str("seller_fee_basis_points"),
             Some(MetaplexAttribute::SellerFeeBasisPoints)
         );
     }
 
     #[test]
     fn test_metaplex_attribute_validate() {
-        let attr = MetaplexAttribute::from_str("validate = \"len <= 32\"");
+        let attr = MetaplexAttribute::parse_from_str("validate = \"len <= 32\"");
         assert!(matches!(attr, Some(MetaplexAttribute::Validate(_))));
         if let Some(MetaplexAttribute::Validate(rule)) = attr {
             assert_eq!(rule, "len <= 32");

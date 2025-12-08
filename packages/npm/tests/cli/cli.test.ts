@@ -63,8 +63,9 @@ describe('CLI Commands', () => {
       execSync(`node ${cliPath} validate ${schemaPath}`, { stdio: 'pipe' });
       // Should not reach here
       expect(true).toBe(false);
-    } catch (error: any) {
-      const output = error.stderr?.toString() || error.stdout?.toString() || '';
+    } catch (error: unknown) {
+      const err = error as { stderr?: Buffer; stdout?: Buffer };
+      const output = err.stderr?.toString() || err.stdout?.toString() || '';
       expect(output).toContain('❌');
     }
   });
@@ -75,9 +76,10 @@ describe('CLI Commands', () => {
     try {
       execSync(`node ${cliPath} generate ${schemaPath}`, { stdio: 'pipe' });
       expect(true).toBe(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { status: number };
       // Should throw error
-      expect(error.status).not.toBe(0);
+      expect(err.status).not.toBe(0);
     }
   });
 });
