@@ -24,7 +24,7 @@ tower-lsp = "0.20"
 tokio = { version = "1.35", features = ["full"] }
 
 # LUMOS core (parser, AST, errors)
-lumos-core = { version = "0.2.0", path = "../core" }
+lumos-core = { version = "0.3.0", path = "../core" }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
