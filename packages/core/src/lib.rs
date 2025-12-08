@@ -120,6 +120,9 @@ pub mod module_resolver;
 /// Anchor Framework integration (IDL generation, constraints, instructions)
 pub mod anchor;
 
+/// Metaplex Token Metadata integration (NFT schemas, validation, types)
+pub mod metaplex;
+
 /// WASM bindings for browser playground
 #[cfg(feature = "wasm")]
 pub mod wasm;

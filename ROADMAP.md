@@ -25,8 +25,8 @@ LUMOS continues rapid evolution with IDE integration and schema versioning:
 - ✅ **Interactive playground** - Live code generation at docs.lumos-lang.org/playground
 - ✅ **Performance benchmarks** - Comprehensive Borsh comparison suite
 
-**Completed**: Phase 5.1 (Schema Evolution - 100%), Phase 5.2 (IDE Integration - 100%), Phase 5.3 (Advanced Type System - 100%), Phase 5.4 (Multi-Language Generation - 100%), Phase 6.2 (Tooling Ecosystem - 100%), Phase 6.3 (Security & Validation - 100%)
-**Active**: Phase 6.1 (Framework Integration)
+**Completed**: Phase 5.1 (Schema Evolution - 100%), Phase 5.2 (IDE Integration - 100%), Phase 5.3 (Advanced Type System - 100%), Phase 5.4 (Multi-Language Generation - 100%), Phase 6.1 (Framework Integration - 100%), Phase 6.2 (Tooling Ecosystem - 100%), Phase 6.3 (Security & Validation - 100%)
+**Active**: Era 2 Planning - Language Transformation (Phase 7+)
 **Next**: Era 2 - Language Transformation (Phase 7+)
 
 ---
@@ -415,13 +415,13 @@ lumos generate schema.lumos --lang rust,typescript,python,go,ruby
 
 ### 6.1 Framework Integration
 
-**Status**: 3/4 complete (75%)
+**Status**: 4/4 complete (100%) ✅
 
 **Issues:**
 - [x] Create Anchor framework plugin for LUMOS [#55] ✅ **COMPLETE**
 - [x] Add Seahorse integration for Python-based Solana development [#56] ✅ **COMPLETE**
 - [x] Add native Solana program support (non-Anchor) [#57] ✅ **COMPLETE**
-- [ ] Add Metaplex standard compatibility for NFT schemas [#58]
+- [x] Add Metaplex standard compatibility for NFT schemas [#58] ✅ **COMPLETE**
 
 **Completed**:
 - #55 (Dec 8, 2025) - Anchor Framework Plugin - All 5 phases complete
@@ -484,6 +484,24 @@ lumos generate schema.lumos --lang rust,typescript,python,go,ruby
     - No explicit Borsh schemas (Seahorse handles serialization)
   - Comprehensive documentation at docs-lumos/frameworks/seahorse.md
   - Type mapping: PublicKey→Pubkey, arrays→Array[T, N], options→T | None
+
+- #58 (Dec 8, 2025) - Metaplex Standard Compatibility for NFT Schemas
+  - New `metaplex` module in lumos-core (3 files, 17 unit tests)
+    - `types.rs` - TokenStandard, UseMethod, MetaplexAttribute enums
+    - `validator.rs` - MetaplexValidator with constraint checking
+    - `generator.rs` - MetaplexGenerator for Rust/TypeScript output
+  - Metaplex constraint enforcement:
+    - Name: max 32 characters
+    - Symbol: max 10 characters
+    - URI: max 200 characters
+    - Seller fee basis points: 0-10000
+    - Max 5 creators, shares sum to 100
+  - CLI commands: `lumos metaplex validate`, `lumos metaplex generate`, `lumos metaplex types`
+  - #[metaplex(metadata)], #[metaplex(creator)], #[metaplex(collection)] attributes
+  - Example schema at examples/metaplex-nft/schema.lumos
+  - All 369 tests passing
+
+**Milestone**: 🎯 **PHASE 6.1 COMPLETE** - Full framework integration (Anchor, Seahorse, Native, Metaplex)
 
 ### 6.2 Tooling Ecosystem
 
@@ -1056,7 +1074,9 @@ See an opportunity to help? Check our [Contributing Guide](CONTRIBUTING.md) or:
 **Last Updated**: December 8, 2025
 
 **Recent Updates**:
-- Dec 8, 2025: **Seahorse integration COMPLETE** (#56) - Phase 6.1 at 75% - Python-based Solana development with `--lang seahorse`
+- Dec 8, 2025: **PHASE 6.1 FRAMEWORK INTEGRATION COMPLETE** 🎉🎉🎉 - All 4 issues closed (#55-#58)!
+- Dec 8, 2025: **Metaplex standard compatibility COMPLETE** (#58) - NFT schemas with validation, generation, CLI commands
+- Dec 8, 2025: **Seahorse integration COMPLETE** (#56) - Python-based Solana development with `--lang seahorse`
 - Dec 8, 2025: **Native Solana program support COMPLETE** (#57) - CLI --target flag for native/anchor mode
 - Dec 8, 2025: **PHASE 5.4 COMPLETE** 🎉🎉🎉 - All 7 issues closed (#67-#70, #73, #116, #117) - Multi-language code generation done!
 - Dec 8, 2025: **Cross-language compatibility tests COMPLETE** (#117) - 11 tests verifying all 5 generators
