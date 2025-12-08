@@ -656,10 +656,9 @@ fn parse_attributes(attrs: &[syn::Attribute]) -> Result<Vec<Attribute>> {
 
             // List attribute: #[max(100)] or #[derive(Debug, Clone)]
             Meta::List(meta_list) => {
-                let ident = meta_list
-                    .path
-                    .get_ident()
-                    .ok_or_else(|| LumosError::SchemaParse("Invalid attribute".to_string(), None))?;
+                let ident = meta_list.path.get_ident().ok_or_else(|| {
+                    LumosError::SchemaParse("Invalid attribute".to_string(), None)
+                })?;
                 let name = ident.to_string();
 
                 // Special handling for #[derive(...)] - contains comma-separated list of macros
@@ -679,10 +678,9 @@ fn parse_attributes(attrs: &[syn::Attribute]) -> Result<Vec<Attribute>> {
 
             // Name-value attribute: #[version = "1.0.0"]
             Meta::NameValue(meta_name_value) => {
-                let ident = meta_name_value
-                    .path
-                    .get_ident()
-                    .ok_or_else(|| LumosError::SchemaParse("Invalid attribute".to_string(), None))?;
+                let ident = meta_name_value.path.get_ident().ok_or_else(|| {
+                    LumosError::SchemaParse("Invalid attribute".to_string(), None)
+                })?;
                 let name = ident.to_string();
 
                 // Extract the value (e.g., "1.0.0" from #[version = "1.0.0"])
