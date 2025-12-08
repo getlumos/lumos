@@ -1,6 +1,6 @@
 [package]
 name = "lumos-lsp"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 authors = ["LUMOS Core Team"]
 description = "Language Server Protocol implementation for LUMOS schema language"
