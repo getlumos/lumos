@@ -415,12 +415,12 @@ lumos generate schema.lumos --lang rust,typescript,python,go,ruby
 
 ### 6.1 Framework Integration
 
-**Status**: 1/4 complete (~25%)
+**Status**: 2/4 complete (50%)
 
 **Issues:**
 - [x] Create Anchor framework plugin for LUMOS [#55] ✅ **COMPLETE**
 - [ ] Add Seahorse integration for Python-based Solana development [#56]
-- [ ] Add native Solana program support (non-Anchor) [#57]
+- [x] Add native Solana program support (non-Anchor) [#57] ✅ **COMPLETE**
 - [ ] Add Metaplex standard compatibility for NFT schemas [#58]
 
 **Completed**:
@@ -462,6 +462,15 @@ lumos generate schema.lumos --lang rust,typescript,python,go,ruby
     - Dry run mode with `--dry-run` for preview
     - Program name and version configuration
     - Standard Anchor project structure output
+
+- #57 (Dec 8, 2025) - Native Solana Program Support (non-Anchor)
+  - Added `--target` CLI flag with three modes: auto, native, anchor
+  - Auto-detect based on `#[account]` attribute presence
+  - Native mode strips #[account] attributes and generates pure Borsh code
+  - Anchor mode requires #[account] for full Anchor integration
+  - Warning system for schema/target mismatches
+  - Comprehensive documentation at docs-lumos/frameworks/native-solana.md
+  - Native vs Anchor comparison table with migration guide
 
 ### 6.2 Tooling Ecosystem
 
@@ -1034,6 +1043,7 @@ See an opportunity to help? Check our [Contributing Guide](CONTRIBUTING.md) or:
 **Last Updated**: December 8, 2025
 
 **Recent Updates**:
+- Dec 8, 2025: **Native Solana program support COMPLETE** (#57) - Phase 6.1 at 50% - CLI --target flag for native/anchor mode
 - Dec 8, 2025: **PHASE 5.4 COMPLETE** 🎉🎉🎉 - All 7 issues closed (#67-#70, #73, #116, #117) - Multi-language code generation done!
 - Dec 8, 2025: **Cross-language compatibility tests COMPLETE** (#117) - 11 tests verifying all 5 generators
 - Dec 8, 2025: **Language-specific type mapping docs COMPLETE** (#116) - Python, Go, Ruby type guides
