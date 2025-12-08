@@ -9,7 +9,10 @@ use colored::*;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use lumos_core::anchor::{IdlGenerator, IdlGeneratorConfig};
+use lumos_core::anchor::{
+    generate_accounts_context, parse_anchor_attrs, AnchorAccountType, IdlGenerator,
+    IdlGeneratorConfig, InstructionAccount, InstructionContext,
+};
 use lumos_core::ast::Item as AstItem;
 use lumos_core::audit_generator::AuditGenerator;
 use lumos_core::corpus_generator::CorpusGenerator;
@@ -275,6 +278,42 @@ enum FuzzCommands {
 
 #[derive(Subcommand)]
 enum AnchorCommands {
+    /// Generate complete Anchor program from LUMOS schema
+    ///
+    /// Generates:
+    /// - Rust program with #[derive(Accounts)] contexts
+    /// - Account LEN constants
+    /// - Anchor IDL JSON
+    /// - TypeScript client (optional)
+    Generate {
+        /// Path to .lumos schema file
+        schema: PathBuf,
+
+        /// Output directory (default: current directory)
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Program name (default: derived from schema filename)
+        #[arg(short, long)]
+        name: Option<String>,
+
+        /// Program version (default: 0.1.0)
+        #[arg(short = 'V', long, default_value = "0.1.0")]
+        version: String,
+
+        /// Program address (optional)
+        #[arg(short, long)]
+        address: Option<String>,
+
+        /// Generate TypeScript client
+        #[arg(long)]
+        typescript: bool,
+
+        /// Dry run (show what would be generated without writing files)
+        #[arg(long)]
+        dry_run: bool,
+    },
+
     /// Generate Anchor IDL from LUMOS schema
     Idl {
         /// Path to .lumos schema file
@@ -408,6 +447,23 @@ fn main() -> Result<()> {
         } => run_check_compat(&from_schema, &to_schema, &format, verbose, strict),
 
         Commands::Anchor { command } => match command {
+            AnchorCommands::Generate {
+                schema,
+                output,
+                name,
+                version,
+                address,
+                typescript,
+                dry_run,
+            } => run_anchor_generate(
+                &schema,
+                output.as_deref(),
+                name.as_deref(),
+                &version,
+                address.as_deref(),
+                typescript,
+                dry_run,
+            ),
             AnchorCommands::Idl {
                 schema,
                 output,
@@ -2912,4 +2968,362 @@ fn run_anchor_space(schema_path: &Path, format: &str, account_name: Option<&str>
     }
 
     Ok(())
+}
+
+/// Generate complete Anchor program from LUMOS schema
+///
+/// This command generates:
+/// 1. Rust program with #[derive(Accounts)] contexts for instruction structs
+/// 2. Account LEN constants for all account types
+/// 3. Anchor IDL JSON
+/// 4. TypeScript client (optional)
+fn run_anchor_generate(
+    schema_path: &Path,
+    output_dir: Option<&Path>,
+    program_name: Option<&str>,
+    version: &str,
+    address: Option<&str>,
+    generate_typescript: bool,
+    dry_run: bool,
+) -> Result<()> {
+    let output_dir = output_dir.unwrap_or_else(|| Path::new("."));
+
+    // Validate output directory
+    if !dry_run {
+        validate_output_path(output_dir)?;
+    }
+
+    // Parse and transform schema
+    let (type_defs, _file_count) = resolve_schema(schema_path)?;
+
+    // Derive program name from schema filename if not provided
+    let name = program_name.map(String::from).unwrap_or_else(|| {
+        schema_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("my_program")
+            .to_string()
+    });
+
+    println!(
+        "{:>12} Anchor program '{}'...\n",
+        "Generating".cyan().bold(),
+        name
+    );
+
+    // Configure IDL generator
+    let idl_config = IdlGeneratorConfig {
+        program_name: name.clone(),
+        version: version.to_string(),
+        address: address.map(String::from),
+    };
+    let idl_generator = IdlGenerator::new(idl_config);
+
+    // Collect accounts, instructions, and types
+    let mut accounts = Vec::new();
+    let mut instructions = Vec::new();
+    let mut other_types = Vec::new();
+
+    for type_def in &type_defs {
+        match type_def {
+            TypeDefinition::Struct(s) => {
+                let is_account = s.metadata.attributes.iter().any(|a| a == "account");
+                let is_instruction = s.metadata.is_instruction;
+
+                if is_instruction {
+                    instructions.push(s);
+                } else if is_account {
+                    accounts.push(s);
+                } else {
+                    other_types.push(type_def);
+                }
+            }
+            TypeDefinition::Enum(_) | TypeDefinition::TypeAlias(_) => {
+                other_types.push(type_def);
+            }
+        }
+    }
+
+    // === Generate Rust Code ===
+    let mut rust_output = String::new();
+
+    // Header comment
+    rust_output.push_str("// Auto-generated by LUMOS - Anchor Program\n");
+    rust_output.push_str(&format!("// Source: {}\n", schema_path.display()));
+    rust_output.push_str(&format!("// Program: {}\n", name));
+    rust_output.push_str(&format!("// Version: {}\n\n", version));
+
+    // Imports
+    rust_output.push_str("use anchor_lang::prelude::*;\n\n");
+
+    // Program ID declaration (placeholder if no address provided)
+    if let Some(addr) = address {
+        rust_output.push_str(&format!("declare_id!(\"{}\");\n\n", addr));
+    } else {
+        rust_output.push_str("// TODO: Replace with your program ID\n");
+        rust_output.push_str("declare_id!(\"YourProgramIdHere11111111111111111111111111\");\n\n");
+    }
+
+    // Generate account structs with LEN constants
+    if !accounts.is_empty() {
+        rust_output.push_str(
+            "// ============================================================================\n",
+        );
+        rust_output.push_str("// Account Types\n");
+        rust_output.push_str(
+            "// ============================================================================\n\n",
+        );
+
+        for account in &accounts {
+            // Account struct
+            rust_output.push_str("#[account]\n");
+            rust_output.push_str(&format!("pub struct {} {{\n", account.name));
+            for field in &account.fields {
+                let rust_type = type_info_to_rust_type(&field.type_info);
+                rust_output.push_str(&format!("    pub {}: {},\n", field.name, rust_type));
+            }
+            rust_output.push_str("}\n\n");
+
+            // LEN constant
+            let space = idl_generator.calculate_account_space(account);
+            rust_output.push_str(&format!("impl {} {{\n", account.name));
+            rust_output.push_str("    /// Account size including 8-byte discriminator\n");
+            rust_output.push_str(&format!("    pub const LEN: usize = {};\n", space));
+            rust_output.push_str("}\n\n");
+        }
+    }
+
+    // Generate instruction contexts
+    if !instructions.is_empty() {
+        rust_output.push_str(
+            "// ============================================================================\n",
+        );
+        rust_output.push_str("// Instruction Contexts\n");
+        rust_output.push_str(
+            "// ============================================================================\n\n",
+        );
+
+        for instruction in &instructions {
+            // Build InstructionContext from the struct
+            let mut ctx_accounts = Vec::new();
+
+            for field in &instruction.fields {
+                let mut attrs = Vec::new();
+                for attr_str in &field.anchor_attrs {
+                    attrs.extend(parse_anchor_attrs(attr_str));
+                }
+
+                let account_type = infer_anchor_account_type(&field.type_info);
+
+                ctx_accounts.push(InstructionAccount {
+                    name: field.name.clone(),
+                    account_type,
+                    attrs,
+                    optional: field.optional,
+                    docs: vec![],
+                });
+            }
+
+            let ctx = InstructionContext {
+                name: instruction.name.clone(),
+                accounts: ctx_accounts,
+                args: vec![],
+            };
+
+            // Generate the #[derive(Accounts)] context
+            rust_output.push_str(&generate_accounts_context(&ctx));
+            rust_output.push('\n');
+        }
+    }
+
+    // Generate other types (enums, non-account structs)
+    if !other_types.is_empty() {
+        rust_output.push_str(
+            "// ============================================================================\n",
+        );
+        rust_output.push_str("// Custom Types\n");
+        rust_output.push_str(
+            "// ============================================================================\n\n",
+        );
+
+        for type_def in &other_types {
+            match type_def {
+                TypeDefinition::Struct(s) => {
+                    rust_output
+                        .push_str("#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]\n");
+                    rust_output.push_str(&format!("pub struct {} {{\n", s.name));
+                    for field in &s.fields {
+                        let rust_type = type_info_to_rust_type(&field.type_info);
+                        rust_output.push_str(&format!("    pub {}: {},\n", field.name, rust_type));
+                    }
+                    rust_output.push_str("}\n\n");
+                }
+                TypeDefinition::Enum(e) => {
+                    rust_output.push_str(
+                        "#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq)]\n",
+                    );
+                    rust_output.push_str(&format!("pub enum {} {{\n", e.name));
+                    for variant in &e.variants {
+                        match variant {
+                            lumos_core::ir::EnumVariantDefinition::Unit { name } => {
+                                rust_output.push_str(&format!("    {},\n", name));
+                            }
+                            lumos_core::ir::EnumVariantDefinition::Tuple { name, types } => {
+                                let type_strs: Vec<String> =
+                                    types.iter().map(type_info_to_rust_type).collect();
+                                rust_output.push_str(&format!(
+                                    "    {}({}),\n",
+                                    name,
+                                    type_strs.join(", ")
+                                ));
+                            }
+                            lumos_core::ir::EnumVariantDefinition::Struct { name, fields } => {
+                                rust_output.push_str(&format!("    {} {{\n", name));
+                                for field in fields {
+                                    let rust_type = type_info_to_rust_type(&field.type_info);
+                                    rust_output.push_str(&format!(
+                                        "        {}: {},\n",
+                                        field.name, rust_type
+                                    ));
+                                }
+                                rust_output.push_str("    },\n");
+                            }
+                        }
+                    }
+                    rust_output.push_str("}\n\n");
+                }
+                TypeDefinition::TypeAlias(_) => {
+                    // Type aliases are resolved, skip
+                }
+            }
+        }
+    }
+
+    // === Generate IDL ===
+    let idl = idl_generator.generate(&type_defs);
+    let idl_json = serde_json::to_string_pretty(&idl)?;
+
+    // === Generate TypeScript (optional) ===
+    let ts_output = if generate_typescript {
+        Some(typescript::generate_module(&type_defs))
+    } else {
+        None
+    };
+
+    // === Output Results ===
+    if dry_run {
+        println!("{}", "=== DRY RUN - No files written ===\n".yellow().bold());
+
+        println!("{}", "Rust Program (lib.rs):".bold());
+        println!("{}", "-".repeat(60));
+        println!("{}", rust_output);
+
+        println!("{}", "IDL (idl.json):".bold());
+        println!("{}", "-".repeat(60));
+        println!("{}", idl_json);
+
+        if let Some(ref ts) = ts_output {
+            println!("{}", "TypeScript Client (types.ts):".bold());
+            println!("{}", "-".repeat(60));
+            println!("{}", ts);
+        }
+    } else {
+        // Create output directories
+        let programs_dir = output_dir.join("programs").join(&name).join("src");
+        let idl_dir = output_dir.join("target").join("idl");
+
+        fs::create_dir_all(&programs_dir)?;
+        fs::create_dir_all(&idl_dir)?;
+
+        // Write Rust program
+        let rust_path = programs_dir.join("lib.rs");
+        fs::write(&rust_path, &rust_output)?;
+        println!("{:>12} {}", "Generated".green().bold(), rust_path.display());
+
+        // Write IDL
+        let idl_path = idl_dir.join(format!("{}.json", name));
+        fs::write(&idl_path, &idl_json)?;
+        println!("{:>12} {}", "Generated".green().bold(), idl_path.display());
+
+        // Write TypeScript
+        if let Some(ref ts) = ts_output {
+            let app_dir = output_dir.join("app").join("src");
+            fs::create_dir_all(&app_dir)?;
+
+            let ts_path = app_dir.join("types.ts");
+            fs::write(&ts_path, ts)?;
+            println!("{:>12} {}", "Generated".green().bold(), ts_path.display());
+        }
+    }
+
+    // Print summary
+    println!();
+    println!("{}", "Summary:".bold());
+    println!("  Program: {}", name.cyan());
+    println!("  Version: {}", version);
+    println!("  Accounts: {}", accounts.len());
+    println!("  Instructions: {}", instructions.len());
+    println!("  Other types: {}", other_types.len());
+
+    if !dry_run {
+        println!();
+        println!("{}", "Next steps:".bold());
+        println!("  1. Update declare_id!() with your program address");
+        println!("  2. Implement instruction handlers");
+        println!("  3. Run `anchor build` to compile");
+        println!("  4. Run `anchor test` to verify");
+    }
+
+    Ok(())
+}
+
+/// Convert TypeInfo to Rust type string
+fn type_info_to_rust_type(ty: &lumos_core::ir::TypeInfo) -> String {
+    match ty {
+        lumos_core::ir::TypeInfo::Primitive(name) => match name.as_str() {
+            "PublicKey" | "Pubkey" => "Pubkey".to_string(),
+            _ => name.clone(),
+        },
+        lumos_core::ir::TypeInfo::Generic(name) => name.clone(),
+        lumos_core::ir::TypeInfo::UserDefined(name) => name.clone(),
+        lumos_core::ir::TypeInfo::Array(inner) => {
+            format!("Vec<{}>", type_info_to_rust_type(inner))
+        }
+        lumos_core::ir::TypeInfo::FixedArray { element, size } => {
+            format!("[{}; {}]", type_info_to_rust_type(element), size)
+        }
+        lumos_core::ir::TypeInfo::Option(inner) => {
+            format!("Option<{}>", type_info_to_rust_type(inner))
+        }
+    }
+}
+
+/// Infer Anchor account type from LUMOS type
+fn infer_anchor_account_type(ty: &lumos_core::ir::TypeInfo) -> AnchorAccountType {
+    match ty {
+        lumos_core::ir::TypeInfo::Primitive(name) if name == "Signer" => AnchorAccountType::Signer,
+        lumos_core::ir::TypeInfo::UserDefined(name) => match name.as_str() {
+            "Signer" => AnchorAccountType::Signer,
+            "SystemAccount" => AnchorAccountType::SystemAccount,
+            "UncheckedAccount" => AnchorAccountType::UncheckedAccount,
+            "AccountInfo" => AnchorAccountType::AccountInfo,
+            _ if name.starts_with("Program<") => {
+                let inner = name
+                    .strip_prefix("Program<")
+                    .and_then(|s| s.strip_suffix('>'))
+                    .unwrap_or("System");
+                AnchorAccountType::Program(inner.to_string())
+            }
+            _ if name.starts_with("Sysvar<") => {
+                let inner = name
+                    .strip_prefix("Sysvar<")
+                    .and_then(|s| s.strip_suffix('>'))
+                    .unwrap_or("Rent");
+                AnchorAccountType::Sysvar(inner.to_string())
+            }
+            _ if name == "SystemProgram" => AnchorAccountType::Program("System".to_string()),
+            _ => AnchorAccountType::Account(name.clone()),
+        },
+        _ => AnchorAccountType::AccountInfo,
+    }
 }

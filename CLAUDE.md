@@ -391,7 +391,7 @@ Write data structures once in `.lumos` syntax → Generate production-ready Rust
 | Solana types | ✅ | PublicKey, Signature |
 | Complex types | ✅ | Vec, Option |
 | Context-aware generation | ✅ | Anchor vs pure Borsh detection |
-| CLI tool | ✅ | 5 commands (generate, validate, init, check, diff) |
+| CLI tool | ✅ | generate, validate, init, check, diff, anchor (idl/space/generate) |
 | VSCode extension | ✅ | Separate repo: getlumos/vscode-lumos |
 | User-defined type validation | ✅ | Validates type references during transformation (v0.1.1) |
 | Path traversal protection | ✅ | CLI validates output paths for security (v0.1.1) |
@@ -401,6 +401,7 @@ Write data structures once in `.lumos` syntax → Generate production-ready Rust
 | Fuzzing support | ✅ | Generate fuzzing harnesses for code (v0.1.2) |
 | Language Server (LSP) | ✅ | Diagnostics, completion, hover for all editors (v0.2.0) |
 | Multi-language generation | ✅ | Rust, TypeScript, Python, Go, Ruby via --lang flag |
+| Anchor plugin | ✅ | Generate complete Anchor programs with `lumos anchor generate` |
 
 ---
 
@@ -421,6 +422,9 @@ cargo build --release --all-features --workspace
 
 # Generate from schema
 cargo run --bin lumos -- generate examples/gaming/schema.lumos
+
+# Generate complete Anchor program
+cargo run --bin lumos -- anchor generate examples/anchor-integration/schema.lumos --dry-run
 
 # Run LSP server (for editor integration)
 cargo run --bin lumos-lsp

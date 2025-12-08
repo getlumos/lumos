@@ -393,7 +393,7 @@ lumos generate schema.lumos --lang rust,typescript,python,go,ruby
 - [ ] Add Metaplex standard compatibility for NFT schemas [#58]
 
 **Completed**:
-- #55 (Nov 26, 2025) - Anchor Framework Plugin - All 4 phases complete
+- #55 (Dec 8, 2025) - Anchor Framework Plugin - All 5 phases complete
   - Phase 1 ✅ - IDL Generation and Space Calculation
     - New anchor module with IDL types (Idl, IdlTypeDef, IdlField, IdlType)
     - IdlGenerator with generate(), convert_struct(), convert_enum()
@@ -419,6 +419,18 @@ lumos generate schema.lumos --lang rust,typescript,python,go,ruby
     - 1 integration test for instruction context generation (test_e2e.rs)
     - Comprehensive anchor-integration example schema
     - All 260 tests passing, 0 clippy warnings
+  - Phase 5 ✅ - CLI `anchor generate` Command
+    - NEW CLI command: `lumos anchor generate schema.lumos`
+    - Generates complete Anchor Rust program with:
+      - Account structs with `#[account]` macro
+      - LEN constants for all account types
+      - `#[derive(Accounts)]` instruction contexts with all constraints
+      - Proper imports and `declare_id!()` placeholder
+    - Generates Anchor IDL JSON
+    - Optional TypeScript client generation with `--typescript` flag
+    - Dry run mode with `--dry-run` for preview
+    - Program name and version configuration
+    - Standard Anchor project structure output
 
 ### 6.2 Tooling Ecosystem
 
@@ -987,9 +999,10 @@ See an opportunity to help? Check our [Contributing Guide](CONTRIBUTING.md) or:
 
 **This roadmap is a living document** - priorities may shift based on community feedback and ecosystem needs.
 
-**Last Updated**: November 26, 2025
+**Last Updated**: December 8, 2025
 
 **Recent Updates**:
+- Dec 8, 2025: **Anchor `anchor generate` CLI command COMPLETE** (#55) - Generate complete Anchor programs with instruction contexts! 🎉
 - Nov 26, 2025: **Ruby schema generator COMPLETE** (#70) - Phase 5.4 at 71% 🎉 - Full Ruby class generation with borsh-rb
 - Nov 26, 2025: **Go schema generator COMPLETE** (#69) - Go structs with borsh tags and PascalCase fields
 - Nov 26, 2025: **Python schema generator COMPLETE** (#68) - Full dataclass generation with borsh-construct
