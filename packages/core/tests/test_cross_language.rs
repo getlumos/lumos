@@ -4,10 +4,8 @@
 //! produce consistent Borsh serialization schemas.
 
 use lumos_core::generators::{
-    go::generate_module as generate_go,
-    python::generate_module as generate_python,
-    ruby::generate_module as generate_ruby,
-    rust::generate_module as generate_rust,
+    go::generate_module as generate_go, python::generate_module as generate_python,
+    ruby::generate_module as generate_ruby, rust::generate_module as generate_rust,
     typescript::generate_module as generate_typescript,
 };
 use lumos_core::ir::{

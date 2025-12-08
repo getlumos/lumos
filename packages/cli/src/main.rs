@@ -655,9 +655,7 @@ fn run_generate(
                     "{}: Schema contains #[account] attributes but target is 'native'",
                     "warning".yellow().bold()
                 );
-                eprintln!(
-                    "         Remove #[account] or use --target auto for Anchor integration"
-                );
+                eprintln!("         Remove #[account] or use --target auto for Anchor integration");
                 // Strip account attributes for native mode
                 for type_def in &mut ir {
                     match type_def {
