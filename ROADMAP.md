@@ -25,8 +25,8 @@ LUMOS continues rapid evolution with IDE integration and schema versioning:
 - ✅ **Interactive playground** - Live code generation at docs.lumos-lang.org/playground
 - ✅ **Performance benchmarks** - Comprehensive Borsh comparison suite
 
-**Completed**: Phase 5.1 (Schema Evolution - 100%), Phase 5.2 (IDE Integration - 100%), Phase 5.3 (Advanced Type System - 100%), Phase 6.2 (Tooling Ecosystem - 100%), Phase 6.3 (Security & Validation - 100%)
-**Active**: Phase 5.4 (Multi-Language Generation), Phase 6.1 (Framework Integration)
+**Completed**: Phase 5.1 (Schema Evolution - 100%), Phase 5.2 (IDE Integration - 100%), Phase 5.3 (Advanced Type System - 100%), Phase 5.4 (Multi-Language Generation - 100%), Phase 6.2 (Tooling Ecosystem - 100%), Phase 6.3 (Security & Validation - 100%)
+**Active**: Phase 6.1 (Framework Integration)
 **Next**: Era 2 - Language Transformation (Phase 7+)
 
 ---
@@ -318,15 +318,15 @@ Transform from schema DSL → full programming language for type-safe Solana wor
 
 **Goal**: Generate schemas in Python, Go, and Ruby alongside Rust and TypeScript
 
-**Status**: 5/7 complete (~71%)
+**Status**: 7/7 complete (100%) ✅
 
 **Issues:**
 - [x] Design multi-language code generation architecture [#67] ✅ **COMPLETE**
 - [x] Implement Python schema generator with Borsh serialization [#68] ✅ **COMPLETE**
 - [x] Implement Go schema generator with Borsh serialization [#69] ✅ **COMPLETE**
 - [x] Implement Ruby schema generator with Borsh serialization [#70] ✅ **COMPLETE**
-- [ ] Add language-specific type mapping documentation [#71]
-- [ ] Create cross-language schema compatibility tests [#72]
+- [x] Add language-specific type mapping documentation [#116] ✅ **COMPLETE**
+- [x] Create cross-language schema compatibility tests [#117] ✅ **COMPLETE**
 - [x] Add `--lang` flag to `lumos generate` command [#73] ✅ **COMPLETE**
 
 **Completed**:
@@ -370,7 +370,26 @@ Transform from schema DSL → full programming language for type-safe Solana wor
   - Borsh SCHEMA constant with [:u8, N], [:array, T], [:option, T] syntax
   - Ruby modules for unit enums, Struct-based variants for complex enums
 
-**Success Metric**: One `.lumos` file generates type-safe schemas in 5 languages (Rust, TypeScript, Python, Go, Ruby)
+- #116 (Dec 8, 2025) - Language-specific type mapping documentation
+  - Updated main types.md with 5-language type mapping table
+  - Created python-types.md with borsh-construct integration guide
+  - Created go-types.md with Go struct patterns and U128 handling
+  - Created ruby-types.md with borsh-rb gem integration
+  - Comprehensive usage examples and best practices for each language
+  - See Also links connecting all language-specific documentation
+
+- #117 (Dec 8, 2025) - Cross-language schema compatibility tests
+  - Created `test_cross_language.rs` (11 comprehensive tests)
+  - Tests all 5 generators with same IR definitions
+  - Validates field ordering consistency across languages
+  - Tests u128 handling differences (bigint vs [16]byte vs native)
+  - Tests Option representation (*T vs undefined vs nil)
+  - Tests fixed arrays, nested types, complex enums
+  - All generators verified to produce valid output
+
+**Success Metric**: One `.lumos` file generates type-safe schemas in 5 languages (Rust, TypeScript, Python, Go, Ruby) ✅ **ACHIEVED**
+
+**Milestone**: 🎯 **PHASE 5.4 COMPLETE** - Full multi-language code generation with documentation and compatibility testing
 
 **Example:**
 ```bash
@@ -867,9 +886,9 @@ Core language free forever, monetize via cloud platform and premium extensions
 
 ## Completed Phases
 
-### Phase 5: Advanced Features 🚧 (In Progress - Nov 2025)
+### Phase 5: Advanced Features ✅ (Completed - Dec 2025)
 
-**Overall Progress**: 18/23 features complete (78%)
+**Overall Progress**: 22/22 features complete (100%) 🎉
 
 **5.1 Schema Evolution (100% complete) ✅:**
 - [x] Schema versioning with #[version] attribute (#40)
@@ -892,13 +911,14 @@ Core language free forever, monetize via cloud platform and premium extensions
 - [x] Nested module support (#53)
 - [x] Generic struct/enum definitions (#54)
 
-**5.4 Multi-Language Code Generation (71% complete):**
+**5.4 Multi-Language Code Generation (100% complete) ✅:**
 - [x] Multi-language architecture (#67)
 - [x] Python schema generator (#68)
 - [x] Go schema generator (#69)
 - [x] Ruby schema generator (#70)
 - [x] CLI --lang flag (#73)
-- [ ] Language-specific docs (#71), cross-language tests (#72)
+- [x] Language-specific type mapping documentation (#116)
+- [x] Cross-language schema compatibility tests (#117)
 
 **6.2 Tooling Ecosystem (100% complete) ✅:**
 - [x] cargo lumos subcommand (#59)
@@ -912,7 +932,7 @@ Core language free forever, monetize via cloud platform and premium extensions
 - [x] Security audit checklist generator
 - [x] Fuzzing support
 
-**Result**: Strong foundation for schema evolution and IDE support, complete security validation toolkit
+**Result**: PHASE 5 COMPLETE - Schema evolution, IDE integration, advanced types, multi-language generation, complete security validation toolkit
 
 ---
 
@@ -1014,6 +1034,9 @@ See an opportunity to help? Check our [Contributing Guide](CONTRIBUTING.md) or:
 **Last Updated**: December 8, 2025
 
 **Recent Updates**:
+- Dec 8, 2025: **PHASE 5.4 COMPLETE** 🎉🎉🎉 - All 7 issues closed (#67-#70, #73, #116, #117) - Multi-language code generation done!
+- Dec 8, 2025: **Cross-language compatibility tests COMPLETE** (#117) - 11 tests verifying all 5 generators
+- Dec 8, 2025: **Language-specific type mapping docs COMPLETE** (#116) - Python, Go, Ruby type guides
 - Dec 8, 2025: **TypeScript derive equivalents COMPLETE** (#107) - PartialEq→equals, Hash→hashCode, Default→default, Ord→compareTo
 - Dec 8, 2025: **Anchor `anchor generate` CLI command COMPLETE** (#55) - Generate complete Anchor programs with instruction contexts! 🎉
 - Nov 26, 2025: **Ruby schema generator COMPLETE** (#70) - Phase 5.4 at 71% 🎉 - Full Ruby class generation with borsh-rb
