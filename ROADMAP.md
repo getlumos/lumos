@@ -415,11 +415,11 @@ lumos generate schema.lumos --lang rust,typescript,python,go,ruby
 
 ### 6.1 Framework Integration
 
-**Status**: 2/4 complete (50%)
+**Status**: 3/4 complete (75%)
 
 **Issues:**
 - [x] Create Anchor framework plugin for LUMOS [#55] ✅ **COMPLETE**
-- [ ] Add Seahorse integration for Python-based Solana development [#56]
+- [x] Add Seahorse integration for Python-based Solana development [#56] ✅ **COMPLETE**
 - [x] Add native Solana program support (non-Anchor) [#57] ✅ **COMPLETE**
 - [ ] Add Metaplex standard compatibility for NFT schemas [#58]
 
@@ -471,6 +471,19 @@ lumos generate schema.lumos --lang rust,typescript,python,go,ruby
   - Warning system for schema/target mismatches
   - Comprehensive documentation at docs-lumos/frameworks/native-solana.md
   - Native vs Anchor comparison table with migration guide
+
+- #56 (Dec 8, 2025) - Seahorse Integration for Python-based Solana Development
+  - New `seahorse.rs` generator (450+ lines, 7 unit tests)
+  - Added `Language::Seahorse` variant to Language enum
+  - CLI support: `lumos generate schema.lumos --lang seahorse`
+  - Seahorse-specific code generation:
+    - `from seahorse.prelude import *` imports
+    - `@account` decorator for account structs
+    - Native Seahorse types (u8, u16, u64, Pubkey - not Python int)
+    - IntEnum for unit enums, dataclass for complex enums
+    - No explicit Borsh schemas (Seahorse handles serialization)
+  - Comprehensive documentation at docs-lumos/frameworks/seahorse.md
+  - Type mapping: PublicKey→Pubkey, arrays→Array[T, N], options→T | None
 
 ### 6.2 Tooling Ecosystem
 
@@ -1043,7 +1056,8 @@ See an opportunity to help? Check our [Contributing Guide](CONTRIBUTING.md) or:
 **Last Updated**: December 8, 2025
 
 **Recent Updates**:
-- Dec 8, 2025: **Native Solana program support COMPLETE** (#57) - Phase 6.1 at 50% - CLI --target flag for native/anchor mode
+- Dec 8, 2025: **Seahorse integration COMPLETE** (#56) - Phase 6.1 at 75% - Python-based Solana development with `--lang seahorse`
+- Dec 8, 2025: **Native Solana program support COMPLETE** (#57) - CLI --target flag for native/anchor mode
 - Dec 8, 2025: **PHASE 5.4 COMPLETE** 🎉🎉🎉 - All 7 issues closed (#67-#70, #73, #116, #117) - Multi-language code generation done!
 - Dec 8, 2025: **Cross-language compatibility tests COMPLETE** (#117) - 11 tests verifying all 5 generators
 - Dec 8, 2025: **Language-specific type mapping docs COMPLETE** (#116) - Python, Go, Ruby type guides
