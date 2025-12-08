@@ -1,0 +1,19 @@
+// Account Model
+// Demonstrates: Cross-module type references
+
+#[solana]
+enum AccountType {
+    Basic,
+    Premium,
+    Enterprise,
+}
+
+#[solana]
+#[account]
+struct Account {
+    owner: PublicKey,
+    account_type: AccountType,
+    balance: u64,
+    is_verified: bool,
+    last_activity: i64,
+}

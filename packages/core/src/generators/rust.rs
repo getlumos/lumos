@@ -61,9 +61,17 @@
 
 use crate::ir::{
     EnumDefinition, EnumVariantDefinition, StructDefinition, TypeAliasDefinition, TypeDefinition,
-    TypeInfo,
+    TypeInfo, Visibility,
 };
 use std::collections::HashSet;
+
+/// Convert visibility to Rust keyword prefix
+fn visibility_prefix(vis: Visibility) -> &'static str {
+    match vis {
+        Visibility::Public => "pub ",
+        Visibility::Private => "",
+    }
+}
 
 /// Generate Rust code from a type definition
 pub fn generate(type_def: &TypeDefinition) -> String {
@@ -90,9 +98,10 @@ fn generate_type_alias(alias_def: &TypeAliasDefinition) -> String {
         output.push_str("use solana_program::pubkey::Pubkey;\n\n");
     }
 
-    // Generate the type alias
+    // Generate the type alias with visibility
+    let vis = visibility_prefix(alias_def.visibility);
     let rust_type = map_type_to_rust(&alias_def.target);
-    output.push_str(&format!("pub type {} = {};\n", alias_def.name, rust_type));
+    output.push_str(&format!("{}type {} = {};\n", vis, alias_def.name, rust_type));
 
     output
 }
@@ -151,7 +160,8 @@ fn generate_struct(struct_def: &StructDefinition) -> String {
             struct_def.generic_params.join(", ")
         )
     };
-    output.push_str(&format!("pub struct {} {{\n", struct_name_with_generics));
+    let vis = visibility_prefix(struct_def.visibility);
+    output.push_str(&format!("{}struct {} {{\n", vis, struct_name_with_generics));
 
     // Generate fields
     for field in &struct_def.fields {
@@ -214,7 +224,8 @@ fn generate_enum(enum_def: &EnumDefinition) -> String {
     } else {
         format!("{}<{}>", enum_def.name, enum_def.generic_params.join(", "))
     };
-    output.push_str(&format!("pub enum {} {{\n", enum_name_with_generics));
+    let vis = visibility_prefix(enum_def.visibility);
+    output.push_str(&format!("{}enum {} {{\n", vis, enum_name_with_generics));
 
     // Generate variants
     for variant in &enum_def.variants {
@@ -541,7 +552,8 @@ fn generate_enum_with_context(enum_def: &EnumDefinition, use_anchor: bool) -> St
     } else {
         format!("{}<{}>", enum_def.name, enum_def.generic_params.join(", "))
     };
-    output.push_str(&format!("pub enum {} {{\n", enum_name_with_generics));
+    let vis = visibility_prefix(enum_def.visibility);
+    output.push_str(&format!("{}enum {} {{\n", vis, enum_name_with_generics));
 
     // Generate variants
     for variant in &enum_def.variants {
@@ -608,7 +620,8 @@ fn generate_struct_with_context(struct_def: &StructDefinition, use_anchor: bool)
             struct_def.generic_params.join(", ")
         )
     };
-    output.push_str(&format!("pub struct {} {{\n", struct_name_with_generics));
+    let vis = visibility_prefix(struct_def.visibility);
+    output.push_str(&format!("{}struct {} {{\n", vis, struct_name_with_generics));
 
     // Generate fields
     for field in &struct_def.fields {
@@ -871,7 +884,7 @@ mod tests {
     use super::*;
     use crate::ir::{
         EnumDefinition, EnumVariantDefinition, FieldDefinition, Metadata, StructDefinition,
-        TypeDefinition, TypeInfo,
+        TypeDefinition, TypeInfo, Visibility,
     };
 
     #[test]
@@ -896,6 +909,9 @@ mod tests {
                 },
             ],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+
+            module_path: Vec::new(),
         });
 
         let code = generate(&type_def);
@@ -934,6 +950,8 @@ mod tests {
                 is_instruction: false,
                 anchor_attrs: vec![],
             },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         });
 
         let code = generate(&type_def);
@@ -958,6 +976,9 @@ mod tests {
                 anchor_attrs: vec![],
             }],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+
+            module_path: Vec::new(),
         });
 
         let code = generate(&type_def);
@@ -977,6 +998,9 @@ mod tests {
                 anchor_attrs: vec![],
             }],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+
+            module_path: Vec::new(),
         });
 
         let code = generate(&type_def);
@@ -991,12 +1015,18 @@ mod tests {
                 generic_params: vec![],
                 fields: vec![],
                 metadata: Metadata::default(),
+            visibility: Visibility::Public,
+
+            module_path: Vec::new(),
             }),
             TypeDefinition::Struct(StructDefinition {
                 name: "Post".to_string(),
                 generic_params: vec![],
                 fields: vec![],
                 metadata: Metadata::default(),
+            visibility: Visibility::Public,
+
+            module_path: Vec::new(),
             }),
         ];
 
@@ -1025,6 +1055,8 @@ mod tests {
                 is_instruction: false,
                 anchor_attrs: vec![],
             },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         });
 
         let code = generate(&type_def);
@@ -1055,6 +1087,8 @@ mod tests {
                 is_instruction: false,
                 anchor_attrs: vec![],
             },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         });
 
         let code = generate(&type_def);
@@ -1092,6 +1126,8 @@ mod tests {
                 is_instruction: false,
                 anchor_attrs: vec![],
             },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         });
 
         let code = generate(&type_def);
@@ -1156,6 +1192,8 @@ mod tests {
                 is_instruction: false,
                 anchor_attrs: vec![],
             },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         });
 
         let code = generate(&type_def);
@@ -1195,6 +1233,8 @@ mod tests {
                 is_instruction: false,
                 anchor_attrs: vec![],
             },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         });
 
         let code = generate(&type_def);
@@ -1223,6 +1263,8 @@ mod tests {
                 is_instruction: false,
                 anchor_attrs: vec![],
             },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         });
 
         let code = generate(&type_def);
@@ -1250,6 +1292,8 @@ mod tests {
                 is_instruction: false,
                 anchor_attrs: vec![],
             },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         });
 
         let code = generate(&type_def);
@@ -1279,6 +1323,8 @@ mod tests {
                 is_instruction: false,
                 anchor_attrs: vec![],
             },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         });
 
         let code = generate(&type_def);
@@ -1309,5 +1355,83 @@ mod tests {
         ));
         assert!(code.contains("pub struct Account"));
         assert!(code.contains("pub balance: u64"));
+    }
+
+    #[test]
+    fn test_visibility_public_struct() {
+        let struct_def = StructDefinition {
+            name: "PublicUser".to_string(),
+            generic_params: vec![],
+            fields: vec![FieldDefinition {
+                name: "id".to_string(),
+                type_info: TypeInfo::Primitive("u64".to_string()),
+                optional: false,
+                deprecated: None,
+                anchor_attrs: vec![],
+            }],
+            metadata: Metadata::default(),
+            visibility: Visibility::Public,
+            module_path: vec![],
+        };
+
+        let code = generate_struct(&struct_def);
+        assert!(code.contains("pub struct PublicUser"));
+    }
+
+    #[test]
+    fn test_visibility_private_struct() {
+        let struct_def = StructDefinition {
+            name: "PrivateUser".to_string(),
+            generic_params: vec![],
+            fields: vec![FieldDefinition {
+                name: "id".to_string(),
+                type_info: TypeInfo::Primitive("u64".to_string()),
+                optional: false,
+                deprecated: None,
+                anchor_attrs: vec![],
+            }],
+            metadata: Metadata::default(),
+            visibility: Visibility::Private,
+            module_path: vec![],
+        };
+
+        let code = generate_struct(&struct_def);
+        assert!(code.contains("struct PrivateUser"));
+        assert!(!code.contains("pub struct PrivateUser"));
+    }
+
+    #[test]
+    fn test_visibility_public_enum() {
+        let enum_def = EnumDefinition {
+            name: "PublicStatus".to_string(),
+            generic_params: vec![],
+            variants: vec![EnumVariantDefinition::Unit {
+                name: "Active".to_string(),
+            }],
+            metadata: Metadata::default(),
+            visibility: Visibility::Public,
+            module_path: vec![],
+        };
+
+        let code = generate_enum(&enum_def);
+        assert!(code.contains("pub enum PublicStatus"));
+    }
+
+    #[test]
+    fn test_visibility_private_enum() {
+        let enum_def = EnumDefinition {
+            name: "PrivateStatus".to_string(),
+            generic_params: vec![],
+            variants: vec![EnumVariantDefinition::Unit {
+                name: "Active".to_string(),
+            }],
+            metadata: Metadata::default(),
+            visibility: Visibility::Private,
+            module_path: vec![],
+        };
+
+        let code = generate_enum(&enum_def);
+        assert!(code.contains("enum PrivateStatus"));
+        assert!(!code.contains("pub enum PrivateStatus"));
     }
 }

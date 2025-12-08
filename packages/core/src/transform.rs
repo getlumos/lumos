@@ -66,12 +66,12 @@
 use crate::ast::{
     Attribute, AttributeValue, EnumDef as AstEnum, EnumVariant as AstEnumVariant,
     FieldDef as AstField, Item as AstItem, LumosFile, StructDef as AstStruct,
-    TypeAlias as AstTypeAlias, TypeSpec as AstType,
+    TypeAlias as AstTypeAlias, TypeSpec as AstType, Visibility as AstVisibility,
 };
 use crate::error::{LumosError, Result};
 use crate::ir::{
     EnumDefinition, EnumVariantDefinition, FieldDefinition, Metadata, StructDefinition,
-    TypeAliasDefinition, TypeDefinition, TypeInfo,
+    TypeAliasDefinition, TypeDefinition, TypeInfo, Visibility,
 };
 use std::collections::{HashMap, HashSet};
 
@@ -421,7 +421,20 @@ fn transform_type_alias(
         })?
         .clone();
 
-    Ok(TypeAliasDefinition { name, target })
+    Ok(TypeAliasDefinition {
+        name,
+        target,
+        visibility: Visibility::Public, // Type aliases are always public by default
+        module_path: Vec::new(),         // Will be set by module resolver if needed
+    })
+}
+
+/// Convert AST visibility to IR visibility
+fn convert_visibility(ast_vis: &AstVisibility) -> Visibility {
+    match ast_vis {
+        AstVisibility::Public => Visibility::Public,
+        AstVisibility::Private => Visibility::Private,
+    }
 }
 
 /// Transform a single struct definition
@@ -431,6 +444,9 @@ fn transform_struct(
 ) -> Result<StructDefinition> {
     // Extract metadata from attributes BEFORE consuming struct
     let metadata = extract_struct_metadata(&struct_def);
+
+    // Extract visibility before consuming
+    let visibility = convert_visibility(&struct_def.visibility);
 
     let name = struct_def.name;
     let generic_params = struct_def.type_params;
@@ -447,6 +463,8 @@ fn transform_struct(
         generic_params,
         fields,
         metadata,
+        visibility,
+        module_path: Vec::new(), // Will be set by module resolver if needed
     })
 }
 
@@ -454,6 +472,9 @@ fn transform_struct(
 fn transform_enum(enum_def: AstEnum, resolver: &TypeAliasResolver) -> Result<EnumDefinition> {
     // Extract metadata from attributes BEFORE consuming enum
     let metadata = extract_enum_metadata(&enum_def);
+
+    // Extract visibility before consuming
+    let visibility = convert_visibility(&enum_def.visibility);
 
     let name = enum_def.name;
     let generic_params = enum_def.type_params;
@@ -470,6 +491,8 @@ fn transform_enum(enum_def: AstEnum, resolver: &TypeAliasResolver) -> Result<Enu
         generic_params,
         variants,
         metadata,
+        visibility,
+        module_path: Vec::new(), // Will be set by module resolver if needed
     })
 }
 

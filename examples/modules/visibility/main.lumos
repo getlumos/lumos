@@ -1,0 +1,13 @@
+// Visibility Example - Entry Point
+// Demonstrates: Public and private type visibility
+
+mod api;
+mod internal;
+
+// Self-contained struct for validation
+#[solana]
+#[account]
+struct AppState {
+    admin: PublicKey,
+    initialized: bool,
+}

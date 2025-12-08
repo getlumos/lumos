@@ -318,7 +318,7 @@ mod generator_errors {
     use lumos_core::generators::{rust, typescript};
     use lumos_core::ir::{
         EnumDefinition, EnumVariantDefinition, FieldDefinition, Metadata, StructDefinition,
-        TypeDefinition, TypeInfo,
+        TypeDefinition, TypeInfo, Visibility,
     };
 
     #[test]
@@ -328,6 +328,8 @@ mod generator_errors {
             generic_params: vec![],
             fields: vec![],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         };
 
         let type_def = TypeDefinition::Struct(empty_struct);
@@ -348,6 +350,8 @@ mod generator_errors {
             generic_params: vec![],
             variants: vec![],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         };
 
         let type_def = TypeDefinition::Enum(empty_enum);
@@ -378,6 +382,8 @@ mod generator_errors {
             generic_params: vec![],
             fields: vec![nested_field],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         };
 
         let type_def = TypeDefinition::Struct(struct_def);
@@ -416,6 +422,8 @@ mod generator_errors {
                 },
             ],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         };
 
         let type_def = TypeDefinition::Enum(mixed_enum);

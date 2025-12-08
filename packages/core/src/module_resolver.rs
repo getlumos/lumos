@@ -750,9 +750,10 @@ use types::UserId;
     fn test_use_statement_private_type() {
         let temp_dir = TempDir::new().unwrap();
 
-        // Create types.lumos with private UserId
+        // Create types.lumos with private UserId using pub(crate) for explicit private
+        // Note: LUMOS defaults to public visibility, so we use pub(crate) to make it private
         let types_path = temp_dir.path().join("types.lumos");
-        fs::write(&types_path, "struct UserId { value: u64 }").unwrap(); // Not pub!
+        fs::write(&types_path, "pub(crate) struct UserId { value: u64 }").unwrap();
 
         // Create main.lumos that tries to use private UserId
         let main_path = temp_dir.path().join("main.lumos");

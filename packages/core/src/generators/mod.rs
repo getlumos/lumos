@@ -404,13 +404,15 @@ pub fn get_generators(languages: &[Language]) -> Vec<Box<dyn CodeGenerator>> {
 ///
 /// ```rust
 /// use lumos_core::generators::{Language, generate_for_languages};
-/// use lumos_core::ir::{TypeDefinition, StructDefinition, Metadata};
+/// use lumos_core::ir::{TypeDefinition, StructDefinition, Metadata, Visibility};
 ///
 /// let type_defs = vec![TypeDefinition::Struct(StructDefinition {
 ///     name: "User".to_string(),
 ///     generic_params: vec![],
 ///     fields: vec![],
 ///     metadata: Metadata::default(),
+///     visibility: Visibility::Public,
+///     module_path: Vec::new(),
 /// })];
 ///
 /// let results = generate_for_languages(&type_defs, &[Language::Rust, Language::TypeScript]);
@@ -429,7 +431,7 @@ pub fn generate_for_languages(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ir::{FieldDefinition, Metadata, StructDefinition, TypeInfo};
+    use crate::ir::{FieldDefinition, Metadata, StructDefinition, TypeInfo, Visibility};
 
     #[test]
     fn test_language_from_name() {
@@ -537,6 +539,8 @@ mod tests {
                 anchor_attrs: vec![],
             }],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         })];
 
         let results =
@@ -563,6 +567,8 @@ mod tests {
                 anchor_attrs: vec![],
             }],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         })];
 
         let code = gen.generate_module(&type_defs);
@@ -585,6 +591,8 @@ mod tests {
                 anchor_attrs: vec![],
             }],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         })];
 
         let code = gen.generate_module(&type_defs);
@@ -607,6 +615,8 @@ mod tests {
                 anchor_attrs: vec![],
             }],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         })];
 
         let code = gen.generate_module(&type_defs);
@@ -637,6 +647,8 @@ mod tests {
                 anchor_attrs: vec![],
             }],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         })];
 
         let code = gen.generate_module(&type_defs);
@@ -667,6 +679,8 @@ mod tests {
                 anchor_attrs: vec![],
             }],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         })];
 
         let code = gen.generate_module(&type_defs);

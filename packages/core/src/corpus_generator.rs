@@ -485,7 +485,7 @@ fn to_snake_case(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ir::{FieldDefinition, Metadata};
+    use crate::ir::{FieldDefinition, Metadata, Visibility};
 
     #[test]
     fn test_generates_minimal_struct_corpus() {
@@ -500,6 +500,9 @@ mod tests {
                 anchor_attrs: vec![],
             }],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+
+            module_path: Vec::new(),
         })];
 
         let generator = CorpusGenerator::new(&type_defs);
@@ -532,6 +535,8 @@ mod tests {
                 is_instruction: false,
                 anchor_attrs: vec![],
             },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         })];
 
         let generator = CorpusGenerator::new(&type_defs);
@@ -557,6 +562,9 @@ mod tests {
                 anchor_attrs: vec![],
             }],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+
+            module_path: Vec::new(),
         })];
 
         let generator = CorpusGenerator::new(&type_defs);
@@ -592,6 +600,9 @@ mod tests {
                 anchor_attrs: vec![],
             }],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+
+            module_path: Vec::new(),
         })];
 
         let generator = CorpusGenerator::new(&type_defs);
@@ -628,6 +639,9 @@ mod tests {
                 },
             ],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+
+            module_path: Vec::new(),
         })];
 
         let generator = CorpusGenerator::new(&type_defs);

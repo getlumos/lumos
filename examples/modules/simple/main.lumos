@@ -1,0 +1,15 @@
+// Simple Module Example - Entry Point
+// Demonstrates: Basic 2-module project structure
+// Note: Module resolution happens at generation time, not validation
+
+mod types;
+
+// Self-contained struct for validation
+#[solana]
+#[account]
+struct UserProfile {
+    wallet: PublicKey,
+    role: u8,
+    username: String,
+    created_at: i64,
+}

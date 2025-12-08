@@ -1,0 +1,12 @@
+// Shared Type Definitions
+// Demonstrates: Reusable types across modules
+
+type UserId = u64;
+
+#[solana]
+enum UserRole {
+    Guest,
+    Member,
+    Admin,
+    Owner,
+}

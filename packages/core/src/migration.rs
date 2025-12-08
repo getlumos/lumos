@@ -776,6 +776,7 @@ fn get_typescript_default_value_for_type(type_info: &TypeInfo) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ir::Visibility;
 
     fn create_test_struct(name: &str, fields: Vec<(&str, TypeInfo, bool)>) -> StructDefinition {
         StructDefinition {
@@ -792,6 +793,8 @@ mod tests {
                 })
                 .collect(),
             metadata: Default::default(),
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         }
     }
 

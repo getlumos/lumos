@@ -1,0 +1,14 @@
+// Nested Module Example - Entry Point
+// Demonstrates: Complex 3-level module hierarchy
+// Note: Cross-module type resolution happens at generation time
+
+mod models;
+
+// Self-contained struct for validation
+#[solana]
+#[account]
+struct Application {
+    owner: PublicKey,
+    name: String,
+    created_at: i64,
+}

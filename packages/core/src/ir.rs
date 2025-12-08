@@ -6,6 +6,28 @@
 //! The IR is a language-agnostic representation of type definitions
 //! that can be transformed into various target languages.
 
+/// Visibility of a type definition
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Visibility {
+    /// Public visibility (accessible from other modules)
+    #[default]
+    Public,
+    /// Private visibility (only accessible within the same module)
+    Private,
+}
+
+impl Visibility {
+    /// Check if this is public visibility
+    pub fn is_public(&self) -> bool {
+        matches!(self, Visibility::Public)
+    }
+
+    /// Check if this is private visibility
+    pub fn is_private(&self) -> bool {
+        matches!(self, Visibility::Private)
+    }
+}
+
 /// Intermediate representation of a type definition (struct, enum, or type alias)
 #[derive(Debug, Clone)]
 pub enum TypeDefinition {
@@ -27,6 +49,12 @@ pub struct TypeAliasDefinition {
 
     /// Target type (e.g., PublicKey)
     pub target: TypeInfo,
+
+    /// Visibility (pub or private)
+    pub visibility: Visibility,
+
+    /// Module path (e.g., ["models", "user"] for crate::models::user)
+    pub module_path: Vec<String>,
 }
 
 /// Struct type definition
@@ -43,6 +71,12 @@ pub struct StructDefinition {
 
     /// Metadata
     pub metadata: Metadata,
+
+    /// Visibility (pub or private)
+    pub visibility: Visibility,
+
+    /// Module path (e.g., ["models", "user"] for crate::models::user)
+    pub module_path: Vec<String>,
 }
 
 /// Enum type definition
@@ -59,6 +93,12 @@ pub struct EnumDefinition {
 
     /// Metadata
     pub metadata: Metadata,
+
+    /// Visibility (pub or private)
+    pub visibility: Visibility,
+
+    /// Module path (e.g., ["models", "state"] for crate::models::state)
+    pub module_path: Vec<String>,
 }
 
 /// Enum variant definition
@@ -173,6 +213,29 @@ impl TypeDefinition {
     /// Check if this is a type alias
     pub fn is_type_alias(&self) -> bool {
         matches!(self, TypeDefinition::TypeAlias(_))
+    }
+
+    /// Get the visibility of this type definition
+    pub fn visibility(&self) -> Visibility {
+        match self {
+            TypeDefinition::Struct(s) => s.visibility,
+            TypeDefinition::Enum(e) => e.visibility,
+            TypeDefinition::TypeAlias(a) => a.visibility,
+        }
+    }
+
+    /// Get the module path of this type definition
+    pub fn module_path(&self) -> &[String] {
+        match self {
+            TypeDefinition::Struct(s) => &s.module_path,
+            TypeDefinition::Enum(e) => &e.module_path,
+            TypeDefinition::TypeAlias(a) => &a.module_path,
+        }
+    }
+
+    /// Check if this type is public
+    pub fn is_public(&self) -> bool {
+        self.visibility().is_public()
     }
 }
 

@@ -591,7 +591,7 @@ fn to_snake_case(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ir::Metadata;
+    use crate::ir::{Metadata, Visibility};
 
     #[test]
     fn test_to_snake_case() {
@@ -637,6 +637,8 @@ mod tests {
                 is_instruction: false,
                 anchor_attrs: vec![],
             },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         };
 
         let config = IdlGeneratorConfig {
@@ -684,6 +686,9 @@ mod tests {
                 },
             ],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+
+            module_path: Vec::new(),
         };
 
         let generator = IdlGenerator::new(IdlGeneratorConfig::default());
@@ -717,6 +722,9 @@ mod tests {
                 },
             ],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+
+            module_path: Vec::new(),
         };
 
         let config = IdlGeneratorConfig::default();
@@ -817,6 +825,9 @@ mod tests {
                 },
             ],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+
+            module_path: Vec::new(),
         };
 
         let generator = IdlGenerator::new(IdlGeneratorConfig::default());

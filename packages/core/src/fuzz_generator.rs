@@ -345,7 +345,7 @@ fn to_snake_case(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ir::{FieldDefinition, Metadata};
+    use crate::ir::{FieldDefinition, Metadata, Visibility};
 
     #[test]
     fn test_generates_struct_fuzz_target() {
@@ -376,6 +376,8 @@ mod tests {
                 is_instruction: false,
                 anchor_attrs: vec![],
             },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         })];
 
         let generator = FuzzGenerator::new(&type_defs);
@@ -396,6 +398,9 @@ mod tests {
             generic_params: vec![],
             variants: vec![],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+
+            module_path: Vec::new(),
         })];
 
         let generator = FuzzGenerator::new(&type_defs);
@@ -432,12 +437,18 @@ mod tests {
                 generic_params: vec![],
                 fields: vec![],
                 metadata: Metadata::default(),
+            visibility: Visibility::Public,
+
+            module_path: Vec::new(),
             }),
             TypeDefinition::Enum(EnumDefinition {
                 name: "State1".to_string(),
                 generic_params: vec![],
                 variants: vec![],
                 metadata: Metadata::default(),
+            visibility: Visibility::Public,
+
+            module_path: Vec::new(),
             }),
         ];
 
@@ -454,6 +465,9 @@ mod tests {
             generic_params: vec![],
             fields: vec![],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+
+            module_path: Vec::new(),
         })];
 
         let generator = FuzzGenerator::new(&type_defs);

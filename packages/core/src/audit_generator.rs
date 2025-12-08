@@ -330,7 +330,7 @@ impl Priority {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ir::{FieldDefinition, Metadata};
+    use crate::ir::{FieldDefinition, Metadata, Visibility};
 
     #[test]
     fn test_generates_account_validation_checks() {
@@ -346,6 +346,8 @@ mod tests {
                 is_instruction: false,
                 anchor_attrs: vec![],
             },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         })];
 
         let generator = AuditGenerator::new(&type_defs);
@@ -377,6 +379,8 @@ mod tests {
                 is_instruction: false,
                 anchor_attrs: vec![],
             },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         })];
 
         let generator = AuditGenerator::new(&type_defs);
@@ -401,6 +405,8 @@ mod tests {
                 anchor_attrs: vec![],
             }],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         })];
 
         let generator = AuditGenerator::new(&type_defs);
@@ -441,6 +447,8 @@ mod tests {
                 is_instruction: false,
                 anchor_attrs: vec![],
             },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         })];
 
         let generator = AuditGenerator::new(&type_defs);

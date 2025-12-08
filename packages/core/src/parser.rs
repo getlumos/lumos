@@ -116,7 +116,10 @@ fn extract_imports(input: &str) -> Result<(Vec<Import>, String)> {
 
 /// Parse visibility from syn::Visibility
 ///
-/// Converts `pub` keyword to Visibility::Public, absence to Visibility::Private
+/// Converts visibility modifier to Visibility enum
+///
+/// LUMOS schemas default to Public visibility since they define shared API types.
+/// Use explicit `priv` or `pub(crate)` for private visibility.
 ///
 /// # Arguments
 ///
@@ -124,12 +127,13 @@ fn extract_imports(input: &str) -> Result<(Vec<Import>, String)> {
 ///
 /// # Returns
 ///
-/// * `Visibility::Public` if `pub` keyword present
-/// * `Visibility::Private` otherwise
+/// * `Visibility::Public` for `pub` keyword or no visibility modifier (default)
+/// * `Visibility::Private` for `pub(crate)`, `pub(super)`, or restricted visibility
 fn parse_visibility(vis: &syn::Visibility) -> Visibility {
     match vis {
         syn::Visibility::Public(_) => Visibility::Public,
-        _ => Visibility::Private,
+        syn::Visibility::Inherited => Visibility::Public, // Default to public for LUMOS schemas
+        _ => Visibility::Private, // pub(crate), pub(super), etc. are private
     }
 }
 
@@ -1400,7 +1404,8 @@ mod tests {
         match &file.items[0] {
             AstItem::Module(module) => {
                 assert_eq!(module.name, "models");
-                assert_eq!(module.visibility, Visibility::Private);
+                // LUMOS defaults to Public visibility since schemas are shared API types
+                assert_eq!(module.visibility, Visibility::Public);
             }
             _ => panic!("Expected module item"),
         }

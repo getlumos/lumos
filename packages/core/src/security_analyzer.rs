@@ -339,7 +339,7 @@ impl VulnerabilityType {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ir::{FieldDefinition, Metadata};
+    use crate::ir::{FieldDefinition, Metadata, Visibility};
 
     #[test]
     fn test_detects_missing_signer() {
@@ -354,6 +354,8 @@ mod tests {
                 anchor_attrs: vec![],
             }],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         })];
 
         let analyzer = SecurityAnalyzer::new(&type_defs);
@@ -378,6 +380,8 @@ mod tests {
                 anchor_attrs: vec![],
             }],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         })];
 
         let analyzer = SecurityAnalyzer::new(&type_defs);
@@ -402,6 +406,8 @@ mod tests {
                 is_instruction: false,
                 anchor_attrs: vec![],
             },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         })];
 
         let analyzer = SecurityAnalyzer::new(&type_defs);
@@ -432,6 +438,8 @@ mod tests {
                 is_instruction: false,
                 anchor_attrs: vec![],
             },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         })];
 
         // Normal mode
@@ -474,6 +482,8 @@ mod tests {
                 is_instruction: false,
                 anchor_attrs: vec![],
             },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         })];
 
         let analyzer = SecurityAnalyzer::new(&type_defs);

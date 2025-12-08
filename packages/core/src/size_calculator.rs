@@ -410,7 +410,7 @@ impl SizeInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ir::{FieldDefinition, Metadata, StructDefinition};
+    use crate::ir::{FieldDefinition, Metadata, StructDefinition, Visibility};
 
     #[test]
     fn test_primitive_sizes() {
@@ -448,6 +448,8 @@ mod tests {
                 },
             ],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         })];
 
         let mut calc = SizeCalculator::new(&type_defs);
@@ -478,6 +480,8 @@ mod tests {
                 is_instruction: false,
                 anchor_attrs: vec![],
             },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         })];
 
         let mut calc = SizeCalculator::new(&type_defs);
@@ -501,6 +505,8 @@ mod tests {
                 anchor_attrs: vec![],
             }],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         })];
 
         let mut calc = SizeCalculator::new(&type_defs);

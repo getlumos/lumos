@@ -665,7 +665,7 @@ fn map_type_to_borsh(type_info: &TypeInfo) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ir::{FieldDefinition, Metadata, StructDefinition, TypeDefinition};
+    use crate::ir::{FieldDefinition, Metadata, StructDefinition, TypeDefinition, Visibility};
 
     #[test]
     fn generates_simple_dataclass() {
@@ -689,6 +689,9 @@ mod tests {
                 },
             ],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+
+            module_path: Vec::new(),
         });
 
         let code = generate(&type_def);
@@ -727,6 +730,8 @@ mod tests {
                 is_instruction: false,
                 anchor_attrs: vec![],
             },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         });
 
         let code = generate(&type_def);
@@ -754,6 +759,9 @@ mod tests {
                 anchor_attrs: vec![],
             }],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+
+            module_path: Vec::new(),
         });
 
         let code = generate(&type_def);
@@ -782,6 +790,8 @@ mod tests {
                 is_instruction: false,
                 anchor_attrs: vec![],
             },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         });
 
         let code = generate(&type_def);
@@ -797,12 +807,18 @@ mod tests {
                 generic_params: vec![],
                 fields: vec![],
                 metadata: Metadata::default(),
+            visibility: Visibility::Public,
+
+            module_path: Vec::new(),
             }),
             TypeDefinition::Struct(StructDefinition {
                 name: "Post".to_string(),
                 generic_params: vec![],
                 fields: vec![],
                 metadata: Metadata::default(),
+            visibility: Visibility::Public,
+
+            module_path: Vec::new(),
             }),
         ];
 
@@ -835,6 +851,8 @@ mod tests {
                 is_instruction: false,
                 anchor_attrs: vec![],
             },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         });
 
         let code = generate(&type_def);
@@ -887,6 +905,8 @@ mod tests {
                 is_instruction: false,
                 anchor_attrs: vec![],
             },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         });
 
         let code = generate(&type_def);
@@ -951,6 +971,9 @@ mod tests {
                 },
             ],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+
+            module_path: Vec::new(),
         });
 
         let code = generate(&type_def);

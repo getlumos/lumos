@@ -1,0 +1,22 @@
+// Public API Types
+// Demonstrates: Public visibility (default in LUMOS)
+
+// Public struct - accessible from other modules
+#[solana]
+#[account]
+struct PublicUser {
+    wallet: PublicKey,
+    display_name: String,
+    is_active: bool,
+}
+
+// Public enum - accessible from other modules
+#[solana]
+enum PublicConfig {
+    Development,
+    Staging,
+    Production,
+}
+
+// Public type alias
+type PublicTimestamp = i64;
