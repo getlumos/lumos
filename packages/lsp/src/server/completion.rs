@@ -5,6 +5,21 @@
 
 use tower_lsp::lsp_types::*;
 
+/// Completion context determined by cursor position
+#[derive(Debug, PartialEq, Eq)]
+enum CompletionContext {
+    /// Top-level (before any struct/enum)
+    TopLevel,
+    /// After #[ (attribute context)
+    Attribute,
+    /// After field name and : (type context)
+    TypePosition,
+    /// Inside enum body (variant context)
+    EnumBody,
+    /// Generic/unknown context
+    Generic,
+}
+
 /// Completion handler
 #[derive(Debug)]
 pub struct CompletionHandler;
@@ -16,24 +31,108 @@ impl CompletionHandler {
     }
 
     /// Get completion items at position
-    pub fn get_completions(&self, _text: &str, _position: Position) -> Vec<CompletionItem> {
-        // For now, return all available completions
-        // TODO: Context-aware completions based on cursor position
-        let mut items = Vec::new();
+    pub fn get_completions(&self, text: &str, position: Position) -> Vec<CompletionItem> {
+        // Detect context based on cursor position
+        let context = self.detect_context(text, position);
 
-        // Solana types
-        items.extend(Self::solana_type_completions());
+        // Return context-appropriate completions
+        match context {
+            CompletionContext::TopLevel => {
+                let mut items = Vec::new();
+                items.extend(Self::keyword_completions());
+                items.extend(Self::attribute_completions());
+                items
+            }
+            CompletionContext::Attribute => Self::attribute_names_only(),
+            CompletionContext::TypePosition => {
+                let mut items = Vec::new();
+                items.extend(Self::solana_type_completions());
+                items.extend(Self::primitive_type_completions());
+                items.extend(Self::container_type_completions());
+                items
+            }
+            CompletionContext::EnumBody => {
+                // For enum context, show variant patterns
+                vec![]
+            }
+            CompletionContext::Generic => {
+                // Fallback: return all completions
+                let mut items = Vec::new();
+                items.extend(Self::solana_type_completions());
+                items.extend(Self::primitive_type_completions());
+                items.extend(Self::attribute_completions());
+                items.extend(Self::keyword_completions());
+                items
+            }
+        }
+    }
 
-        // Primitive types
-        items.extend(Self::primitive_type_completions());
+    /// Detect completion context based on cursor position
+    fn detect_context(&self, text: &str, position: Position) -> CompletionContext {
+        // Handle empty text special case
+        if text.is_empty() {
+            return CompletionContext::TopLevel;
+        }
 
-        // Attributes
-        items.extend(Self::attribute_completions());
+        // Get the line at cursor position
+        let lines: Vec<&str> = text.lines().collect();
+        if position.line as usize >= lines.len() {
+            return CompletionContext::Generic;
+        }
 
-        // Keywords
-        items.extend(Self::keyword_completions());
+        let current_line = lines[position.line as usize];
+        let cursor_col = position.character as usize;
 
-        items
+        // Get text before cursor on current line
+        let before_cursor = if cursor_col <= current_line.len() {
+            &current_line[..cursor_col]
+        } else {
+            current_line
+        };
+
+        // Check for attribute context: after #[
+        if before_cursor.trim_end().ends_with("#[") {
+            return CompletionContext::Attribute;
+        }
+
+        // Check for type position: after field_name:
+        if before_cursor.contains(':') && !before_cursor.contains('{') {
+            let after_colon = before_cursor.split(':').next_back().unwrap_or("").trim();
+            // If we're right after colon or in middle of type name
+            if after_colon.is_empty() || !after_colon.contains(' ') {
+                return CompletionContext::TypePosition;
+            }
+        }
+
+        // Check if we're inside enum by looking at previous lines
+        let mut in_enum = false;
+        for line in &lines[..=position.line as usize] {
+            if line.trim().starts_with("enum ") {
+                in_enum = true;
+            }
+            if line.trim() == "}" {
+                in_enum = false;
+            }
+        }
+        if in_enum {
+            return CompletionContext::EnumBody;
+        }
+
+        // Check if we're at top level (no struct/enum before us)
+        let mut found_declaration = false;
+        for line in &lines[..position.line as usize] {
+            let trimmed = line.trim();
+            if trimmed.starts_with("struct ") || trimmed.starts_with("enum ") {
+                found_declaration = true;
+                break;
+            }
+        }
+
+        if !found_declaration && before_cursor.trim().is_empty() {
+            return CompletionContext::TopLevel;
+        }
+
+        CompletionContext::Generic
     }
 
     /// Solana type completions
@@ -97,7 +196,7 @@ impl CompletionHandler {
         ]
     }
 
-    /// Attribute completions
+    /// Attribute completions (full with #[...])
     fn attribute_completions() -> Vec<CompletionItem> {
         vec![
             CompletionItem {
@@ -159,27 +258,24 @@ impl CompletionHandler {
         ]
     }
 
-    /// Keyword completions
-    fn keyword_completions() -> Vec<CompletionItem> {
+    /// Attribute name completions (without #[, for after #[ context)
+    fn attribute_names_only() -> Vec<CompletionItem> {
         vec![
-            CompletionItem {
-                label: "struct".to_string(),
-                kind: Some(CompletionItemKind::KEYWORD),
-                detail: Some("Define a struct".to_string()),
-                documentation: Some(Documentation::String("Define a struct type".to_string())),
-                insert_text: Some("struct $1 {\n    $2\n}".to_string()),
-                insert_text_format: Some(InsertTextFormat::SNIPPET),
-                ..Default::default()
-            },
-            CompletionItem {
-                label: "enum".to_string(),
-                kind: Some(CompletionItemKind::KEYWORD),
-                detail: Some("Define an enum".to_string()),
-                documentation: Some(Documentation::String("Define an enum type".to_string())),
-                insert_text: Some("enum $1 {\n    $2\n}".to_string()),
-                insert_text_format: Some(InsertTextFormat::SNIPPET),
-                ..Default::default()
-            },
+            Self::create_attribute_name_item("solana", "Mark as Solana-compatible type", "solana]"),
+            Self::create_attribute_name_item("account", "Mark as Anchor account", "account]"),
+            Self::create_attribute_name_item("key", "Mark field as unique key", "key]"),
+            Self::create_attribute_name_item("max", "Set maximum array/string length", "max($1)]"),
+            Self::create_attribute_name_item(
+                "deprecated",
+                "Mark field as deprecated",
+                "deprecated]",
+            ),
+        ]
+    }
+
+    /// Container type completions (Vec, Option)
+    fn container_type_completions() -> Vec<CompletionItem> {
+        vec![
             CompletionItem {
                 label: "Vec".to_string(),
                 kind: Some(CompletionItemKind::CLASS),
@@ -207,6 +303,30 @@ impl CompletionHandler {
         ]
     }
 
+    /// Keyword completions
+    fn keyword_completions() -> Vec<CompletionItem> {
+        vec![
+            CompletionItem {
+                label: "struct".to_string(),
+                kind: Some(CompletionItemKind::KEYWORD),
+                detail: Some("Define a struct".to_string()),
+                documentation: Some(Documentation::String("Define a struct type".to_string())),
+                insert_text: Some("struct $1 {\n    $2\n}".to_string()),
+                insert_text_format: Some(InsertTextFormat::SNIPPET),
+                ..Default::default()
+            },
+            CompletionItem {
+                label: "enum".to_string(),
+                kind: Some(CompletionItemKind::KEYWORD),
+                detail: Some("Define an enum".to_string()),
+                documentation: Some(Documentation::String("Define an enum type".to_string())),
+                insert_text: Some("enum $1 {\n    $2\n}".to_string()),
+                insert_text_format: Some(InsertTextFormat::SNIPPET),
+                ..Default::default()
+            },
+        ]
+    }
+
     /// Helper to create type completion item
     fn create_type_item(label: &str, detail: &str, docs: &str) -> CompletionItem {
         CompletionItem {
@@ -214,6 +334,22 @@ impl CompletionHandler {
             kind: Some(CompletionItemKind::TYPE_PARAMETER),
             detail: Some(detail.to_string()),
             documentation: Some(Documentation::String(docs.to_string())),
+            ..Default::default()
+        }
+    }
+
+    /// Helper to create attribute name completion item (without #[)
+    fn create_attribute_name_item(label: &str, detail: &str, insert_text: &str) -> CompletionItem {
+        CompletionItem {
+            label: label.to_string(),
+            kind: Some(CompletionItemKind::KEYWORD),
+            detail: Some(detail.to_string()),
+            insert_text: Some(insert_text.to_string()),
+            insert_text_format: if insert_text.contains('$') {
+                Some(InsertTextFormat::SNIPPET)
+            } else {
+                None
+            },
             ..Default::default()
         }
     }
@@ -226,7 +362,8 @@ mod tests {
     #[test]
     fn test_completion_includes_solana_types() {
         let handler = CompletionHandler::new();
-        let items = handler.get_completions("", Position::new(0, 0));
+        // Generic context should include all types
+        let items = handler.get_completions("struct Foo { x: ", Position::new(0, 16));
 
         assert!(items.iter().any(|i| i.label == "PublicKey"));
         assert!(items.iter().any(|i| i.label == "Signature"));
@@ -236,7 +373,8 @@ mod tests {
     #[test]
     fn test_completion_includes_primitives() {
         let handler = CompletionHandler::new();
-        let items = handler.get_completions("", Position::new(0, 0));
+        // Generic context should include all types
+        let items = handler.get_completions("struct Foo { x: ", Position::new(0, 16));
 
         assert!(items.iter().any(|i| i.label == "u64"));
         assert!(items.iter().any(|i| i.label == "String"));
@@ -246,6 +384,7 @@ mod tests {
     #[test]
     fn test_completion_includes_attributes() {
         let handler = CompletionHandler::new();
+        // Top-level context should include attributes
         let items = handler.get_completions("", Position::new(0, 0));
 
         assert!(items.iter().any(|i| i.label == "#[solana]"));
@@ -256,11 +395,63 @@ mod tests {
     #[test]
     fn test_completion_includes_keywords() {
         let handler = CompletionHandler::new();
+        // Top-level context should include keywords
         let items = handler.get_completions("", Position::new(0, 0));
 
         assert!(items.iter().any(|i| i.label == "struct"));
         assert!(items.iter().any(|i| i.label == "enum"));
+    }
+
+    #[test]
+    fn test_context_top_level() {
+        let handler = CompletionHandler::new();
+        let items = handler.get_completions("", Position::new(0, 0));
+
+        // Should include keywords and attributes, but not types
+        assert!(items.iter().any(|i| i.label == "struct"));
+        assert!(items.iter().any(|i| i.label == "enum"));
+        assert!(items.iter().any(|i| i.label == "#[solana]"));
+        assert!(!items.iter().any(|i| i.label == "u64"));
+        assert!(!items.iter().any(|i| i.label == "PublicKey"));
+    }
+
+    #[test]
+    fn test_context_after_attribute_bracket() {
+        let handler = CompletionHandler::new();
+        let text = "#[";
+        let items = handler.get_completions(text, Position::new(0, 2));
+
+        // Should only include attribute names (without #[)
+        assert!(items.iter().any(|i| i.label == "solana"));
+        assert!(items.iter().any(|i| i.label == "account"));
+        assert!(items.iter().any(|i| i.label == "key"));
+        assert!(!items.iter().any(|i| i.label == "struct"));
+        assert!(!items.iter().any(|i| i.label == "u64"));
+    }
+
+    #[test]
+    fn test_context_type_position() {
+        let handler = CompletionHandler::new();
+        let text = "struct User {\n    id: ";
+        let items = handler.get_completions(text, Position::new(1, 8));
+
+        // Should only include types, not keywords or attributes
+        assert!(items.iter().any(|i| i.label == "u64"));
+        assert!(items.iter().any(|i| i.label == "PublicKey"));
         assert!(items.iter().any(|i| i.label == "Vec"));
         assert!(items.iter().any(|i| i.label == "Option"));
+        assert!(!items.iter().any(|i| i.label == "struct"));
+        assert!(!items.iter().any(|i| i.label == "#[solana]"));
+    }
+
+    #[test]
+    fn test_context_enum_body() {
+        let handler = CompletionHandler::new();
+        let text = "enum State {\n    ";
+        let items = handler.get_completions(text, Position::new(1, 4));
+
+        // Currently returns empty for enum body
+        // In future, could suggest variant patterns
+        assert!(items.is_empty());
     }
 }
