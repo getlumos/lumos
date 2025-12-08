@@ -84,7 +84,12 @@ fn extract_imports(input: &str) -> Result<(Vec<Import>, String)> {
     // Find and extract all imports (including multi-line)
     for capture in import_regex.captures_iter(input) {
         // Extract imported items (e.g., "UserId, Timestamp" or "UserId,\n    Timestamp")
-        let items_str = capture.get(1).unwrap().as_str();
+        let items_str = capture
+            .get(1)
+            .ok_or_else(|| {
+                LumosError::SchemaParse("Invalid import statement format".to_string(), None)
+            })?
+            .as_str();
         let items: Vec<String> = items_str
             .split(',')
             .map(|s| s.trim().to_string())
@@ -99,7 +104,13 @@ fn extract_imports(input: &str) -> Result<(Vec<Import>, String)> {
         }
 
         // Extract path (e.g., "./types.lumos")
-        let path = capture.get(2).unwrap().as_str().to_string();
+        let path = capture
+            .get(2)
+            .ok_or_else(|| {
+                LumosError::SchemaParse("Invalid import statement format".to_string(), None)
+            })?
+            .as_str()
+            .to_string();
 
         imports.push(Import {
             items,
@@ -645,11 +656,11 @@ fn parse_attributes(attrs: &[syn::Attribute]) -> Result<Vec<Attribute>> {
 
             // List attribute: #[max(100)] or #[derive(Debug, Clone)]
             Meta::List(meta_list) => {
-                let name = meta_list
+                let ident = meta_list
                     .path
                     .get_ident()
-                    .ok_or_else(|| LumosError::SchemaParse("Invalid attribute".to_string(), None))?
-                    .to_string();
+                    .ok_or_else(|| LumosError::SchemaParse("Invalid attribute".to_string(), None))?;
+                let name = ident.to_string();
 
                 // Special handling for #[derive(...)] - contains comma-separated list of macros
                 let value = if name == "derive" {
@@ -662,17 +673,17 @@ fn parse_attributes(attrs: &[syn::Attribute]) -> Result<Vec<Attribute>> {
                 attributes.push(Attribute {
                     name,
                     value: Some(value),
-                    span: Some(meta_list.path.get_ident().unwrap().span()),
+                    span: Some(ident.span()),
                 });
             }
 
             // Name-value attribute: #[version = "1.0.0"]
             Meta::NameValue(meta_name_value) => {
-                let name = meta_name_value
+                let ident = meta_name_value
                     .path
                     .get_ident()
-                    .ok_or_else(|| LumosError::SchemaParse("Invalid attribute".to_string(), None))?
-                    .to_string();
+                    .ok_or_else(|| LumosError::SchemaParse("Invalid attribute".to_string(), None))?;
+                let name = ident.to_string();
 
                 // Extract the value (e.g., "1.0.0" from #[version = "1.0.0"])
                 let value_str = match &meta_name_value.value {
@@ -696,7 +707,7 @@ fn parse_attributes(attrs: &[syn::Attribute]) -> Result<Vec<Attribute>> {
                 attributes.push(Attribute {
                     name,
                     value: Some(AttributeValue::String(value_str)),
-                    span: Some(meta_name_value.path.get_ident().unwrap().span()),
+                    span: Some(ident.span()),
                 });
             }
         }

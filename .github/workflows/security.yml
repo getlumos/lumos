@@ -73,14 +73,14 @@ jobs:
       - name: Run clippy with security lints
         # Only check library code (not tests) with strict security lints
         # Tests legitimately use expect(), unwrap(), panic! for assertions
+        # Security lints are errors (-D), pedantic warnings don't fail build
         run: |
           cargo clippy --lib --all-features -- \
-            -W clippy::unwrap_used \
-            -W clippy::expect_used \
-            -W clippy::panic \
+            -D clippy::unwrap_used \
+            -D clippy::expect_used \
+            -D clippy::panic \
             -D clippy::todo \
             -W clippy::pedantic
-        continue-on-error: true
 
   # Check for unsafe code
   cargo-geiger:
