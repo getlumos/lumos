@@ -218,7 +218,19 @@ Transform from schema DSL → full programming language for type-safe Solana wor
   - Created comprehensive example at examples/custom_derives.lumos
   - 17 new tests (parser, transform, generator, end-to-end)
   - All 196 tests passing
-  - Future enhancement: TypeScript derive equivalents (#107)
+
+- #107 (Dec 8, 2025) - TypeScript derive equivalents
+  - TypeScript helper functions for Rust derive macros:
+    - `PartialEq` → `{name}Equals(a, b): boolean` - field-by-field comparison
+    - `Hash` → `{name}HashCode(obj): number` - JSON-based djb2 hash
+    - `Default` → `{name}Default(): T` - factory with default values
+    - `Ord` → `{name}Compare(a, b): number` - comparison returning -1/0/1
+  - Type-aware code generation:
+    - PublicKey: `.equals()` for equality, `.toBuffer().compare()` for ordering
+    - String: `===` for equality, `.localeCompare()` for ordering
+    - Arrays: `.every()` for equality, length-then-element comparison
+    - Options: handles undefined cases
+  - 5 new tests covering all derive types
 
 - #51 (Nov 24, 2025) - Fixed-size arrays (const generics)
   - Added `FixedArray { element, size }` variant to AST and IR
@@ -1002,6 +1014,7 @@ See an opportunity to help? Check our [Contributing Guide](CONTRIBUTING.md) or:
 **Last Updated**: December 8, 2025
 
 **Recent Updates**:
+- Dec 8, 2025: **TypeScript derive equivalents COMPLETE** (#107) - PartialEq→equals, Hash→hashCode, Default→default, Ord→compareTo
 - Dec 8, 2025: **Anchor `anchor generate` CLI command COMPLETE** (#55) - Generate complete Anchor programs with instruction contexts! 🎉
 - Nov 26, 2025: **Ruby schema generator COMPLETE** (#70) - Phase 5.4 at 71% 🎉 - Full Ruby class generation with borsh-rb
 - Nov 26, 2025: **Go schema generator COMPLETE** (#69) - Go structs with borsh tags and PascalCase fields
