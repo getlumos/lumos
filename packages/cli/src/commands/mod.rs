@@ -3,11 +3,15 @@
 
 //! CLI command modules
 
+pub mod anchor;
 pub mod check;
 pub mod check_compat;
 pub mod diff;
+pub mod fuzz;
 pub mod generate;
 pub mod init;
+pub mod metaplex;
 pub mod migrate;
+pub mod security;
 pub mod validate;
 pub mod watch;
