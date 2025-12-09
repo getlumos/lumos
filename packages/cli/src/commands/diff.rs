@@ -5,7 +5,9 @@
 
 use anyhow::{Context, Result};
 use colored::Colorize;
-use lumos_core::ir::{EnumDefinition, EnumVariantDefinition, FieldDefinition, StructDefinition, TypeDefinition};
+use lumos_core::ir::{
+    EnumDefinition, EnumVariantDefinition, FieldDefinition, StructDefinition, TypeDefinition,
+};
 use lumos_core::parser::parse_lumos_file;
 use lumos_core::transform::transform_to_ir;
 use std::collections::{HashMap, HashSet};

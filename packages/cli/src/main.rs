@@ -12,7 +12,6 @@ mod utils;
 
 use cli::*;
 
-
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -158,9 +157,14 @@ fn main() -> Result<()> {
                 typescript,
                 rust,
                 dry_run,
-            } => commands::metaplex::run_generate(&schema, output.as_deref(), typescript, rust, dry_run),
+            } => commands::metaplex::run_generate(
+                &schema,
+                output.as_deref(),
+                typescript,
+                rust,
+                dry_run,
+            ),
             MetaplexCommands::Types { format } => commands::metaplex::run_types(&format),
         },
     }
 }
-

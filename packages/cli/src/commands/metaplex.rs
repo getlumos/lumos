@@ -5,7 +5,9 @@
 
 use anyhow::{Context, Result};
 use colored::Colorize;
-use lumos_core::metaplex::{generate_standard_types, MetaplexGenerator, MetaplexValidator, Severity};
+use lumos_core::metaplex::{
+    generate_standard_types, MetaplexGenerator, MetaplexValidator, Severity,
+};
 use std::fs;
 use std::path::Path;
 

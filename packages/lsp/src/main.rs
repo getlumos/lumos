@@ -14,7 +14,9 @@ use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 async fn main() {
     // Initialize Sentry error monitoring (optional, enabled via SENTRY_DSN env var)
     let _guard = sentry::init(sentry::ClientOptions {
-        dsn: std::env::var("SENTRY_DSN").ok().and_then(|dsn| dsn.parse().ok()),
+        dsn: std::env::var("SENTRY_DSN")
+            .ok()
+            .and_then(|dsn| dsn.parse().ok()),
         release: Some(concat!(env!("CARGO_PKG_NAME"), "@", env!("CARGO_PKG_VERSION")).into()),
         traces_sample_rate: 0.0, // Disable performance monitoring for LSP
         ..Default::default()

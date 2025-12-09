@@ -40,10 +40,7 @@ pub fn resolve_schema(schema_path: &Path) -> Result<(Vec<TypeDefinition>, usize)
         .with_context(|| format!("Failed to parse schema: {}", schema_path.display()))?;
 
     // Check if file has module declarations
-    let has_mod_declarations = ast
-        .items
-        .iter()
-        .any(|item| matches!(item, Item::Module(_)));
+    let has_mod_declarations = ast.items.iter().any(|item| matches!(item, Item::Module(_)));
 
     // Check if file has JS-style imports
     let has_imports = !ast.imports.is_empty();
