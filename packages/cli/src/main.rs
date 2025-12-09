@@ -9,6 +9,7 @@ use colored::*;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+mod commands;
 mod utils;
 use crate::utils::*;
 
@@ -21,14 +22,13 @@ use lumos_core::audit_generator::AuditGenerator;
 use lumos_core::corpus_generator::CorpusGenerator;
 use lumos_core::file_resolver::FileResolver;
 use lumos_core::fuzz_generator::FuzzGenerator;
-use lumos_core::generators::{get_generators, rust, typescript, Language};
+use lumos_core::generators::{get_generators, typescript, Language};
 use lumos_core::ir::TypeDefinition;
 use lumos_core::metaplex::{MetaplexGenerator, MetaplexValidator, Severity};
 use lumos_core::migration::{generate_rust_migration, generate_typescript_migration, SchemaDiff};
 use lumos_core::module_resolver::ModuleResolver;
 use lumos_core::parser::parse_lumos_file;
 use lumos_core::security_analyzer::SecurityAnalyzer;
-use lumos_core::size_calculator::SizeCalculator;
 use lumos_core::transform::transform_to_ir;
 
 /// Target framework for code generation
@@ -473,10 +473,10 @@ fn main() -> Result<()> {
                 )
             }
         }
-        Commands::Validate { schema } => run_validate(&schema),
-        Commands::Init { name } => run_init(name.as_deref()),
-        Commands::Check { schema, output } => run_check(&schema, output.as_deref()),
-        Commands::CheckSize { schema, format } => run_check_size(&schema, &format),
+        Commands::Validate { schema } => commands::validate::run(&schema),
+        Commands::Init { name } => commands::init::run(name.as_deref()),
+        Commands::Check { schema, output } => commands::check::run(&schema, output.as_deref()),
+        Commands::CheckSize { schema, format } => commands::check::run_size(&schema, &format),
         Commands::Security { command } => match command {
             SecurityCommands::Analyze {
                 schema,
@@ -873,218 +873,6 @@ fn run_generate(
 }
 
 /// Preview file changes in dry-run mode
-/// Validate schema syntax without generating code
-fn run_validate(schema_path: &Path) -> Result<()> {
-    println!(
-        "{:>12} {}",
-        "Validating".cyan().bold(),
-        schema_path.display()
-    );
-
-    let content = fs::read_to_string(schema_path)
-        .with_context(|| format!("Failed to read schema file: {}", schema_path.display()))?;
-
-    let ast = parse_lumos_file(&content)
-        .with_context(|| format!("Failed to parse schema: {}", schema_path.display()))?;
-
-    let ir = transform_to_ir(ast).with_context(|| "Failed to transform AST to IR")?;
-
-    if ir.is_empty() {
-        println!("{}: No type definitions found", "warning".yellow().bold());
-    } else {
-        println!(
-            "{:>12} Found {} valid type definitions",
-            "Success".green().bold(),
-            ir.len()
-        );
-    }
-
-    Ok(())
-}
-
-/// Initialize a new LUMOS project
-fn run_init(project_name: Option<&str>) -> Result<()> {
-    let project_dir = if let Some(name) = project_name {
-        println!("{:>12} project: {}", "Creating".cyan().bold(), name.bold());
-        let dir = PathBuf::from(name);
-        fs::create_dir_all(&dir)
-            .with_context(|| format!("Failed to create project directory: {}", name))?;
-        dir
-    } else {
-        println!("{:>12} current directory", "Initializing".cyan().bold());
-        PathBuf::from(".")
-    };
-
-    // Create example schema
-    let schema_content = r#"// Example LUMOS schema
-// Edit this file and run: lumos generate schema.lumos
-
-#[solana]
-#[account]
-struct UserAccount {
-    owner: PublicKey,
-    balance: u64,
-    created_at: i64,
-}
-"#;
-
-    let schema_path = project_dir.join("schema.lumos");
-    fs::write(&schema_path, schema_content)
-        .with_context(|| format!("Failed to write schema file: {}", schema_path.display()))?;
-
-    println!(
-        "{:>12} {}",
-        "Created".green().bold(),
-        schema_path.display().to_string().bold()
-    );
-
-    // Create lumos.toml config
-    let config_content = r#"# LUMOS Configuration File
-
-[output]
-# Output directory for generated files (relative to this file)
-directory = "."
-
-# Rust output file name
-rust = "generated.rs"
-
-# TypeScript output file name
-typescript = "generated.ts"
-"#;
-
-    let config_path = project_dir.join("lumos.toml");
-    fs::write(&config_path, config_content)
-        .with_context(|| format!("Failed to write config file: {}", config_path.display()))?;
-
-    println!(
-        "{:>12} {}",
-        "Created".green().bold(),
-        config_path.display().to_string().bold()
-    );
-
-    // Create README
-    let readme_content = r#"# LUMOS Project
-
-## Quick Start
-
-1. Edit `schema.lumos` to define your data structures
-2. Generate code:
-   ```bash
-   lumos generate schema.lumos
-   ```
-3. Use the generated `generated.rs` and `generated.ts` in your project
-
-## Commands
-
-- `lumos generate schema.lumos` - Generate Rust + TypeScript code
-- `lumos validate schema.lumos` - Validate schema syntax
-- `lumos generate schema.lumos --watch` - Watch for changes
-- `lumos check schema.lumos` - Verify generated code is up-to-date
-
-## Documentation
-
-https://github.com/RECTOR-LABS/lumos
-"#;
-
-    let readme_path = project_dir.join("README.md");
-    fs::write(&readme_path, readme_content)
-        .with_context(|| format!("Failed to write README: {}", readme_path.display()))?;
-
-    println!(
-        "{:>12} {}",
-        "Created".green().bold(),
-        readme_path.display().to_string().bold()
-    );
-
-    // Success message
-    println!();
-    println!("{:>12} project initialized", "Finished".green().bold());
-    println!();
-    println!("Next steps:");
-    if project_name.is_some() {
-        println!("  cd {}", project_name.unwrap());
-    }
-    println!("  lumos generate schema.lumos");
-
-    Ok(())
-}
-
-/// Check if generated code is up-to-date
-fn run_check(schema_path: &Path, output_dir: Option<&Path>) -> Result<()> {
-    let output_dir = output_dir.unwrap_or_else(|| Path::new("."));
-
-    // Validate output directory
-    validate_output_path(output_dir)?;
-
-    println!("{:>12} generated code status", "Checking".cyan().bold());
-
-    // Check if output files exist
-    let rust_output = output_dir.join("generated.rs");
-    let ts_output = output_dir.join("generated.ts");
-
-    let rust_exists = rust_output.exists();
-    let ts_exists = ts_output.exists();
-
-    if !rust_exists || !ts_exists {
-        eprintln!("{}: Generated files not found", "error".red().bold());
-        if !rust_exists {
-            eprintln!("  Missing: {}", rust_output.display());
-        }
-        if !ts_exists {
-            eprintln!("  Missing: {}", ts_output.display());
-        }
-        eprintln!();
-        eprintln!("Run: lumos generate {}", schema_path.display());
-        std::process::exit(1);
-    }
-
-    // Read and parse schema
-    let content = fs::read_to_string(schema_path)
-        .with_context(|| format!("Failed to read schema file: {}", schema_path.display()))?;
-
-    let ast = parse_lumos_file(&content)
-        .with_context(|| format!("Failed to parse schema: {}", schema_path.display()))?;
-
-    let ir = transform_to_ir(ast).with_context(|| "Failed to transform AST to IR")?;
-
-    // Generate fresh code
-    let fresh_rust = rust::generate_module(&ir);
-    let fresh_ts = typescript::generate_module(&ir);
-
-    // Read existing generated code
-    let existing_rust = fs::read_to_string(&rust_output)
-        .with_context(|| format!("Failed to read {}", rust_output.display()))?;
-
-    let existing_ts = fs::read_to_string(&ts_output)
-        .with_context(|| format!("Failed to read {}", ts_output.display()))?;
-
-    // Compare
-    let rust_match = fresh_rust == existing_rust;
-    let ts_match = fresh_ts == existing_ts;
-
-    if rust_match && ts_match {
-        println!(
-            "{:>12} generated code is up-to-date",
-            "Success".green().bold()
-        );
-        Ok(())
-    } else {
-        eprintln!(
-            "{}: Generated code is out-of-date",
-            "warning".yellow().bold()
-        );
-        if !rust_match {
-            eprintln!("  {}", rust_output.display());
-        }
-        if !ts_match {
-            eprintln!("  {}", ts_output.display());
-        }
-        eprintln!();
-        eprintln!("Run: lumos generate {}", schema_path.display());
-        std::process::exit(1);
-    }
-}
-
 /// Watch mode: regenerate on file changes
 fn run_watch_mode(
     schema_path: &Path,
@@ -1175,49 +963,6 @@ fn run_watch_mode(
                 break;
             }
         }
-    }
-
-    Ok(())
-}
-
-/// Check account sizes and detect overflow
-fn run_check_size(schema_path: &Path, format: &str) -> Result<()> {
-    // Read and parse schema
-    let content = fs::read_to_string(schema_path)
-        .with_context(|| format!("Failed to read schema file: {}", schema_path.display()))?;
-
-    let ast = parse_lumos_file(&content)
-        .with_context(|| format!("Failed to parse schema: {}", schema_path.display()))?;
-
-    let ir = transform_to_ir(ast).with_context(|| "Failed to transform AST to IR")?;
-
-    if ir.is_empty() {
-        eprintln!(
-            "{}: No type definitions found in schema",
-            "warning".yellow().bold()
-        );
-        return Ok(());
-    }
-
-    // Calculate sizes
-    let mut calculator = SizeCalculator::new(&ir);
-    let sizes = calculator.calculate_all();
-
-    // TODO: Implement output formatting
-    if format == "json" {
-        // JSON output for programmatic use
-        // output_json(&sizes)?;
-        eprintln!("JSON output not implemented");
-    } else {
-        // Human-readable text output
-        // output_text(&sizes)?;
-        eprintln!("Text output not implemented");
-    }
-
-    // Exit with error if any account exceeds limits
-    let has_errors = sizes.iter().any(|s| !s.warnings.is_empty());
-    if has_errors {
-        std::process::exit(1);
     }
 
     Ok(())
