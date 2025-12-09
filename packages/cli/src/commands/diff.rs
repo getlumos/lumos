@@ -17,7 +17,7 @@ use std::path::Path;
 use crate::utils::format_type;
 
 /// Compare two schema files and show differences
-pub fn run(schema1_path: &Path, schema2_path: &Path, format: &str) -> Result<()> {
+pub fn run(schema1_path: &Path, schema2_path: &Path, _format: &str) -> Result<()> {
     println!("{:>12} schemas...", "Comparing".cyan().bold());
     println!("  Schema 1: {}", schema1_path.display());
     println!("  Schema 2: {}", schema2_path.display());
@@ -50,8 +50,8 @@ pub fn run(schema1_path: &Path, schema2_path: &Path, format: &str) -> Result<()>
     let names2: HashSet<&str> = map2.keys().copied().collect();
 
     // Calculate differences
-    let added: Vec<&str> = names2.difference(&names1).copied().collect();
-    let removed: Vec<&str> = names1.difference(&names2).copied().collect();
+    let _added: Vec<&str> = names2.difference(&names1).copied().collect();
+    let _removed: Vec<&str> = names1.difference(&names2).copied().collect();
     let common: Vec<&str> = names1.intersection(&names2).copied().collect();
 
     // Track modifications
@@ -70,29 +70,10 @@ pub fn run(schema1_path: &Path, schema2_path: &Path, format: &str) -> Result<()>
     }
 
     // Output based on format
-    // TODO: Implement output formatting
-    if format == "json" {
-        // output_diff_json(&added, &removed, &modifications)?;
-        eprintln!("JSON output not implemented");
-    } else {
-        // output_diff_text(&added, &removed, &modifications)?;
-        eprintln!("Text output not implemented");
-    }
-
-    // Summary
-    let total_changes = added.len() + removed.len() + modified.len();
-    if total_changes == 0 {
-        println!("\n{} No differences found", "✓".green().bold());
-    } else {
-        println!(
-            "\n{} {} change{} detected",
-            "✓".green().bold(),
-            total_changes,
-            if total_changes == 1 { "" } else { "s" }
-        );
-    }
-
-    Ok(())
+    anyhow::bail!(
+        "Schema diff output formatting is not yet implemented. \
+         Track progress at: https://github.com/getlumos/lumos/issues"
+    )
 }
 
 /// Compare two type definitions and return list of changes

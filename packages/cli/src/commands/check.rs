@@ -109,26 +109,11 @@ pub fn run_size(schema_path: &Path, format: &str) -> Result<()> {
         return Ok(());
     }
 
-    // Calculate sizes
-    let mut calculator = SizeCalculator::new(&ir);
-    let sizes = calculator.calculate_all();
+    let _calculator = SizeCalculator::new(&ir);
+    let _format = format;
 
-    // TODO: Implement output formatting
-    if format == "json" {
-        // JSON output for programmatic use
-        // output_json(&sizes)?;
-        eprintln!("JSON output not implemented");
-    } else {
-        // Human-readable text output
-        // output_text(&sizes)?;
-        eprintln!("Text output not implemented");
-    }
-
-    // Exit with error if any account exceeds limits
-    let has_errors = sizes.iter().any(|s| !s.warnings.is_empty());
-    if has_errors {
-        std::process::exit(1);
-    }
-
-    Ok(())
+    anyhow::bail!(
+        "Size checking output formatting is not yet implemented. \
+         Track progress at: https://github.com/getlumos/lumos/issues"
+    )
 }
