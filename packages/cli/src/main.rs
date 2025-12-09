@@ -9,8 +9,11 @@ use colored::*;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+mod utils;
+use crate::utils::*;
+
 use lumos_core::anchor::{
-    generate_accounts_context, parse_anchor_attrs, AnchorAccountType, IdlGenerator,
+    generate_accounts_context, parse_anchor_attrs, IdlGenerator,
     IdlGeneratorConfig, InstructionAccount, InstructionContext,
 };
 use lumos_core::ast::Item as AstItem;
@@ -910,29 +913,6 @@ fn preview_file_changes(path: &Path, new_content: &str, label: &str) -> Result<(
     }
 
     println!();
-    Ok(())
-}
-
-/// Create backup of file if it exists
-fn create_backup_if_exists(path: &Path) -> Result<()> {
-    if !path.exists() {
-        return Ok(());
-    }
-
-    let backup_path = path.with_extension(format!(
-        "{}.backup",
-        path.extension().and_then(|s| s.to_str()).unwrap_or("")
-    ));
-
-    fs::copy(path, &backup_path)
-        .with_context(|| format!("Failed to create backup: {}", backup_path.display()))?;
-
-    println!(
-        "  {} → {}",
-        path.display().to_string().dimmed(),
-        backup_path.display().to_string().cyan()
-    );
-
     Ok(())
 }
 
@@ -2428,22 +2408,6 @@ fn variants_equal(
     }
 }
 
-/// Format a TypeInfo as a string
-fn format_type(type_info: &lumos_core::ir::TypeInfo) -> String {
-    use lumos_core::ir::TypeInfo;
-
-    match type_info {
-        TypeInfo::Primitive(p) => p.clone(),
-        TypeInfo::Generic(param) => param.clone(),
-        TypeInfo::UserDefined(u) => u.clone(),
-        TypeInfo::Array(inner) => format!("Vec<{}>", format_type(inner)),
-        TypeInfo::FixedArray { element, size } => {
-            format!("[{}; {}]", format_type(element), size)
-        }
-        TypeInfo::Option(inner) => format!("Option<{}>", format_type(inner)),
-    }
-}
-
 /// Output differences in text format
 fn output_diff_text(
     added: &[&str],
@@ -2529,100 +2493,6 @@ fn output_diff_json(
     println!("}}");
 
     Ok(())
-}
-
-/// Convert PascalCase to snake_case
-fn to_snake_case(s: &str) -> String {
-    let mut result = String::new();
-    let mut prev_is_upper = false;
-
-    for (i, ch) in s.chars().enumerate() {
-        if ch.is_uppercase() {
-            if i > 0 && !prev_is_upper {
-                result.push('_');
-            }
-            result.push(ch.to_lowercase().next().unwrap());
-            prev_is_upper = true;
-        } else {
-            result.push(ch);
-            prev_is_upper = false;
-        }
-    }
-
-    result
-}
-
-/// Validate output path for security and accessibility
-///
-/// This function prevents path traversal attacks and ensures the path
-/// is writable before attempting file operations.
-///
-/// # Security Checks
-///
-/// 1. **Path Canonicalization** - Resolves `..`, `.`, and symlinks
-/// 2. **Directory Existence** - Ensures parent directory exists
-/// 3. **Write Permissions** - Verifies write access to the directory
-///
-/// # Arguments
-///
-/// * `path` - Output path to validate
-///
-/// # Returns
-///
-/// * `Ok(())` - Path is valid and writable
-/// * `Err(anyhow::Error)` - Path is invalid or not writable
-///
-/// # Examples
-///
-/// ```rust,ignore
-/// // Valid paths
-/// validate_output_path(Path::new("./output"))?;
-/// validate_output_path(Path::new("."))?;
-///
-/// // Invalid paths (would fail)
-/// validate_output_path(Path::new("../../etc"))?;  // Path traversal
-/// validate_output_path(Path::new("/root"))?;      // No write permission
-/// ```
-fn validate_output_path(path: &Path) -> Result<()> {
-    // If path doesn't exist, check parent directory
-    let check_path = if path.exists() {
-        path
-    } else if let Some(parent) = path.parent() {
-        // If parent doesn't exist, we can't validate write permissions
-        if !parent.exists() {
-            anyhow::bail!(
-                "Output directory parent does not exist: {}. Create it first.",
-                parent.display()
-            );
-        }
-        parent
-    } else {
-        // No parent means root directory or invalid path
-        anyhow::bail!("Invalid output path: {}", path.display());
-    };
-
-    // Check if path is absolute or can be canonicalized
-    let canonical = check_path
-        .canonicalize()
-        .with_context(|| format!("Cannot resolve output path: {}", path.display()))?;
-
-    // Verify the canonical path is writable
-    // Try to create a temporary file to test write permissions
-    let test_file = canonical.join(".lumos_write_test");
-    match fs::write(&test_file, "") {
-        Ok(_) => {
-            // Clean up test file
-            let _ = fs::remove_file(&test_file);
-            Ok(())
-        }
-        Err(e) => {
-            anyhow::bail!(
-                "Output directory is not writable: {}\nError: {}",
-                canonical.display(),
-                e
-            );
-        }
-    }
 }
 
 /// Generate migration code from one schema version to another
@@ -3456,57 +3326,6 @@ fn run_anchor_generate(
     }
 
     Ok(())
-}
-
-/// Convert TypeInfo to Rust type string
-fn type_info_to_rust_type(ty: &lumos_core::ir::TypeInfo) -> String {
-    match ty {
-        lumos_core::ir::TypeInfo::Primitive(name) => match name.as_str() {
-            "PublicKey" | "Pubkey" => "Pubkey".to_string(),
-            _ => name.clone(),
-        },
-        lumos_core::ir::TypeInfo::Generic(name) => name.clone(),
-        lumos_core::ir::TypeInfo::UserDefined(name) => name.clone(),
-        lumos_core::ir::TypeInfo::Array(inner) => {
-            format!("Vec<{}>", type_info_to_rust_type(inner))
-        }
-        lumos_core::ir::TypeInfo::FixedArray { element, size } => {
-            format!("[{}; {}]", type_info_to_rust_type(element), size)
-        }
-        lumos_core::ir::TypeInfo::Option(inner) => {
-            format!("Option<{}>", type_info_to_rust_type(inner))
-        }
-    }
-}
-
-/// Infer Anchor account type from LUMOS type
-fn infer_anchor_account_type(ty: &lumos_core::ir::TypeInfo) -> AnchorAccountType {
-    match ty {
-        lumos_core::ir::TypeInfo::Primitive(name) if name == "Signer" => AnchorAccountType::Signer,
-        lumos_core::ir::TypeInfo::UserDefined(name) => match name.as_str() {
-            "Signer" => AnchorAccountType::Signer,
-            "SystemAccount" => AnchorAccountType::SystemAccount,
-            "UncheckedAccount" => AnchorAccountType::UncheckedAccount,
-            "AccountInfo" => AnchorAccountType::AccountInfo,
-            _ if name.starts_with("Program<") => {
-                let inner = name
-                    .strip_prefix("Program<")
-                    .and_then(|s| s.strip_suffix('>'))
-                    .unwrap_or("System");
-                AnchorAccountType::Program(inner.to_string())
-            }
-            _ if name.starts_with("Sysvar<") => {
-                let inner = name
-                    .strip_prefix("Sysvar<")
-                    .and_then(|s| s.strip_suffix('>'))
-                    .unwrap_or("Rent");
-                AnchorAccountType::Sysvar(inner.to_string())
-            }
-            _ if name == "SystemProgram" => AnchorAccountType::Program("System".to_string()),
-            _ => AnchorAccountType::Account(name.clone()),
-        },
-        _ => AnchorAccountType::AccountInfo,
-    }
 }
 
 // =============================================================================
