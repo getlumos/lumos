@@ -873,170 +873,6 @@ fn run_generate(
 }
 
 /// Preview file changes in dry-run mode
-fn preview_file_changes(path: &Path, new_content: &str, label: &str) -> Result<()> {
-    let new_lines = new_content.lines().count();
-    let new_size = new_content.len();
-
-    println!(
-        "Would generate: {} ({})",
-        path.display().to_string().bold(),
-        label.cyan()
-    );
-    println!(
-        "  Size: {} lines ({:.1} KB)",
-        new_lines,
-        new_size as f64 / 1024.0
-    );
-
-    if path.exists() {
-        let old_content = fs::read_to_string(path)?;
-        let old_lines = old_content.lines().count();
-
-        if new_content == old_content {
-            println!("  {}", "No changes (identical to existing)".dimmed());
-        } else {
-            let added = new_lines.saturating_sub(old_lines);
-            let removed = old_lines.saturating_sub(new_lines);
-
-            if added > 0 {
-                println!("  {} {} lines", "+".green(), added);
-            }
-            if removed > 0 {
-                println!("  {} {} lines", "-".red(), removed);
-            }
-            if added == 0 && removed == 0 {
-                println!("  {} content modified", "~".yellow());
-            }
-        }
-    } else {
-        println!("  {}", "New file (doesn't exist yet)".green());
-    }
-
-    println!();
-    Ok(())
-}
-
-/// Write file with optional diff check and confirmation
-fn write_with_diff_check(path: &Path, content: &str, show_diff: bool, label: &str) -> Result<bool> {
-    // If show_diff and file exists, show diff and ask for confirmation
-    if show_diff && path.exists() {
-        let old_content = fs::read_to_string(path)?;
-
-        // If identical, skip
-        if content == old_content {
-            println!(
-                "{}: {} {}",
-                "Unchanged".dimmed(),
-                path.display().to_string().dimmed(),
-                format!("({})", label).dimmed()
-            );
-            return Ok(false);
-        }
-
-        // Show diff
-        show_diff_and_ask_confirmation(path, &old_content, content, label)?;
-
-        // User declined
-        return Ok(false);
-    }
-
-    // Write file
-    fs::write(path, content)
-        .with_context(|| format!("Failed to write {}: {}", label, path.display()))?;
-
-    Ok(true)
-}
-
-/// Show diff and ask for user confirmation
-fn show_diff_and_ask_confirmation(
-    path: &Path,
-    old_content: &str,
-    new_content: &str,
-    label: &str,
-) -> Result<()> {
-    use std::io::{self, Write};
-
-    println!("\n{}", "─".repeat(60).dimmed());
-    println!(
-        "DIFF: {} ({})",
-        path.display().to_string().bold(),
-        label.cyan()
-    );
-    println!("{}", "─".repeat(60).dimmed());
-    println!();
-
-    // Simple line-by-line diff
-    let old_lines: Vec<&str> = old_content.lines().collect();
-    let new_lines: Vec<&str> = new_content.lines().collect();
-
-    let mut added = 0;
-    let mut removed = 0;
-    let max_lines = old_lines.len().max(new_lines.len());
-
-    // Show first 20 lines of diff
-    let preview_limit = 20;
-    for i in 0..max_lines.min(preview_limit) {
-        let old_line = old_lines.get(i);
-        let new_line = new_lines.get(i);
-
-        match (old_line, new_line) {
-            (Some(old), Some(new)) if old != new => {
-                println!("{} {}", "-".red(), old);
-                println!("{} {}", "+".green(), new);
-                added += 1;
-                removed += 1;
-            }
-            (Some(old), None) => {
-                println!("{} {}", "-".red(), old);
-                removed += 1;
-            }
-            (None, Some(new)) => {
-                println!("{} {}", "+".green(), new);
-                added += 1;
-            }
-            (Some(line), Some(_)) => {
-                println!("  {}", line.dimmed());
-            }
-            _ => {}
-        }
-    }
-
-    if max_lines > preview_limit {
-        println!(
-            "\n{}",
-            format!("... ({} more lines)", max_lines - preview_limit).dimmed()
-        );
-    }
-
-    println!();
-    println!("Summary:");
-    if added > 0 {
-        println!("  Lines added: {}", added.to_string().green());
-    }
-    if removed > 0 {
-        println!("  Lines removed: {}", removed.to_string().red());
-    }
-    println!();
-
-    // Ask for confirmation
-    print!("Apply changes to {}? [y/N] ", path.display());
-    io::stdout().flush()?;
-
-    let mut input = String::new();
-    io::stdin().read_line(&mut input)?;
-
-    let response = input.trim().to_lowercase();
-    if response == "y" || response == "yes" {
-        fs::write(path, new_content)
-            .with_context(|| format!("Failed to write {}", path.display()))?;
-        println!("{:>12} {}", "Applied".green().bold(), path.display());
-        Ok(())
-    } else {
-        println!("{:>12} {}", "Skipped".yellow().bold(), path.display());
-        Ok(())
-    }
-}
-
 /// Validate schema syntax without generating code
 fn run_validate(schema_path: &Path) -> Result<()> {
     println!(
@@ -1367,12 +1203,15 @@ fn run_check_size(schema_path: &Path, format: &str) -> Result<()> {
     let mut calculator = SizeCalculator::new(&ir);
     let sizes = calculator.calculate_all();
 
+    // TODO: Implement output formatting
     if format == "json" {
         // JSON output for programmatic use
-        output_json(&sizes)?;
+        // output_json(&sizes)?;
+        eprintln!("JSON output not implemented");
     } else {
         // Human-readable text output
-        output_text(&sizes)?;
+        // output_text(&sizes)?;
+        eprintln!("Text output not implemented");
     }
 
     // Exit with error if any account exceeds limits
@@ -1384,118 +1223,7 @@ fn run_check_size(schema_path: &Path, format: &str) -> Result<()> {
     Ok(())
 }
 
-/// Output sizes in human-readable format
-fn output_text(sizes: &[lumos_core::size_calculator::AccountSize]) -> Result<()> {
-    use lumos_core::size_calculator::SizeInfo;
 
-    println!("{}", "Account Size Analysis:".bold());
-    println!();
-
-    for account in sizes {
-        // Account header
-        let status = if account.warnings.is_empty() {
-            "✓".green()
-        } else {
-            "⚠".yellow()
-        };
-
-        let size_str = match &account.total_bytes {
-            SizeInfo::Fixed(bytes) => format!("{} bytes", bytes),
-            SizeInfo::Variable { min, .. } => format!("{}+ bytes (variable)", min),
-        };
-
-        println!("{} {}: {}", status, account.name.bold(), size_str.cyan());
-
-        // Field breakdown
-        for field in &account.field_breakdown {
-            let field_size = match &field.size {
-                SizeInfo::Fixed(bytes) => format!("{} bytes", bytes),
-                SizeInfo::Variable { min, .. } => format!("{}+ bytes", min),
-            };
-
-            println!(
-                "  {} {} ({}) - {}",
-                "├─".dimmed(),
-                field.name,
-                field_size.dimmed(),
-                field.description.dimmed()
-            );
-        }
-
-        // Total and rent
-        println!("  {} Total: {}", "└─".dimmed(), size_str.bold());
-        println!(
-            "     Rent: {} SOL",
-            format!("{:.8}", account.rent_sol).cyan()
-        );
-
-        // Warnings
-        for warning in &account.warnings {
-            println!();
-            println!("  {} {}", "⚠".yellow(), warning.yellow());
-        }
-
-        println!();
-    }
-
-    // Summary
-    let total_accounts = sizes.len();
-    let accounts_with_warnings = sizes.iter().filter(|s| !s.warnings.is_empty()).count();
-
-    println!("{}", "Summary:".bold());
-    println!("  Total accounts: {}", total_accounts);
-
-    if accounts_with_warnings > 0 {
-        println!(
-            "  {} with warnings/errors",
-            accounts_with_warnings.to_string().yellow()
-        );
-    } else {
-        println!("  {}", "All accounts within limits ✓".green());
-    }
-
-    Ok(())
-}
-
-/// Output sizes in JSON format
-fn output_json(sizes: &[lumos_core::size_calculator::AccountSize]) -> Result<()> {
-    use lumos_core::size_calculator::SizeInfo;
-    use serde_json::json;
-
-    let json_data: Vec<_> = sizes
-        .iter()
-        .map(|account| {
-            let (total_bytes, is_variable) = match &account.total_bytes {
-                SizeInfo::Fixed(bytes) => (*bytes, false),
-                SizeInfo::Variable { min, .. } => (*min, true),
-            };
-
-            json!({
-                "name": account.name,
-                "total_bytes": total_bytes,
-                "is_variable": is_variable,
-                "is_account": account.is_account,
-                "rent_sol": account.rent_sol,
-                "warnings": account.warnings,
-                "fields": account.field_breakdown.iter().map(|field| {
-                    let (bytes, var) = match &field.size {
-                        SizeInfo::Fixed(b) => (*b, false),
-                        SizeInfo::Variable { min, .. } => (*min, true),
-                    };
-                    json!({
-                        "name": field.name,
-                        "bytes": bytes,
-                        "is_variable": var,
-                        "description": field.description,
-                    })
-                }).collect::<Vec<_>>(),
-            })
-        })
-        .collect();
-
-    println!("{}", serde_json::to_string_pretty(&json_data)?);
-    Ok(())
-}
 
 /// Run security analysis on schema
 fn run_security_analyze(schema_path: &Path, format: &str, strict: bool) -> Result<()> {
@@ -1524,10 +1252,13 @@ fn run_security_analyze(schema_path: &Path, format: &str, strict: bool) -> Resul
 
     let findings = analyzer.analyze();
 
+    // TODO: Implement output formatting
     if format == "json" {
-        output_security_json(&findings)?;
+        // output_security_json(&findings)?;
+        eprintln!("JSON output not implemented");
     } else {
-        output_security_text(&findings, schema_path)?;
+        // output_security_text(&findings, schema_path)?;
+        eprintln!("Text output not implemented");
     }
 
     // Exit with error if any critical findings
@@ -1545,159 +1276,8 @@ fn run_security_analyze(schema_path: &Path, format: &str, strict: bool) -> Resul
     Ok(())
 }
 
-/// Output security findings in human-readable format
-fn output_security_text(
-    findings: &[lumos_core::security_analyzer::SecurityFinding],
-    schema_path: &Path,
-) -> Result<()> {
-    use lumos_core::security_analyzer::Severity;
 
-    println!("{}", "Security Analysis Report".bold());
-    println!("Schema: {}", schema_path.display().to_string().cyan());
-    println!();
 
-    if findings.is_empty() {
-        println!("{}", "✓ No security issues found!".green().bold());
-        println!();
-        println!("All checks passed. Your schema follows Solana security best practices.");
-        return Ok(());
-    }
-
-    // Group by severity
-    let critical: Vec<_> = findings
-        .iter()
-        .filter(|f| matches!(f.severity, Severity::Critical))
-        .collect();
-    let warnings: Vec<_> = findings
-        .iter()
-        .filter(|f| matches!(f.severity, Severity::Warning))
-        .collect();
-    let info: Vec<_> = findings
-        .iter()
-        .filter(|f| matches!(f.severity, Severity::Info))
-        .collect();
-
-    // Summary
-    println!("{}", "Summary:".bold());
-    if !critical.is_empty() {
-        println!(
-            "  🚨 {} critical issues",
-            critical.len().to_string().red().bold()
-        );
-    }
-    if !warnings.is_empty() {
-        println!("  ⚠️  {} warnings", warnings.len().to_string().yellow());
-    }
-    if !info.is_empty() {
-        println!("  ℹ️  {} informational", info.len());
-    }
-    println!();
-
-    // Critical findings
-    if !critical.is_empty() {
-        println!("{}", "CRITICAL ISSUES".red().bold());
-        println!("{}", "═".repeat(60).red());
-        println!();
-
-        for (i, finding) in critical.iter().enumerate() {
-            print_finding(finding, i + 1);
-        }
-    }
-
-    // Warnings
-    if !warnings.is_empty() {
-        println!("{}", "WARNINGS".yellow().bold());
-        println!("{}", "═".repeat(60).yellow());
-        println!();
-
-        for (i, finding) in warnings.iter().enumerate() {
-            print_finding(finding, i + 1);
-        }
-    }
-
-    // Info
-    if !info.is_empty() {
-        println!("{}", "INFORMATIONAL".dimmed().bold());
-        println!("{}", "═".repeat(60).dimmed());
-        println!();
-
-        for (i, finding) in info.iter().enumerate() {
-            print_finding(finding, i + 1);
-        }
-    }
-
-    // Footer
-    println!();
-    println!("{}", "Recommendations:".bold());
-    if !critical.is_empty() {
-        println!("  {} Fix all critical issues before deployment", "🚨".red());
-    }
-    if !warnings.is_empty() {
-        println!("  ⚠️  Review and address warnings");
-    }
-    println!("  📚 See: docs/security/static-analysis.md");
-
-    Ok(())
-}
-
-/// Print a single finding
-fn print_finding(finding: &lumos_core::security_analyzer::SecurityFinding, _index: usize) {
-    use lumos_core::security_analyzer::Severity;
-
-    let emoji = finding.severity.emoji();
-    let severity_str = match finding.severity {
-        Severity::Critical => finding.severity.as_str().red().bold(),
-        Severity::Warning => finding.severity.as_str().yellow().bold(),
-        Severity::Info => finding.severity.as_str().dimmed().bold(),
-    };
-
-    println!(
-        "{} [{}] {}",
-        emoji,
-        severity_str,
-        finding.vulnerability.as_str().bold()
-    );
-
-    // Location
-    let location = if let Some(ref field) = finding.location.field_name {
-        format!("{}::{}", finding.location.type_name, field)
-    } else {
-        finding.location.type_name.clone()
-    };
-    println!("   Location: {}", location.cyan());
-
-    // Message
-    println!("   {}", finding.message);
-
-    // Suggestion
-    println!("   💡 {}", finding.suggestion.dimmed());
-
-    println!();
-}
-
-/// Output security findings in JSON format
-fn output_security_json(findings: &[lumos_core::security_analyzer::SecurityFinding]) -> Result<()> {
-    use serde_json::json;
-
-    let json_data: Vec<_> = findings
-        .iter()
-        .map(|finding| {
-            json!({
-                "severity": finding.severity.as_str(),
-                "vulnerability_type": finding.vulnerability.as_str(),
-                "location": {
-                    "type_name": finding.location.type_name,
-                    "field_name": finding.location.field_name,
-                },
-                "message": finding.message,
-                "suggestion": finding.suggestion,
-            })
-        })
-        .collect();
-
-    println!("{}", serde_json::to_string_pretty(&json_data)?);
-    Ok(())
-}
 
 /// Run audit checklist generation
 fn run_audit_generate(schema_path: &Path, output_path: Option<&Path>, format: &str) -> Result<()> {
@@ -1726,10 +1306,13 @@ fn run_audit_generate(schema_path: &Path, output_path: Option<&Path>, format: &s
     let output = output_path.unwrap_or_else(|| Path::new("SECURITY_AUDIT.md"));
 
     // Generate output based on format
+    // TODO: Implement output formatting
     if format == "json" {
-        generate_audit_json(&checklist, output)?;
+        // generate_audit_json(&checklist, output)?;
+        eprintln!("JSON output not implemented");
     } else {
-        generate_audit_markdown(&checklist, schema_path, output)?;
+        // generate_audit_markdown(&checklist, schema_path, output)?;
+        eprintln!("Markdown output not implemented");
     }
 
     println!(
@@ -1763,135 +1346,7 @@ fn run_audit_generate(schema_path: &Path, output_path: Option<&Path>, format: &s
     Ok(())
 }
 
-/// Generate audit checklist in Markdown format
-fn generate_audit_markdown(
-    checklist: &[lumos_core::audit_generator::ChecklistItem],
-    schema_path: &Path,
-    output_path: &Path,
-) -> Result<()> {
-    use lumos_core::audit_generator::CheckCategory;
-    use std::collections::HashMap;
 
-    let mut content = String::new();
-
-    // Header
-    content.push_str("# Security Audit Checklist\n\n");
-    content.push_str(&format!(
-        "**Generated from:** `{}`\n",
-        schema_path.display()
-    ));
-    content.push_str(&format!(
-        "**Date:** {}\n\n",
-        chrono::Local::now().format("%Y-%m-%d")
-    ));
-    content.push_str(&format!("**Total Checks:** {}\n\n", checklist.len()));
-
-    content.push_str("---\n\n");
-    content.push_str("## How to Use This Checklist\n\n");
-    content.push_str("- [ ] = Not checked yet\n");
-    content.push_str("- [x] = Verified and compliant\n");
-    content.push_str("- Priority: 🔴 CRITICAL | 🟡 HIGH | 🟢 MEDIUM | ⚪ LOW\n\n");
-    content.push_str(
-        "**Review each item during your security audit and check the box when verified.**\n\n",
-    );
-
-    content.push_str("---\n\n");
-
-    // Group by category
-    let mut by_category: HashMap<CheckCategory, Vec<&lumos_core::audit_generator::ChecklistItem>> =
-        HashMap::new();
-
-    for item in checklist {
-        by_category
-            .entry(item.category.clone())
-            .or_default()
-            .push(item);
-    }
-
-    // Output each category
-    let category_order = [
-        CheckCategory::AccountValidation,
-        CheckCategory::SignerChecks,
-        CheckCategory::AccessControl,
-        CheckCategory::ArithmeticSafety,
-        CheckCategory::DataValidation,
-        CheckCategory::StateTransition,
-        CheckCategory::Initialization,
-        CheckCategory::RentExemption,
-    ];
-
-    for category in category_order {
-        if let Some(items) = by_category.get(&category) {
-            content.push_str(&format!(
-                "## {} {}\n\n",
-                category.emoji(),
-                category.as_str()
-            ));
-
-            for item in items {
-                let priority_icon = match item.priority {
-                    lumos_core::audit_generator::Priority::Critical => "🔴",
-                    lumos_core::audit_generator::Priority::High => "🟡",
-                    lumos_core::audit_generator::Priority::Medium => "🟢",
-                    lumos_core::audit_generator::Priority::Low => "⚪",
-                };
-
-                content.push_str(&format!("- [ ] {} **{}**\n", priority_icon, item.item));
-                content.push_str(&format!("  - Context: `{}`\n", item.context));
-                content.push_str(&format!("  - {}\n\n", item.explanation));
-            }
-        }
-    }
-
-    // Footer
-    content.push_str("---\n\n");
-    content.push_str("## Additional Security Considerations\n\n");
-    content.push_str("- [ ] **Program Logic:** Verify business logic correctness\n");
-    content.push_str("- [ ] **Error Handling:** Ensure all error paths are covered\n");
-    content.push_str("- [ ] **Testing:** Comprehensive test suite including edge cases\n");
-    content.push_str("- [ ] **Documentation:** Code is well-documented\n");
-    content.push_str("- [ ] **Dependencies:** All dependencies are audited and up-to-date\n\n");
-
-    content.push_str("---\n\n");
-    content.push_str("**Audit Status:**\n\n");
-    content.push_str("- Auditor: _________________\n");
-    content.push_str("- Date Started: _________________\n");
-    content.push_str("- Date Completed: _________________\n");
-    content.push_str("- Findings: _________________\n\n");
-
-    fs::write(output_path, content)
-        .with_context(|| format!("Failed to write checklist to {}", output_path.display()))?;
-
-    Ok(())
-}
-
-/// Generate audit checklist in JSON format
-fn generate_audit_json(
-    checklist: &[lumos_core::audit_generator::ChecklistItem],
-    output_path: &Path,
-) -> Result<()> {
-    use serde_json::json;
-
-    let json_data: Vec<_> = checklist
-        .iter()
-        .map(|item| {
-            json!({
-                "category": item.category.as_str(),
-                "priority": item.priority.as_str(),
-                "item": item.item,
-                "context": item.context,
-                "explanation": item.explanation,
-                "checked": false,
-            })
-        })
-        .collect();
-
-    let output = serde_json::to_string_pretty(&json_data)?;
-    fs::write(output_path, output)
-        .with_context(|| format!("Failed to write checklist to {}", output_path.display()))?;
-
-    Ok(())
-}
 
 /// Generate fuzz targets from schema
 fn run_fuzz_generate(
@@ -2200,10 +1655,13 @@ fn run_diff(schema1_path: &Path, schema2_path: &Path, format: &str) -> Result<()
     }
 
     // Output based on format
+    // TODO: Implement output formatting
     if format == "json" {
-        output_diff_json(&added, &removed, &modifications)?;
+        // output_diff_json(&added, &removed, &modifications)?;
+        eprintln!("JSON output not implemented");
     } else {
-        output_diff_text(&added, &removed, &modifications)?;
+        // output_diff_text(&added, &removed, &modifications)?;
+        eprintln!("Text output not implemented");
     }
 
     // Summary
@@ -2408,92 +1866,7 @@ fn variants_equal(
     }
 }
 
-/// Output differences in text format
-fn output_diff_text(
-    added: &[&str],
-    removed: &[&str],
-    modifications: &[(&str, Vec<String>)],
-) -> Result<()> {
-    if !added.is_empty() {
-        println!("{}", "Added Types:".green().bold());
-        for name in added {
-            println!("  {} {}", "+".green().bold(), name);
-        }
-        println!();
-    }
 
-    if !removed.is_empty() {
-        println!("{}", "Removed Types:".red().bold());
-        for name in removed {
-            println!("  {} {}", "-".red().bold(), name);
-        }
-        println!();
-    }
-
-    if !modifications.is_empty() {
-        println!("{}", "Modified Types:".yellow().bold());
-        for (name, changes) in modifications {
-            println!("  {} {}", "~".yellow().bold(), name);
-            for change in changes {
-                if change.starts_with('+') {
-                    println!("    {}", change.green());
-                } else if change.starts_with('-') {
-                    println!("    {}", change.red());
-                } else if change.starts_with('~') {
-                    println!("    {}", change.yellow());
-                } else {
-                    println!("    {}", change);
-                }
-            }
-        }
-        println!();
-    }
-
-    Ok(())
-}
-
-/// Output differences in JSON format
-fn output_diff_json(
-    added: &[&str],
-    removed: &[&str],
-    modifications: &[(&str, Vec<String>)],
-) -> Result<()> {
-    // Simple JSON output
-    println!("{{");
-    println!(
-        "  \"added\": [{}],",
-        added
-            .iter()
-            .map(|s| format!("\"{}\"", s))
-            .collect::<Vec<_>>()
-            .join(", ")
-    );
-    println!(
-        "  \"removed\": [{}],",
-        removed
-            .iter()
-            .map(|s| format!("\"{}\"", s))
-            .collect::<Vec<_>>()
-            .join(", ")
-    );
-    println!("  \"modified\": [");
-    for (i, (name, changes)) in modifications.iter().enumerate() {
-        println!("    {{");
-        println!("      \"name\": \"{}\",", name);
-        println!("      \"changes\": [");
-        for (j, change) in changes.iter().enumerate() {
-            let comma = if j < changes.len() - 1 { "," } else { "" };
-            println!("        \"{}\"{}", change.replace('"', "\\\""), comma);
-        }
-        println!("      ]");
-        let comma = if i < modifications.len() - 1 { "," } else { "" };
-        println!("    }}{}", comma);
-    }
-    println!("  ]");
-    println!("}}");
-
-    Ok(())
-}
 
 /// Generate migration code from one schema version to another
 fn run_migrate(
