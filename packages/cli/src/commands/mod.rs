@@ -4,5 +4,10 @@
 //! CLI command modules
 
 pub mod check;
+pub mod check_compat;
+pub mod diff;
+pub mod generate;
 pub mod init;
+pub mod migrate;
 pub mod validate;
+pub mod watch;
