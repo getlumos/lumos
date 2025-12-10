@@ -41,9 +41,18 @@ anchor-lang = "0.30"
     fs::create_dir(&src_dir).expect("Failed to create src dir");
 
     // Write lib.rs with declare_id! for Anchor
+    // Use a clearly-invalid placeholder by default so generated code does not
+    // accidentally compile and get deployed with a junk program id.
+    // Tests that need to compile can provide a valid program id via
+    // the `LUMOS_TEST_ANCHOR_PROGRAM_ID` environment variable.
     let lib_code = if code.contains("anchor_lang::prelude") {
+        // Allow tests/CI to override with a real program id for compile checks
+        let program_id = std::env::var("LUMOS_TEST_ANCHOR_PROGRAM_ID")
+            .unwrap_or_else(|_| "REPLACE_WITH_YOUR_PROGRAM_ID".to_string());
+
         format!(
-            "use anchor_lang::prelude::*;\n\ndeclare_id!(\"Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS\");\n\n{}",
+            "use anchor_lang::prelude::*;\n\ndeclare_id!(\"{}\");\n\n{}",
+            program_id,
             code.lines()
                 .filter(|line| !line.contains("use anchor_lang::prelude"))
                 .collect::<Vec<_>>()
@@ -108,6 +117,15 @@ fn test_e2e_gaming_schema_rust_compiles() {
 
     println!("Generated Rust code:\n{}\n", rust_code);
 
+    // When compiling generated Anchor code in tests, provide a valid
+    // program id so compilation succeeds. In normal generation runs the
+    // generated code will contain a sentinel that fails compilation unless
+    // the user provides a real program id.
+    std::env::set_var(
+        "LUMOS_TEST_ANCHOR_PROGRAM_ID",
+        "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS",
+    );
+
     // Create temporary Rust project and try to compile
     let (_temp_dir, project_dir) = create_temp_rust_project("gaming_schema", &rust_code);
 
@@ -130,6 +148,28 @@ fn test_e2e_gaming_schema_rust_compiles() {
 }
 
 #[test]
+fn test_anchor_placeholder_is_sentinel() {
+    use tempfile::TempDir;
+
+    // Ensure env var is not set so helper uses sentinel
+    std::env::remove_var("LUMOS_TEST_ANCHOR_PROGRAM_ID");
+
+    // Minimal code that uses anchor imports
+    let code = "use anchor_lang::prelude::*;\n\n#[account]\npub struct X { pub a: u64, }";
+
+    // Create temp project via helper
+    let (temp_dir, project_dir) = create_temp_rust_project("anchor_placeholder", code);
+
+    let lib_path = project_dir.join("src").join("lib.rs");
+    let lib_contents = std::fs::read_to_string(&lib_path).expect("Failed to read lib.rs");
+
+    assert!(lib_contents.contains("declare_id!(\"REPLACE_WITH_YOUR_PROGRAM_ID\")"));
+
+    // TempDir will be dropped automatically
+    drop(temp_dir);
+}
+
+#[test]
 fn test_e2e_nft_marketplace_rust_compiles() {
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     path.pop();
@@ -144,6 +184,12 @@ fn test_e2e_nft_marketplace_rust_compiles() {
     let rust_code = rust::generate_module(&ir);
 
     println!("Generated Rust code:\n{}\n", rust_code);
+
+    // Provide a valid program id for CI compilation of Anchor code
+    std::env::set_var(
+        "LUMOS_TEST_ANCHOR_PROGRAM_ID",
+        "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS",
+    );
 
     let (_temp_dir, project_dir) = create_temp_rust_project("nft_marketplace", &rust_code);
 

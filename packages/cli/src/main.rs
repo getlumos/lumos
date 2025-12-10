@@ -57,6 +57,9 @@ enum Commands {
         /// Show diff and ask for confirmation before writing
         #[arg(short = 'd', long)]
         show_diff: bool,
+        /// Anchor program id to embed in generated Anchor code (required when schema uses Anchor)
+        #[arg(long = "address")]
+        address: Option<String>,
     },
 
     /// Validate schema syntax without generating code
@@ -204,11 +207,19 @@ fn main() -> Result<()> {
             dry_run,
             backup,
             show_diff,
+            address,
         } => {
             if watch {
-                run_watch_mode(&schema, output.as_deref())
+                run_watch_mode(&schema, output.as_deref(), address.as_deref())
             } else {
-                run_generate(&schema, output.as_deref(), dry_run, backup, show_diff)
+                run_generate(
+                    &schema,
+                    output.as_deref(),
+                    dry_run,
+                    backup,
+                    show_diff,
+                    address.as_deref(),
+                )
             }
         }
         Commands::Validate { schema } => run_validate(&schema),
@@ -257,6 +268,7 @@ fn run_generate(
     dry_run: bool,
     backup: bool,
     show_diff: bool,
+    address: Option<&str>,
 ) -> Result<()> {
     let output_dir = output_dir.unwrap_or_else(|| Path::new("."));
 
@@ -305,6 +317,34 @@ fn run_generate(
 
     let rust_code = rust::generate_module(&ir);
     let ts_code = typescript::generate_module(&ir);
+
+    // If generated Rust code uses Anchor, require `--address` to be provided.
+    let uses_anchor = rust_code.contains("use anchor_lang::prelude::*");
+
+    let mut rust_code = rust_code;
+    if uses_anchor {
+        let addr = if let Some(a) = address {
+            a.to_string()
+        } else {
+            anyhow::bail!("--address is required for Anchor code generation. Run: lumos generate <schema> --address <PROGRAM_ID>");
+        };
+
+        // Insert declare_id! after the anchor prelude import if possible
+        let prelude = "use anchor_lang::prelude::*;";
+        if let Some(pos) = rust_code.find(prelude) {
+            if let Some(line_end) = rust_code[pos..].find('\n') {
+                let insert_at = pos + line_end + 1;
+                let decl = format!("\ndeclare_id!(\"{}\");\n\n", addr);
+                rust_code.insert_str(insert_at, &decl);
+            } else {
+                let decl = format!("\n\ndeclare_id!(\"{}\");\n\n", addr);
+                rust_code.push_str(&decl);
+            }
+        } else {
+            let decl = format!("declare_id!(\"{}\");\n\n", addr);
+            rust_code = format!("{}{}", decl, rust_code);
+        }
+    }
 
     let rust_output = output_dir.join("generated.rs");
     let ts_output = output_dir.join("generated.ts");
@@ -800,12 +840,15 @@ fn run_check(schema_path: &Path, output_dir: Option<&Path>) -> Result<()> {
 }
 
 /// Watch mode: regenerate on file changes
-fn run_watch_mode(schema_path: &Path, output_dir: Option<&Path>) -> Result<()> {
+fn run_watch_mode(schema_path: &Path, output_dir: Option<&Path>, address: Option<&str>) -> Result<()> {
+        use notify::{RecursiveMode, Watcher};
+        use std::sync::mpsc::channel;
+        use std::time::Duration;
     use notify::{RecursiveMode, Watcher};
     use std::sync::mpsc::channel;
     use std::time::Duration;
 
-    let schema_path = schema_path.to_path_buf();
+        let schema_path = schema_path.to_path_buf();
     let output_dir_buf = output_dir.map(|p| p.to_path_buf());
 
     println!(
@@ -816,10 +859,10 @@ fn run_watch_mode(schema_path: &Path, output_dir: Option<&Path>) -> Result<()> {
     println!("Press Ctrl+C to stop");
     println!();
 
-    // Initial generation (no safety flags in watch mode)
-    if let Err(e) = run_generate(&schema_path, output_dir, false, false, false) {
-        eprintln!("{}: {}", "error".red().bold(), e);
-    }
+        // Initial generation (no safety flags in watch mode)
+        if let Err(e) = run_generate(&schema_path, output_dir, false, false, false, address) {
+            eprintln!("{}: {}", "error".red().bold(), e);
+        }
 
     // Set up file watcher
     let (tx, rx) = channel();
@@ -852,9 +895,14 @@ fn run_watch_mode(schema_path: &Path, output_dir: Option<&Path>) -> Result<()> {
                 println!();
                 println!("{:>12} change detected", "Detected".yellow().bold());
 
-                if let Err(e) =
-                    run_generate(&schema_path, output_dir_buf.as_deref(), false, false, false)
-                {
+                if let Err(e) = run_generate(
+                    &schema_path,
+                    output_dir_buf.as_deref(),
+                    false,
+                    false,
+                    false,
+                    address,
+                ) {
                     eprintln!("{}: {}", "error".red().bold(), e);
                 }
 
@@ -870,7 +918,10 @@ fn run_watch_mode(schema_path: &Path, output_dir: Option<&Path>) -> Result<()> {
         }
     }
 
-    Ok(())
+        Ok(())
+    }
+
+    inner_watch(schema_path, output_dir, address)
 }
 
 /// Check account sizes and detect overflow
@@ -1770,5 +1821,129 @@ fn validate_output_path(path: &Path) -> Result<()> {
                 e
             );
         }
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
+
+    fn write_schema(content: &str) -> NamedTempFile {
+        let mut file = NamedTempFile::new().expect("temp file");
+        write!(file, "{}", content).expect("write schema");
+        file
+    }
+
+    #[test]
+    fn anchor_generate_noninteractive_requires_address() {
+        // Schema that triggers Anchor usage
+        let schema = r#"#[solana]
+#[account]
+struct Foo { id: u64 }
+"#;
+
+        let file = write_schema(schema);
+
+        // Missing address should cause an error in strict mode
+        let res = run_generate(
+            file.path(),
+            Some(Path::new(".")),
+            true,  // dry_run
+            false, // backup
+            false, // show_diff
+            None,  // address
+        );
+
+        assert!(res.is_err(), "Expected error when address is not provided in strict mode");
+    }
+
+    #[test]
+    fn anchor_generate_with_address_succeeds_dry_run() {
+        let schema = r#"#[solana]
+#[account]
+struct Foo { id: u64 }
+"#;
+
+        let file = write_schema(schema);
+        let res = run_generate(
+            file.path(),
+            Some(Path::new(".")),
+            true,                      // dry_run
+            false,                     // backup
+            false,                     // show_diff
+            Some("5Hj3...xyz"), // address
+        );
+
+        assert!(res.is_ok(), "Expected success when address provided");
+    }
+
+    #[test]
+    fn anchor_generate_writes_declare_id_with_address() {
+        use tempfile::tempdir;
+
+        // Create temp dir for output
+        let dir = tempdir().expect("tempdir");
+        let out = dir.path();
+
+        // Schema that triggers Anchor usage
+        let schema = r#"#[solana]
+#[account]
+struct Foo { id: u64 }
+"#;
+
+        let schema_file = write_schema(schema);
+
+        // Run generation with explicit address and write files
+        let res = run_generate(
+            schema_file.path(),
+            Some(out),
+            false,                    // dry_run = false -> writes files
+            false,                    // backup
+            false,                    // show_diff
+            Some("5Hj3SomeValidAddrXyz"),
+        );
+
+        assert!(res.is_ok(), "Generation should succeed when address provided");
+
+        // Read generated file and verify declare_id! inserted
+        let gen_path = out.join("generated.rs");
+        let contents = std::fs::read_to_string(&gen_path).expect("read generated.rs");
+        assert!(contents.contains("declare_id!(\"5Hj3SomeValidAddrXyz\")"), "declare_id not found");
+    }
+
+    #[test]
+    fn anchor_generate_writes_sentinel_when_env_override() {
+        use tempfile::tempdir;
+
+        // Create temp dir for output
+        let dir = tempdir().expect("tempdir");
+        let out = dir.path();
+
+        // Schema that triggers Anchor usage
+        let schema = r#"#[solana]
+#[account]
+struct Foo { id: u64 }
+"#;
+
+        let schema_file = write_schema(schema);
+
+        // Run generation using explicit sentinel address
+        let res = run_generate(
+            schema_file.path(),
+            Some(out),
+            false, // dry_run = false
+            false,
+            false,
+            Some("REPLACE_WITH_YOUR_PROGRAM_ID"),
+        );
+
+        assert!(res.is_ok(), "Generation should succeed with explicit sentinel address");
+
+        let gen_path = out.join("generated.rs");
+        let contents = std::fs::read_to_string(&gen_path).expect("read generated.rs");
+        assert!(contents.contains("declare_id!(\"REPLACE_WITH_YOUR_PROGRAM_ID\")"), "sentinel not found");
     }
 }
