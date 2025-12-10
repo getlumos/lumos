@@ -33,6 +33,28 @@ Thank you for your interest in contributing to LUMOS! This document provides gui
    cargo run --package lumos-cli -- --help
    ```
 
+5. **Environment variables**
+
+   Copy the example environment file and customize optional values for local development:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   The repository includes a `.env.example` template documenting the optional environment variables you can configure:
+
+   - `LUMOS_WATCH_DEBOUNCE`: Watch mode debounce duration in milliseconds (default `100`, max `5000`). Controls how quickly file changes trigger rebuilds when running in watch mode.
+   - `RUST_LOG`: Logging level for tracing and debugging (common values: `trace`, `debug`, `info`, `warn`, `error`). Default is `info`.
+   - `SENTRY_DSN`: Error monitoring DSN (optional). If you use Sentry for error reporting, set this value; otherwise leave it empty.
+
+   Example (from `.env.example`):
+
+   ```text
+   # LUMOS_WATCH_DEBOUNCE=100
+   # RUST_LOG=info
+   # SENTRY_DSN=
+   ```
+
 ## 📋 How to Contribute
 
 ### Reporting Bugs

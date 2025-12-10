@@ -33,6 +33,7 @@ lumos generate <SCHEMA_FILE> [OPTIONS]
 | `--dry-run` | Preview changes without writing files |
 | `--backup` | Create `.backup` files before overwriting |
 | `--show-diff` | Show diff and ask for confirmation before writing |
+| `--address <PROGRAM_ID>` | Anchor program id to embed in generated Anchor code (when schema uses `#[account]`). If omitted the CLI will prompt interactively; in non-interactive contexts a sentinel placeholder will be used which causes a compile-time error until replaced. |
 
 #### Examples
 
@@ -221,6 +222,30 @@ lumos generate schema.lumos --backup --show-diff
 
 **Watch mode note:**
 Safety flags are disabled in watch mode (`--watch`) to allow automatic regeneration without prompts.
+
+##### Anchor Program ID (`--address`)
+
+When generating Rust code that uses the Anchor framework (module contains `#[account]` structs), the generator needs a program id to include at crate-level using `declare_id!("...")`.
+
+- If you provide `--address <PROGRAM_ID>`, the value will be embedded directly into the generated `generated.rs` file.
+- `--address` is required when the schema uses Anchor (`#[account]` structs). The CLI will return an error if you omit `--address` in that case. This prevents creating generated code containing a valid-looking but incorrect program id that could be accidentally deployed.
+
+Note: Tests and CI that need to compile generated Anchor code should pass a real program id via `--address` (or set it in scripted invocations).
+
+Why this matters:
+
+- Prevents accidentally deploying code with a junk but valid-looking base58 id.
+- Using a non-base58 sentinel makes the compiler fail with a clear error until a developer intentionally replaces it.
+
+Example (embed program id):
+```bash
+lumos generate schema.lumos --address 5Hj3...xyz
+```
+
+Example (required):
+```bash
+lumos generate schema.lumos --address 5Hj3...xyz
+```
 
 ---
 
