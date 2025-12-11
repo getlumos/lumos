@@ -294,9 +294,9 @@ pub enum AnchorCommands {
         #[arg(short = 'V', long, default_value = "0.1.0")]
         version: String,
 
-        /// Program address (optional)
-        #[arg(short, long)]
-        address: Option<String>,
+        /// Program address (required)
+        #[arg(short, long, required = true)]
+        address: String,
 
         /// Generate TypeScript client
         #[arg(long)]
