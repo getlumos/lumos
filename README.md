@@ -19,8 +19,8 @@
 
 [![Crates.io](https://img.shields.io/crates/v/lumos-core?label=lumos-core)](https://crates.io/crates/lumos-core)
 [![Crates.io](https://img.shields.io/crates/v/lumos-cli?label=lumos-cli)](https://crates.io/crates/lumos-cli)
-[![Downloads](https://img.shields.io/crates/d/lumos-cli?label=Downloads)](https://crates.io/crates/lumos-cli)
 [![Crates.io](https://img.shields.io/crates/v/lumos-lsp?label=lumos-lsp)](https://crates.io/crates/lumos-lsp)
+[![Downloads](https://img.shields.io/crates/d/lumos-cli?label=Downloads)](https://crates.io/crates/lumos-cli)
 [![GitHub Action](https://img.shields.io/badge/Marketplace-LUMOS%20Generate-purple.svg?logo=github)](https://github.com/marketplace/actions/lumos-generate)
 [![CI](https://img.shields.io/github/actions/workflow/status/getlumos/lumos/ci.yml?branch=main&label=CI%20(main)&logo=github)](https://github.com/getlumos/lumos/actions)
 [![CI](https://img.shields.io/github/actions/workflow/status/getlumos/lumos/ci.yml?branch=dev&label=CI%20(dev)&logo=github)](https://github.com/getlumos/lumos/actions)
