@@ -11,6 +11,7 @@ env:
 # Required for creating releases and uploading assets
 permissions:
   contents: write
+  issues: write  # Required for failure notifications
 
 jobs:
   # Validate secrets before starting expensive builds
@@ -246,3 +247,75 @@ jobs:
 
   # NOTE: VSCode extension publishing disabled - extension lives in separate repo
   # See: https://github.com/getlumos/vscode-lumos
+
+  notify-failure:
+    name: Notify on Release Failure
+    needs: [validate-secrets, build-binaries, create-release, publish-crates]
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create failure issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = context.ref.replace('refs/tags/', '');
+            const timestamp = new Date().toISOString();
+
+            // Determine which job failed
+            const jobs = [
+              'validate-secrets',
+              'build-binaries',
+              'create-release',
+              'publish-crates'
+            ];
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚨 Release ${tag} failed`,
+              labels: ['release-alert', 'priority:critical', 'area:ci'],
+              assignees: ['rz1989s'],
+              body: `## Release Failure Detected\n\n` +
+                    `The release workflow for **${tag}** has failed.\n\n` +
+                    `### Details\n\n` +
+                    `- **Tag**: ${tag}\n` +
+                    `- **Time**: ${timestamp}\n` +
+                    `- **Workflow Run**: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}\n\n` +
+                    `### Action Required\n\n` +
+                    `1. Check the workflow run logs above for error details\n` +
+                    `2. Common failure points:\n` +
+                    `   - **validate-secrets**: Missing or invalid CARGO_REGISTRY_TOKEN\n` +
+                    `   - **build-binaries**: Compilation errors or missing dependencies\n` +
+                    `   - **create-release**: GitHub release creation failed\n` +
+                    `   - **publish-crates**: crates.io publishing failed (version conflict, network issues)\n` +
+                    `3. Fix the issue and re-tag if necessary\n` +
+                    `4. If crates.io publishing failed partially, check which packages were published:\n` +
+                    `   - https://crates.io/crates/lumos-core\n` +
+                    `   - https://crates.io/crates/lumos-lsp\n` +
+                    `   - https://crates.io/crates/lumos-cli\n\n` +
+                    `### Recovery Steps\n\n` +
+                    `If you need to retry the release:\n` +
+                    `\`\`\`bash\n` +
+                    `# Delete the failed tag\n` +
+                    `git tag -d ${tag}\n` +
+                    `git push origin :refs/tags/${tag}\n\n` +
+                    `# Fix the issue, then re-tag\n` +
+                    `git tag ${tag}\n` +
+                    `git push origin ${tag}\n` +
+                    `\`\`\`\n\n` +
+                    `---\n` +
+                    `*This issue was automatically created by the release workflow.*`
+            });
+
+      - name: Send success notification
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = context.ref.replace('refs/tags/', '');
+            console.log(`✅ Release ${tag} completed successfully!`);
+            console.log(`Published to:`);
+            console.log(`- GitHub: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/releases`);
+            console.log(`- crates.io: https://crates.io/crates/lumos-core`);
+            console.log(`- crates.io: https://crates.io/crates/lumos-lsp`);
+            console.log(`- crates.io: https://crates.io/crates/lumos-cli`);
