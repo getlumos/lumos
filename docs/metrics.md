@@ -4,11 +4,11 @@ This page aggregates health metrics for the LUMOS project.
 
 ## Key Badges (Live)
 
-- Downloads: https://img.shields.io/crates/d/lumos-cli
-- Coverage (Codecov, dev): https://codecov.io/gh/getlumos/lumos/branch/dev/graph/badge.svg
+- [![Downloads](https://img.shields.io/crates/d/lumos-cli)](https://crates.io/crates/lumos-cli)
+- [![Coverage (Codecov, dev)](https://codecov.io/gh/getlumos/lumos/branch/dev/graph/badge.svg)](https://codecov.io/gh/getlumos/lumos)
 - CI status (GitHub Actions):
-  - main: https://img.shields.io/github/actions/workflow/status/getlumos/lumos/ci.yml?branch=main
-  - dev: https://img.shields.io/github/actions/workflow/status/getlumos/lumos/ci.yml?branch=dev
+  - [![main](https://img.shields.io/github/actions/workflow/status/getlumos/lumos/ci.yml?branch=main)](https://github.com/getlumos/lumos/actions?query=branch%3Amain)
+  - [![dev](https://img.shields.io/github/actions/workflow/status/getlumos/lumos/ci.yml?branch=dev)](https://github.com/getlumos/lumos/actions?query=branch%3Adev)
 
 ## Trends & Sources
 
