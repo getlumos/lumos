@@ -14,23 +14,6 @@ Thank you for your interest in contributing to LUMOS! This document provides gui
 
 1. **Fork and clone the repository**
    ```bash
-
-### Environment Variables
-
-Create a `.env` file based on `.env.example` at the repo root. Useful variables:
-
-- `LUMOS_WATCH_DEBOUNCE`: Debounce delay in ms for `--watch`
-- `RUST_LOG`: Set logging level (e.g., `info`)
-
-### Anchor Program Generation
-
-The `anchor generate` command now requires an explicit program address via `--address` and validates it as a base58-encoded 32-byte Solana program ID.
-
-Example:
-
-```
-lumos anchor generate examples/basic/schema.lumos --address Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS --typescript
-```
    git clone https://github.com/RECTOR-LABS/lumos.git
    cd lumos
    ```
@@ -55,6 +38,23 @@ lumos anchor generate examples/basic/schema.lumos --address Fg6PaFpoGXkYsidMpWTK
    bash .github/scripts/install-hooks.sh
    ```
    This installs a pre-commit hook that automatically validates `.lumos` schema files before each commit.
+
+### Environment Variables
+
+Create a `.env` file based on `.env.example` at the repo root. Useful variables:
+
+- `LUMOS_WATCH_DEBOUNCE`: Debounce delay in ms for `--watch`
+- `RUST_LOG`: Set logging level (e.g., `info`)
+
+### Anchor Program Generation
+
+The `anchor generate` command now requires an explicit program address via `--address` and validates it as a base58-encoded 32-byte Solana program ID.
+
+Example:
+
+```
+lumos anchor generate examples/basic/schema.lumos --address Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS --typescript
+```
 
 ## 📋 How to Contribute
 
