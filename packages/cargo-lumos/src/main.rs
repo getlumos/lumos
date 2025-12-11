@@ -112,11 +112,21 @@ enum LumosCommands {
 struct LumosConfig {
     /// Path to schema file
     schema: Option<String>,
-    /// Output path for Rust code (reserved for future use)
-    #[allow(dead_code)]
+    /// Output path for Rust code
+    ///
+    /// Part of stable config API - users can configure this in Cargo.toml.
+    /// Currently deserialized but not consumed (lumos CLI uses --output flag).
+    /// Planned: Pass these values to lumos via --output-rust/--output-ts flags.
+    /// Tracked in: https://github.com/getlumos/lumos/issues/TBD
+    #[allow(dead_code)] // Reserved for future use - part of public config API
     output_rust: Option<String>,
-    /// Output path for TypeScript code (reserved for future use)
-    #[allow(dead_code)]
+    /// Output path for TypeScript code
+    ///
+    /// Part of stable config API - users can configure this in Cargo.toml.
+    /// Currently deserialized but not consumed (lumos CLI uses --output flag).
+    /// Planned: Pass these values to lumos via --output-rust/--output-ts flags.
+    /// Tracked in: https://github.com/getlumos/lumos/issues/TBD
+    #[allow(dead_code)] // Reserved for future use - part of public config API
     output_ts: Option<String>,
     /// Watch mode enabled by default
     watch: Option<bool>,
