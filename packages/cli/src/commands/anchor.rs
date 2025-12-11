@@ -236,9 +236,16 @@ pub fn run_generate(
     // Validate provided program address (must be valid base58 Pubkey, 32 bytes)
     match bs58::decode(address).into_vec() {
         Ok(bytes) if bytes.len() == 32 => {}
-        _ => {
+        Ok(bytes) => {
             anyhow::bail!(
-                "Invalid --address: must be a valid base58-encoded 32-byte Solana program ID"
+                "Invalid --address: decoded base58 but got {} bytes (expected 32). Did you provide the wrong key type or a truncated address?",
+                bytes.len()
+            );
+        }
+        Err(e) => {
+            anyhow::bail!(
+                "Invalid --address: base58 decoding failed ({}). Did you provide invalid base58 characters?",
+                e
             );
         }
     }
