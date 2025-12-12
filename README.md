@@ -23,6 +23,7 @@
 [![npm](https://img.shields.io/npm/v/@getlumos/cli?label=npm)](https://www.npmjs.com/package/@getlumos/cli)
 [![Cargo Downloads](https://img.shields.io/crates/d/lumos-cli?label=cargo%20installs)](https://crates.io/crates/lumos-cli)
 [![npm Downloads](https://img.shields.io/npm/dm/@getlumos/cli?label=npm%20installs)](https://www.npmjs.com/package/@getlumos/cli)
+[![Docker](https://img.shields.io/badge/Docker-ghcr.io-blue.svg?logo=docker)](https://github.com/getlumos/lumos/pkgs/container/lumos)
 [![GitHub Action](https://img.shields.io/badge/Marketplace-LUMOS%20Generate-purple.svg?logo=github)](https://github.com/marketplace/actions/lumos-generate)
 [![CI](https://img.shields.io/github/actions/workflow/status/getlumos/lumos/ci.yml?branch=main&label=CI%20(main)&logo=github)](https://github.com/getlumos/lumos/actions)
 [![CI](https://img.shields.io/github/actions/workflow/status/getlumos/lumos/ci.yml?branch=dev&label=CI%20(dev)&logo=github)](https://github.com/getlumos/lumos/actions)
@@ -344,6 +345,36 @@ cargo build --release
 
 # The binary will be available at: target/release/lumos
 ./target/release/lumos --help
+```
+
+### Install via npm (No Rust Required)
+
+```bash
+# Install globally
+npm install -g @getlumos/cli
+
+# Or use with npx
+npx @getlumos/cli generate schema.lumos
+```
+
+### Use with Docker
+
+```bash
+# Run directly (no installation needed)
+docker run --rm -v $(pwd):/workspace ghcr.io/getlumos/lumos generate schema.lumos
+
+# Or pull first for offline use
+docker pull ghcr.io/getlumos/lumos:latest
+docker run --rm -v $(pwd):/workspace ghcr.io/getlumos/lumos generate schema.lumos -o generated/
+```
+
+**Docker in CI/CD (GitHub Actions):**
+
+```yaml
+- name: Generate code from schema
+  uses: docker://ghcr.io/getlumos/lumos:latest
+  with:
+    args: generate schemas/*.lumos -o src/generated/
 ```
 
 ### Run Tests
