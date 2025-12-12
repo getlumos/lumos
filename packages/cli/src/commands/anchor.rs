@@ -16,6 +16,7 @@ use std::path::{Path, PathBuf};
 
 use crate::commands::generate::resolve_schema;
 use crate::utils::{infer_anchor_account_type, type_info_to_rust_type, validate_output_path};
+use bs58;
 
 /// Generate Anchor IDL from LUMOS schema
 pub fn run_idl(
@@ -203,7 +204,7 @@ pub fn run_generate(
     output_dir: Option<&Path>,
     program_name: Option<&str>,
     version: &str,
-    address: Option<&str>,
+    address: &str,
     generate_typescript: bool,
     dry_run: bool,
 ) -> Result<()> {
@@ -232,11 +233,28 @@ pub fn run_generate(
         name
     );
 
+    // Validate provided program address (must be valid base58 Pubkey, 32 bytes)
+    match bs58::decode(address).into_vec() {
+        Ok(bytes) if bytes.len() == 32 => {}
+        Ok(bytes) => {
+            anyhow::bail!(
+                "Invalid --address: decoded base58 but got {} bytes (expected 32). Did you provide the wrong key type or a truncated address?",
+                bytes.len()
+            );
+        }
+        Err(e) => {
+            anyhow::bail!(
+                "Invalid --address: base58 decoding failed ({}). Did you provide invalid base58 characters?",
+                e
+            );
+        }
+    }
+
     // Configure IDL generator
     let idl_config = IdlGeneratorConfig {
         program_name: name.clone(),
         version: version.to_string(),
-        address: address.map(String::from),
+        address: Some(address.to_string()),
     };
     let idl_generator = IdlGenerator::new(idl_config);
 
@@ -277,13 +295,8 @@ pub fn run_generate(
     // Imports
     rust_output.push_str("use anchor_lang::prelude::*;\n\n");
 
-    // Program ID declaration (placeholder if no address provided)
-    if let Some(addr) = address {
-        rust_output.push_str(&format!("declare_id!(\"{}\");\n\n", addr));
-    } else {
-        rust_output.push_str("// TODO: Replace with your program ID\n");
-        rust_output.push_str("declare_id!(\"YourProgramIdHere11111111111111111111111111\");\n\n");
-    }
+    // Program ID declaration
+    rust_output.push_str(&format!("declare_id!(\"{}\");\n\n", address));
 
     // Generate account structs with LEN constants
     if !accounts.is_empty() {

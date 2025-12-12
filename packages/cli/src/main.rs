@@ -119,7 +119,7 @@ fn main() -> Result<()> {
                 output.as_deref(),
                 name.as_deref(),
                 &version,
-                address.as_deref(),
+                &address,
                 typescript,
                 dry_run,
             ),
