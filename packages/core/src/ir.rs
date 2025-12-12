@@ -6,6 +6,40 @@
 //! The IR is a language-agnostic representation of type definitions
 //! that can be transformed into various target languages.
 
+/// A warning generated during transformation
+///
+/// Warnings are non-fatal issues that the user should be aware of,
+/// such as deprecated fields or potential compatibility issues.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Warning {
+    /// The type name where the warning originated
+    pub type_name: String,
+    /// The field name (if applicable)
+    pub field_name: Option<String>,
+    /// The warning message
+    pub message: String,
+    /// Warning category
+    pub kind: WarningKind,
+}
+
+/// Categories of warnings
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WarningKind {
+    /// A field or type is deprecated
+    Deprecated,
+    /// Potential compatibility issue
+    Compatibility,
+}
+
+impl std::fmt::Display for Warning {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.field_name {
+            Some(field) => write!(f, "{}.{}: {}", self.type_name, field, self.message),
+            None => write!(f, "{}: {}", self.type_name, self.message),
+        }
+    }
+}
+
 /// Visibility of a type definition
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Visibility {

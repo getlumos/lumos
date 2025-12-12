@@ -11,7 +11,7 @@ use lumos_core::generators::{get_generators, Language};
 use lumos_core::ir::TypeDefinition;
 use lumos_core::module_resolver::ModuleResolver;
 use lumos_core::parser::parse_lumos_file;
-use lumos_core::transform::transform_to_ir;
+use lumos_core::transform::{collect_deprecation_warnings, transform_to_ir};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -144,6 +144,12 @@ pub fn run(
     // Report loaded files if multiple
     if file_count > 1 && !dry_run {
         println!("{:>12} {} files", "Loaded".green().bold(), file_count);
+    }
+
+    // Collect and print deprecation warnings
+    let warnings = collect_deprecation_warnings(&ir);
+    for warning in &warnings {
+        eprintln!("{}: {}", "warning".yellow().bold(), warning);
     }
 
     if ir.is_empty() {

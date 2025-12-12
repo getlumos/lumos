@@ -314,8 +314,8 @@ pub fn transform_to_ir(file: LumosFile) -> Result<Vec<TypeDefinition>> {
     // Validate user-defined type references
     validate_user_defined_types(&type_defs)?;
 
-    // Emit deprecation warnings
-    emit_deprecation_warnings(&type_defs);
+    // Note: Deprecation warnings are now collected via collect_deprecation_warnings()
+    // The caller (CLI) is responsible for displaying them
 
     Ok(type_defs)
 }
@@ -400,8 +400,8 @@ fn transform_to_ir_with_resolver_impl(
         validate_user_defined_types(&type_defs)?;
     }
 
-    // Emit deprecation warnings
-    emit_deprecation_warnings(&type_defs);
+    // Note: Deprecation warnings are now collected via collect_deprecation_warnings()
+    // The caller (CLI) is responsible for displaying them
 
     Ok(type_defs)
 }
@@ -768,12 +768,29 @@ fn extract_custom_derives(attributes: &[Attribute]) -> Vec<String> {
         .unwrap_or_default()
 }
 
-/// Emit deprecation warnings for all deprecated fields in the schema
+/// Collect deprecation warnings for all deprecated fields in the schema
 ///
-/// This function scans all type definitions and emits warnings to stderr
+/// This function scans all type definitions and returns warnings
 /// for any fields marked with the `#[deprecated]` attribute.
-fn emit_deprecation_warnings(type_defs: &[TypeDefinition]) {
-    use colored::Colorize;
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use lumos_core::transform::{transform_to_ir, collect_deprecation_warnings};
+/// use lumos_core::parser::parse_lumos_file;
+///
+/// let ast = parse_lumos_file(schema)?;
+/// let ir = transform_to_ir(ast)?;
+/// let warnings = collect_deprecation_warnings(&ir);
+///
+/// for warning in warnings {
+///     eprintln!("warning: {}", warning);
+/// }
+/// ```
+pub fn collect_deprecation_warnings(type_defs: &[TypeDefinition]) -> Vec<crate::ir::Warning> {
+    use crate::ir::{Warning, WarningKind};
+
+    let mut warnings = Vec::new();
 
     for type_def in type_defs {
         match type_def {
@@ -781,13 +798,12 @@ fn emit_deprecation_warnings(type_defs: &[TypeDefinition]) {
                 // Check struct fields
                 for field in &s.fields {
                     if let Some(msg) = &field.deprecated {
-                        eprintln!(
-                            "{} {}.{}: {}",
-                            "warning:".yellow().bold(),
-                            s.name,
-                            field.name,
-                            msg
-                        );
+                        warnings.push(Warning {
+                            type_name: s.name.clone(),
+                            field_name: Some(field.name.clone()),
+                            message: msg.clone(),
+                            kind: WarningKind::Deprecated,
+                        });
                     }
                 }
             }
@@ -797,14 +813,12 @@ fn emit_deprecation_warnings(type_defs: &[TypeDefinition]) {
                     if let EnumVariantDefinition::Struct { name, fields } = variant {
                         for field in fields {
                             if let Some(msg) = &field.deprecated {
-                                eprintln!(
-                                    "{} {}.{}::{}: {}",
-                                    "warning:".yellow().bold(),
-                                    e.name,
-                                    name,
-                                    field.name,
-                                    msg
-                                );
+                                warnings.push(Warning {
+                                    type_name: e.name.clone(),
+                                    field_name: Some(format!("{}::{}", name, field.name)),
+                                    message: msg.clone(),
+                                    kind: WarningKind::Deprecated,
+                                });
                             }
                         }
                     }
@@ -815,6 +829,8 @@ fn emit_deprecation_warnings(type_defs: &[TypeDefinition]) {
             }
         }
     }
+
+    warnings
 }
 
 /// Validate that all user-defined type references are defined in the schema

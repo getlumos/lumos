@@ -151,6 +151,13 @@ jobs:
           find artifacts -type f \( -name "*.tar.gz" -o -name "*.zip" \) -exec mv {} release-assets/ \;
           ls -la release-assets/
 
+      - name: Generate SHA256 checksums
+        run: |
+          cd release-assets
+          sha256sum * > SHA256SUMS.txt
+          echo "=== SHA256 Checksums ==="
+          cat SHA256SUMS.txt
+
       - name: Get version from tag
         id: get_version
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
@@ -195,6 +202,18 @@ jobs:
           | macOS x64 | `lumos-macos-x86_64.tar.gz` | `lumos-lsp-macos-x86_64.tar.gz` |
           | macOS ARM64 | `lumos-macos-arm64.tar.gz` | `lumos-lsp-macos-arm64.tar.gz` |
           | Windows x64 | `lumos-windows-x86_64.zip` | `lumos-lsp-windows-x86_64.zip` |
+
+          ### Verify Downloads
+
+          Download `SHA256SUMS.txt` and verify your binary:
+
+          ```bash
+          # Linux/macOS
+          sha256sum -c SHA256SUMS.txt --ignore-missing
+
+          # Or verify a single file
+          sha256sum lumos-linux-x86_64.tar.gz
+          ```
 
           ---
           **Full Changelog**: https://github.com/getlumos/lumos/compare/v${{ steps.get_version.outputs.version }}...HEAD

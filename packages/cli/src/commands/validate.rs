@@ -6,7 +6,7 @@
 use anyhow::{Context, Result};
 use colored::Colorize;
 use lumos_core::parser::parse_lumos_file;
-use lumos_core::transform::transform_to_ir;
+use lumos_core::transform::{collect_deprecation_warnings, transform_to_ir};
 use std::fs;
 use std::path::Path;
 
@@ -26,6 +26,12 @@ pub fn run(schema_path: &Path) -> Result<()> {
 
     let ir = transform_to_ir(ast).with_context(|| "Failed to transform AST to IR")?;
 
+    // Collect and print deprecation warnings
+    let warnings = collect_deprecation_warnings(&ir);
+    for warning in &warnings {
+        eprintln!("{}: {}", "warning".yellow().bold(), warning);
+    }
+
     if ir.is_empty() {
         println!("{}: No type definitions found", "warning".yellow().bold());
     } else {
@@ -34,6 +40,13 @@ pub fn run(schema_path: &Path) -> Result<()> {
             "Success".green().bold(),
             ir.len()
         );
+        if !warnings.is_empty() {
+            println!(
+                "{:>12} {} deprecation warnings",
+                "Warnings".yellow().bold(),
+                warnings.len()
+            );
+        }
     }
 
     Ok(())
