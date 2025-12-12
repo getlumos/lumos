@@ -107,8 +107,8 @@ https://github.com/RECTOR-LABS/lumos
     println!("{:>12} project initialized", "Finished".green().bold());
     println!();
     println!("Next steps:");
-    if project_name.is_some() {
-        println!("  cd {}", project_name.unwrap());
+    if let Some(name) = project_name {
+        println!("  cd {}", name);
     }
     println!("  lumos generate schema.lumos");
 
