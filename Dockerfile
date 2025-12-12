@@ -11,7 +11,7 @@
 # =============================================================================
 # Stage 1: Build
 # =============================================================================
-FROM rust:1.75-slim-bookworm AS builder
+FROM rust:1.82-slim-bookworm AS builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -29,16 +29,18 @@ COPY packages/cargo-lumos/Cargo.toml packages/cargo-lumos/
 COPY packages/npm/package.json packages/npm/
 
 # Create dummy source files for dependency caching
-RUN mkdir -p packages/core/src packages/cli/src packages/lsp/src packages/cargo-lumos/src \
+RUN mkdir -p packages/core/src packages/cli/src packages/lsp/src packages/cargo-lumos/src packages/core/benches \
     && echo "fn main() {}" > packages/cli/src/main.rs \
     && echo "fn main() {}" > packages/lsp/src/main.rs \
     && echo "fn main() {}" > packages/cargo-lumos/src/main.rs \
-    && echo "pub fn dummy() {}" > packages/core/src/lib.rs
+    && echo "pub fn dummy() {}" > packages/core/src/lib.rs \
+    && echo "fn main() {}" > packages/core/benches/benchmarks.rs \
+    && echo "fn main() {}" > packages/core/benches/borsh_comparison.rs
 
 # Build dependencies (cached layer)
 RUN cargo build --release --package lumos-cli 2>/dev/null || true
 
-# Copy actual source code
+# Copy actual source code (benches excluded via .dockerignore - use dummy stubs)
 COPY packages/core/src packages/core/src
 COPY packages/cli/src packages/cli/src
 COPY packages/lsp/src packages/lsp/src
@@ -66,8 +68,19 @@ LABEL org.opencontainers.image.licenses="MIT OR Apache-2.0"
 # Copy binary from builder
 COPY --from=builder /build/target/release/lumos /usr/local/bin/lumos
 
+# Create non-root user for security (prevents container escape attacks)
+# Using UID 1000 for compatibility with most host systems
+RUN groupadd -r -g 1000 lumos && \
+    useradd -r -u 1000 -g lumos lumos
+
 # Set working directory for mounted volumes
 WORKDIR /workspace
+
+# Ensure workspace is accessible (owner will be set by volume mount)
+RUN chown lumos:lumos /workspace
+
+# Switch to non-root user
+USER lumos
 
 # Default entrypoint
 ENTRYPOINT ["lumos"]
