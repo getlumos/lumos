@@ -12,7 +12,8 @@
 //! **Goal**: Prove LUMOS-generated code is equal or faster than hand-written Borsh
 
 use borsh::{BorshDeserialize, BorshSerialize};
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use std::hint::black_box;
 
 // ===== Manual Borsh Implementation (Hand-Written) =====
 

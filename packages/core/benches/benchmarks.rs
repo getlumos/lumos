@@ -10,8 +10,9 @@
 //! - TypeScript generator
 //! - End-to-end pipeline
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use lumos_core::{generators, parser, transform};
+use std::hint::black_box;
 
 // ===== Test Schemas =====
 

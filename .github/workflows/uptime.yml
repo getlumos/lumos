@@ -50,7 +50,7 @@ jobs:
 
       - name: Create issue on failure
         if: failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const httpCode = '${{ steps.check.outputs.http_code }}';
@@ -110,64 +110,113 @@ jobs:
     name: Check crates.io packages
     runs-on: ubuntu-latest
     steps:
-      - name: Check lumos-core
+      - name: Check crates.io packages with retry
+        id: check-crates
         run: |
-          echo "Checking lumos-core on crates.io..."
-          HTTP_CODE=$(curl -o /dev/null -s -w "%{http_code}" -H "User-Agent: lumos-uptime-monitor (https://github.com/getlumos/lumos)" https://crates.io/api/v1/crates/lumos-core)
-          echo "HTTP Code: $HTTP_CODE"
-          if [ "$HTTP_CODE" -ne 200 ]; then
-            echo "❌ lumos-core not accessible (HTTP $HTTP_CODE)"
+          check_crate() {
+            local crate=$1
+            local max_retries=3
+            local retry_delay=10
+
+            for i in $(seq 1 $max_retries); do
+              HTTP_CODE=$(curl -o /dev/null -s -w "%{http_code}" --max-time 30 -H "User-Agent: lumos-uptime-monitor (https://github.com/getlumos/lumos)" "https://crates.io/api/v1/crates/$crate")
+              if [ "$HTTP_CODE" -eq 200 ]; then
+                echo "✅ $crate is accessible (attempt $i)"
+                return 0
+              fi
+              echo "⚠️ $crate returned HTTP $HTTP_CODE (attempt $i/$max_retries)"
+              if [ $i -lt $max_retries ]; then
+                echo "Retrying in ${retry_delay}s..."
+                sleep $retry_delay
+              fi
+            done
+            echo "❌ $crate not accessible after $max_retries attempts"
+            return 1
+          }
+
+          FAILED=""
+
+          echo "=== Checking lumos-core ==="
+          if ! check_crate "lumos-core"; then
+            FAILED="$FAILED lumos-core"
+          fi
+
+          echo "=== Checking lumos-cli ==="
+          if ! check_crate "lumos-cli"; then
+            FAILED="$FAILED lumos-cli"
+          fi
+
+          echo "=== Checking lumos-lsp ==="
+          if ! check_crate "lumos-lsp"; then
+            FAILED="$FAILED lumos-lsp"
+          fi
+
+          if [ -n "$FAILED" ]; then
+            echo "failed_crates=$FAILED" >> $GITHUB_OUTPUT
             exit 1
           fi
-          echo "✅ lumos-core is accessible"
 
-      - name: Check lumos-cli
-        run: |
-          echo "Checking lumos-cli on crates.io..."
-          HTTP_CODE=$(curl -o /dev/null -s -w "%{http_code}" -H "User-Agent: lumos-uptime-monitor (https://github.com/getlumos/lumos)" https://crates.io/api/v1/crates/lumos-cli)
-          echo "HTTP Code: $HTTP_CODE"
-          if [ "$HTTP_CODE" -ne 200 ]; then
-            echo "❌ lumos-cli not accessible (HTTP $HTTP_CODE)"
-            exit 1
-          fi
-          echo "✅ lumos-cli is accessible"
+          echo "✅ All crates accessible"
 
-      - name: Check lumos-lsp
-        run: |
-          echo "Checking lumos-lsp on crates.io..."
-          HTTP_CODE=$(curl -o /dev/null -s -w "%{http_code}" -H "User-Agent: lumos-uptime-monitor (https://github.com/getlumos/lumos)" https://crates.io/api/v1/crates/lumos-lsp)
-          echo "HTTP Code: $HTTP_CODE"
-          if [ "$HTTP_CODE" -ne 200 ]; then
-            echo "❌ lumos-lsp not accessible (HTTP $HTTP_CODE)"
-            exit 1
-          fi
-          echo "✅ lumos-lsp is accessible"
-
-      - name: Create issue on crates.io failure
+      - name: Create or update issue on crates.io failure
         if: failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const timestamp = new Date().toISOString();
+            const failedCrates = '${{ steps.check-crates.outputs.failed_crates }}' || 'unknown';
 
-            await github.rest.issues.create({
+            // Check if an open crates.io issue already exists
+            const existingIssues = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: '🚨 crates.io packages unreachable',
-              labels: ['uptime-alert', 'priority:high', 'area:infrastructure'],
-              body: `## crates.io Downtime Detected\n\n` +
-                    `Automated monitoring detected that LUMOS packages on crates.io are unreachable.\n\n` +
-                    `### Details\n\n` +
-                    `- **Time**: ${timestamp}\n` +
-                    `- **Workflow Run**: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}\n\n` +
-                    `### Packages to Check\n\n` +
-                    `- lumos-core: https://crates.io/crates/lumos-core\n` +
-                    `- lumos-cli: https://crates.io/crates/lumos-cli\n` +
-                    `- lumos-lsp: https://crates.io/crates/lumos-lsp\n\n` +
-                    `### Possible Causes\n\n` +
-                    `1. crates.io is experiencing downtime\n` +
-                    `2. Packages were yanked or unpublished\n` +
-                    `3. Network issues\n\n` +
-                    `---\n` +
-                    `*This issue was automatically created by the uptime monitoring workflow.*`
+              state: 'open',
+              labels: 'uptime-alert',
+              per_page: 100
             });
+
+            const cratesIssue = existingIssues.data.find(
+              issue => issue.title.includes('crates.io')
+            );
+
+            if (cratesIssue) {
+              // Update existing issue with new failure
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: cratesIssue.number,
+                body: `🔴 **Another check failure**\n\n` +
+                      `- **Time**: ${timestamp}\n` +
+                      `- **Failed crates**: ${failedCrates}\n` +
+                      `- **Workflow Run**: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+              });
+              console.log(`Updated existing issue #${cratesIssue.number}`);
+            } else {
+              // Create new issue
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: '🚨 crates.io packages unreachable',
+                labels: ['uptime-alert', 'priority:high', 'area:infrastructure'],
+                body: `## crates.io Downtime Detected\n\n` +
+                      `Automated monitoring detected that LUMOS packages on crates.io are unreachable.\n\n` +
+                      `### Details\n\n` +
+                      `- **Time**: ${timestamp}\n` +
+                      `- **Failed crates**: ${failedCrates}\n` +
+                      `- **Workflow Run**: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}\n\n` +
+                      `### Packages to Check\n\n` +
+                      `- lumos-core: https://crates.io/crates/lumos-core\n` +
+                      `- lumos-cli: https://crates.io/crates/lumos-cli\n` +
+                      `- lumos-lsp: https://crates.io/crates/lumos-lsp\n\n` +
+                      `### Possible Causes\n\n` +
+                      `1. crates.io is experiencing downtime\n` +
+                      `2. Packages were yanked or unpublished\n` +
+                      `3. Network issues\n\n` +
+                      `### Monitoring\n\n` +
+                      `This issue will automatically update with additional failures. ` +
+                      `Close this issue once packages are confirmed accessible.\n\n` +
+                      `---\n` +
+                      `*This issue was automatically created by the uptime monitoring workflow.*`
+              });
+              console.log('Created new crates.io alert issue');
+            }
