@@ -38,7 +38,7 @@ wasm-opt = ["-O3", "-Os", "--enable-bulk-memory"]  # Optimize for size with bulk
 [dev-dependencies]
 tempfile = "3.8"
 criterion = { version = "0.5", features = ["html_reports"] }
-borsh = { version = "1.0", features = ["derive"] }
+borsh = { version = "1.6", features = ["derive"] }
 
 [[bench]]
 name = "benchmarks"
