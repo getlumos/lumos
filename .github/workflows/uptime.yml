@@ -119,7 +119,7 @@ jobs:
             local retry_delay=10
 
             for i in $(seq 1 $max_retries); do
-              HTTP_CODE=$(curl -o /dev/null -s -w "%{http_code}" --max-time 30 "https://crates.io/api/v1/crates/$crate")
+              HTTP_CODE=$(curl -o /dev/null -s -w "%{http_code}" --max-time 30 -H "User-Agent: lumos-uptime-monitor (https://github.com/getlumos/lumos)" "https://crates.io/api/v1/crates/$crate")
               if [ "$HTTP_CODE" -eq 200 ]; then
                 echo "✅ $crate is accessible (attempt $i)"
                 return 0
