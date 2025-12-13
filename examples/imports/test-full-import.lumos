@@ -1,0 +1,35 @@
+// Test all imports
+
+import {
+    UserId,
+    WalletAddress,
+    AccountId,
+    UnixTimestamp,
+    Lamports,
+    TokenAmount,
+    ShareAmount,
+    BasisPoints,
+    TokenMint,
+    TokenAccount,
+    OptionalOwner,
+    NullableTimestamp,
+    UserList,
+    AccountStatus,
+    PermissionLevel
+} from "./types.lumos";
+
+#[solana]
+#[account]
+struct UserAccount {
+    user_id: UserId,
+    wallet: WalletAddress,
+    balance: Lamports,
+    token_balance: TokenAmount,
+    status: AccountStatus,
+    permission: PermissionLevel,
+    created_at: UnixTimestamp,
+    last_login: NullableTimestamp,
+    total_deposits: Lamports,
+    total_withdrawals: Lamports,
+    transaction_count: u64,
+}

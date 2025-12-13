@@ -318,15 +318,18 @@ mod generator_errors {
     use lumos_core::generators::{rust, typescript};
     use lumos_core::ir::{
         EnumDefinition, EnumVariantDefinition, FieldDefinition, Metadata, StructDefinition,
-        TypeDefinition, TypeInfo,
+        TypeDefinition, TypeInfo, Visibility,
     };
 
     #[test]
     fn test_empty_struct_generation() {
         let empty_struct = StructDefinition {
             name: "Empty".to_string(),
+            generic_params: vec![],
             fields: vec![],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         };
 
         let type_def = TypeDefinition::Struct(empty_struct);
@@ -344,8 +347,11 @@ mod generator_errors {
         // This is an edge case - enums should have at least one variant
         let empty_enum = EnumDefinition {
             name: "EmptyEnum".to_string(),
+            generic_params: vec![],
             variants: vec![],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         };
 
         let type_def = TypeDefinition::Enum(empty_enum);
@@ -367,12 +373,18 @@ mod generator_errors {
                 Box::new(TypeInfo::Primitive("u64".to_string())),
             ))))),
             optional: true,
+            deprecated: None,
+            span: None,
+            anchor_attrs: vec![],
         };
 
         let struct_def = StructDefinition {
             name: "Nested".to_string(),
+            generic_params: vec![],
             fields: vec![nested_field],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         };
 
         let type_def = TypeDefinition::Struct(struct_def);
@@ -390,6 +402,7 @@ mod generator_errors {
         // Test enum with all three variant types
         let mixed_enum = EnumDefinition {
             name: "MixedEnum".to_string(),
+            generic_params: vec![],
             variants: vec![
                 EnumVariantDefinition::Unit {
                     name: "Empty".to_string(),
@@ -404,10 +417,15 @@ mod generator_errors {
                         name: "value".to_string(),
                         type_info: TypeInfo::Primitive("String".to_string()),
                         optional: false,
+                        deprecated: None,
+                        span: None,
+                        anchor_attrs: vec![],
                     }],
                 },
             ],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         };
 
         let type_def = TypeDefinition::Enum(mixed_enum);

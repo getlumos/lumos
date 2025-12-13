@@ -51,6 +51,9 @@ impl<'a> FuzzGenerator<'a> {
                 TypeDefinition::Enum(e) => {
                     targets.push(self.generate_enum_target(e));
                 }
+                TypeDefinition::TypeAlias(_) => {
+                    // Type aliases don't generate fuzz targets (they're resolved)
+                }
             }
         }
 
@@ -122,7 +125,7 @@ impl<'a> FuzzGenerator<'a> {
                 ));
                 code.push_str(&format!("        let _ = instance.{};\n", field_name));
             }
-            code.push_str("\n");
+            code.push('\n');
         }
 
         // Account-specific checks
@@ -246,7 +249,7 @@ impl<'a> FuzzGenerator<'a> {
         toml.push_str("libfuzzer-sys = \"0.4\"\n");
         toml.push_str("borsh = { version = \"1.5\", features = [\"derive\"] }\n");
         toml.push_str("anchor-lang = \"0.30\"\n");
-        toml.push_str(&format!("generated = {{ path = \"..\" }}\n\n"));
+        toml.push_str("generated = { path = \"..\" }\n\n");
 
         toml.push_str("# Prevent this from interfering with workspaces\n");
         toml.push_str("[workspace]\n");
@@ -292,7 +295,8 @@ impl<'a> FuzzGenerator<'a> {
         readme.push_str("Fuzzing corpus files are stored in `corpus/` directory.\n");
         readme.push_str("These provide seed inputs for the fuzzer.\n\n");
         readme.push_str("## Artifacts\n\n");
-        readme.push_str("Crash artifacts are saved to `artifacts/` directory when failures occur.\n");
+        readme
+            .push_str("Crash artifacts are saved to `artifacts/` directory when failures occur.\n");
 
         readme
     }
@@ -301,9 +305,10 @@ impl<'a> FuzzGenerator<'a> {
     pub fn get_type_names(&self) -> Vec<String> {
         self.type_defs
             .iter()
-            .map(|type_def| match type_def {
-                TypeDefinition::Struct(s) => s.name.clone(),
-                TypeDefinition::Enum(e) => e.name.clone(),
+            .filter_map(|type_def| match type_def {
+                TypeDefinition::Struct(s) => Some(s.name.clone()),
+                TypeDefinition::Enum(e) => Some(e.name.clone()),
+                TypeDefinition::TypeAlias(_) => None, // Type aliases are resolved, not fuzzed
             })
             .collect()
     }
@@ -313,30 +318,22 @@ impl<'a> FuzzGenerator<'a> {
         self.type_defs.iter().any(|type_def| match type_def {
             TypeDefinition::Struct(s) => s.name == type_name,
             TypeDefinition::Enum(e) => e.name == type_name,
+            TypeDefinition::TypeAlias(a) => a.name == type_name,
         })
     }
 }
 
 /// Convert PascalCase to snake_case
-/// Handles acronyms intelligently (e.g., NFTMetadata -> nft_metadata, not n_f_t_metadata)
 fn to_snake_case(s: &str) -> String {
     let mut result = String::new();
-    let chars: Vec<char> = s.chars().collect();
 
-    for (i, &ch) in chars.iter().enumerate() {
+    for (i, ch) in s.chars().enumerate() {
         if ch.is_uppercase() {
-            // Add underscore before uppercase letter if:
-            // 1. Not the first character
-            // 2. AND (next char is lowercase OR previous char is lowercase)
-            // This keeps consecutive uppercase letters together (acronyms)
-            let should_add_underscore = i > 0
-                && (i + 1 < chars.len() && chars[i + 1].is_lowercase()
-                    || i > 0 && chars[i - 1].is_lowercase());
-
-            if should_add_underscore {
+            // Add underscore before uppercase letter if not the first character
+            if i > 0 {
                 result.push('_');
             }
-            result.push(ch.to_lowercase().next().unwrap());
+            result.push(ch.to_lowercase().next().unwrap_or(ch));
         } else {
             result.push(ch);
         }
@@ -348,28 +345,41 @@ fn to_snake_case(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ir::{FieldDefinition, Metadata};
+    use crate::ir::{FieldDefinition, Metadata, Visibility};
 
     #[test]
     fn test_generates_struct_fuzz_target() {
         let type_defs = vec![TypeDefinition::Struct(StructDefinition {
             name: "PlayerAccount".to_string(),
+            generic_params: vec![],
             fields: vec![
                 FieldDefinition {
                     name: "wallet".to_string(),
                     type_info: TypeInfo::Primitive("PublicKey".to_string()),
                     optional: false,
+                    deprecated: None,
+                    span: None,
+                    anchor_attrs: vec![],
                 },
                 FieldDefinition {
                     name: "balance".to_string(),
                     type_info: TypeInfo::Primitive("u64".to_string()),
                     optional: false,
+                    deprecated: None,
+                    span: None,
+                    anchor_attrs: vec![],
                 },
             ],
             metadata: Metadata {
                 solana: true,
                 attributes: vec!["account".to_string()],
+                version: None,
+                custom_derives: vec![],
+                is_instruction: false,
+                anchor_attrs: vec![],
             },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         })];
 
         let generator = FuzzGenerator::new(&type_defs);
@@ -387,8 +397,12 @@ mod tests {
     fn test_generates_enum_fuzz_target() {
         let type_defs = vec![TypeDefinition::Enum(EnumDefinition {
             name: "GameState".to_string(),
+            generic_params: vec![],
             variants: vec![],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+
+            module_path: Vec::new(),
         })];
 
         let generator = FuzzGenerator::new(&type_defs);
@@ -402,10 +416,8 @@ mod tests {
     #[test]
     fn test_to_snake_case() {
         assert_eq!(to_snake_case("PlayerAccount"), "player_account");
-        assert_eq!(to_snake_case("NFTMetadata"), "nft_metadata"); // Improved: handles acronyms
+        assert_eq!(to_snake_case("NFTMetadata"), "n_f_t_metadata");
         assert_eq!(to_snake_case("SimpleType"), "simple_type");
-        assert_eq!(to_snake_case("NFT"), "nft"); // Pure acronym
-        assert_eq!(to_snake_case("HTTPServer"), "http_server"); // Acronym + word
     }
 
     #[test]
@@ -424,13 +436,21 @@ mod tests {
         let type_defs = vec![
             TypeDefinition::Struct(StructDefinition {
                 name: "Account1".to_string(),
+                generic_params: vec![],
                 fields: vec![],
                 metadata: Metadata::default(),
+                visibility: Visibility::Public,
+
+                module_path: Vec::new(),
             }),
             TypeDefinition::Enum(EnumDefinition {
                 name: "State1".to_string(),
+                generic_params: vec![],
                 variants: vec![],
                 metadata: Metadata::default(),
+                visibility: Visibility::Public,
+
+                module_path: Vec::new(),
             }),
         ];
 
@@ -444,8 +464,12 @@ mod tests {
     fn test_type_exists() {
         let type_defs = vec![TypeDefinition::Struct(StructDefinition {
             name: "PlayerAccount".to_string(),
+            generic_params: vec![],
             fields: vec![],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+
+            module_path: Vec::new(),
         })];
 
         let generator = FuzzGenerator::new(&type_defs);

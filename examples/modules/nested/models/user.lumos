@@ -1,0 +1,18 @@
+// User Model
+// Demonstrates: Nested module with types and enums
+
+#[solana]
+enum UserStatus {
+    Active,
+    Suspended,
+    Deleted,
+}
+
+#[solana]
+#[account]
+struct User {
+    wallet: PublicKey,
+    username: String,
+    status: UserStatus,
+    joined_at: i64,
+}

@@ -12,11 +12,107 @@ use serde::{Deserialize, Serialize};
 /// A complete LUMOS file (can contain multiple items)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LumosFile {
-    /// All items (structs and enums) in this file
+    /// Import statements at the top of the file
+    pub imports: Vec<Import>,
+
+    /// All items (structs, enums, type aliases) in this file
     pub items: Vec<Item>,
 }
 
-/// An item in a LUMOS file (struct or enum)
+/// An import statement (JavaScript-style, legacy)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Import {
+    /// Items being imported (e.g., ["UserId", "Timestamp"])
+    pub items: Vec<String>,
+
+    /// Path to the file being imported (e.g., "./types.lumos")
+    pub path: String,
+
+    /// Span information for error reporting
+    #[serde(skip)]
+    pub span: Option<proc_macro2::Span>,
+}
+
+/// A module declaration (Rust-style: `mod name;`)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Module {
+    /// Module name (e.g., "models")
+    pub name: String,
+
+    /// Visibility (pub or private)
+    pub visibility: Visibility,
+
+    /// Span information for error reporting
+    #[serde(skip)]
+    pub span: Option<proc_macro2::Span>,
+}
+
+/// A use statement (Rust-style: `use path::Type;`)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UseStatement {
+    /// Module path (e.g., crate::models::User)
+    pub path: ModulePath,
+
+    /// Optional alias (e.g., `use path::Type as Alias;`)
+    pub alias: Option<String>,
+
+    /// Span information for error reporting
+    #[serde(skip)]
+    pub span: Option<proc_macro2::Span>,
+}
+
+/// Module path (e.g., crate::models::User)
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ModulePath {
+    /// Path segments (e.g., [Crate, Ident("models"), Ident("User")])
+    pub segments: Vec<PathSegment>,
+}
+
+/// A segment in a module path
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum PathSegment {
+    /// `crate` keyword
+    Crate,
+
+    /// `super` keyword
+    Super,
+
+    /// `self` keyword
+    SelfPath,
+
+    /// Identifier (module or type name)
+    Ident(String),
+}
+
+/// Visibility modifier
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub enum Visibility {
+    /// Private (no `pub` keyword)
+    #[default]
+    Private,
+
+    /// Public (`pub` keyword)
+    Public,
+}
+
+/// A type alias definition
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TypeAlias {
+    /// Alias name (e.g., "UserId")
+    pub name: String,
+
+    /// Visibility (pub or private)
+    pub visibility: Visibility,
+
+    /// Target type (e.g., PublicKey)
+    pub target: TypeSpec,
+
+    /// Span information for error reporting
+    #[serde(skip)]
+    pub span: Option<proc_macro2::Span>,
+}
+
+/// An item in a LUMOS file (struct, enum, type alias, module, or use statement)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Item {
     /// Struct definition
@@ -24,6 +120,15 @@ pub enum Item {
 
     /// Enum definition
     Enum(EnumDef),
+
+    /// Type alias definition
+    TypeAlias(TypeAlias),
+
+    /// Module declaration (Rust-style)
+    Module(Module),
+
+    /// Use statement (Rust-style)
+    Use(UseStatement),
 }
 
 /// A struct definition
@@ -32,11 +137,20 @@ pub struct StructDef {
     /// Struct name (e.g., "UserAccount")
     pub name: String,
 
+    /// Visibility (pub or private)
+    pub visibility: Visibility,
+
+    /// Generic type parameters (e.g., ["T", "U"] from `struct Foo<T, U>`)
+    pub type_params: Vec<String>,
+
     /// Attributes applied to the struct (e.g., @solana, @account)
     pub attributes: Vec<Attribute>,
 
     /// Fields in this struct
     pub fields: Vec<FieldDef>,
+
+    /// Optional semantic version (e.g., "1.0.0" from #[version = "1.0.0"])
+    pub version: Option<String>,
 
     /// Span information for error reporting
     #[serde(skip)]
@@ -49,11 +163,20 @@ pub struct EnumDef {
     /// Enum name (e.g., "GameState")
     pub name: String,
 
+    /// Visibility (pub or private)
+    pub visibility: Visibility,
+
+    /// Generic type parameters (e.g., ["T", "E"] from `enum Result<T, E>`)
+    pub type_params: Vec<String>,
+
     /// Attributes applied to the enum (e.g., @solana)
     pub attributes: Vec<Attribute>,
 
     /// Variants in this enum
     pub variants: Vec<EnumVariant>,
+
+    /// Optional semantic version (e.g., "1.0.0" from #[version = "1.0.0"])
+    pub version: Option<String>,
 
     /// Span information for error reporting
     #[serde(skip)]
@@ -113,8 +236,14 @@ pub enum TypeSpec {
     /// Primitive type (e.g., u64, string, bool)
     Primitive(String),
 
-    /// Array type (e.g., `Vec<PublicKey>` in Rust)
+    /// Dynamic array type (e.g., `Vec<PublicKey>` in Rust, `[T]` in LUMOS)
     Array(Box<TypeSpec>),
+
+    /// Fixed-size array type (e.g., `[u8; 32]` in Rust and LUMOS)
+    FixedArray { element: Box<TypeSpec>, size: usize },
+
+    /// Generic type parameter (e.g., T, U, K, V)
+    Generic(String),
 
     /// User-defined type (e.g., Address, CustomStruct)
     UserDefined(String),
@@ -145,6 +274,9 @@ pub enum AttributeValue {
 
     /// Boolean value
     Bool(bool),
+
+    /// List of values (e.g., derive macros: `#[derive(Debug, Clone)]`)
+    List(Vec<String>),
 }
 
 impl StructDef {
@@ -220,15 +352,16 @@ impl FieldDef {
 }
 
 impl TypeSpec {
-    /// Check if this is an array type
+    /// Check if this is an array type (dynamic or fixed)
     pub fn is_array(&self) -> bool {
-        matches!(self, TypeSpec::Array(_))
+        matches!(self, TypeSpec::Array(_) | TypeSpec::FixedArray { .. })
     }
 
     /// Get the inner type if this is an array
     pub fn array_inner(&self) -> Option<&TypeSpec> {
         match self {
             TypeSpec::Array(inner) => Some(inner),
+            TypeSpec::FixedArray { element, .. } => Some(element),
             _ => None,
         }
     }
@@ -238,6 +371,10 @@ impl TypeSpec {
         match self {
             TypeSpec::Primitive(name) => name.clone(),
             TypeSpec::Array(inner) => format!("[{}]", inner.as_string()),
+            TypeSpec::FixedArray { element, size } => {
+                format!("[{}; {}]", element.as_string(), size)
+            }
+            TypeSpec::Generic(name) => name.clone(),
             TypeSpec::UserDefined(name) => name.clone(),
         }
     }
@@ -249,6 +386,115 @@ impl std::fmt::Display for TypeSpec {
     }
 }
 
+impl TypeAlias {
+    /// Get the alias name
+    pub fn alias_name(&self) -> &str {
+        &self.name
+    }
+
+    /// Get the target type
+    pub fn target_type(&self) -> &TypeSpec {
+        &self.target
+    }
+}
+
+impl Import {
+    /// Get the imported items
+    pub fn imported_items(&self) -> &[String] {
+        &self.items
+    }
+
+    /// Get the import path
+    pub fn import_path(&self) -> &str {
+        &self.path
+    }
+}
+
+impl ModulePath {
+    /// Create a new module path from segments
+    pub fn new(segments: Vec<PathSegment>) -> Self {
+        Self { segments }
+    }
+
+    /// Create a simple identifier path (e.g., "models" -> [Ident("models")])
+    pub fn from_ident(name: String) -> Self {
+        Self {
+            segments: vec![PathSegment::Ident(name)],
+        }
+    }
+
+    /// Check if this path starts with `crate::`
+    pub fn is_absolute(&self) -> bool {
+        matches!(self.segments.first(), Some(PathSegment::Crate))
+    }
+
+    /// Check if this path starts with `super::`
+    pub fn starts_with_super(&self) -> bool {
+        matches!(self.segments.first(), Some(PathSegment::Super))
+    }
+
+    /// Check if this path starts with `self::`
+    pub fn starts_with_self(&self) -> bool {
+        matches!(self.segments.first(), Some(PathSegment::SelfPath))
+    }
+
+    /// Get the final identifier in the path (e.g., "User" from "crate::models::User")
+    pub fn final_ident(&self) -> Option<&str> {
+        self.segments.iter().rev().find_map(|seg| {
+            if let PathSegment::Ident(name) = seg {
+                Some(name.as_str())
+            } else {
+                None
+            }
+        })
+    }
+}
+
+impl std::fmt::Display for ModulePath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let path_str = self
+            .segments
+            .iter()
+            .map(|seg| match seg {
+                PathSegment::Crate => "crate",
+                PathSegment::Super => "super",
+                PathSegment::SelfPath => "self",
+                PathSegment::Ident(name) => name.as_str(),
+            })
+            .collect::<Vec<_>>()
+            .join("::");
+        write!(f, "{}", path_str)
+    }
+}
+
+impl PathSegment {
+    /// Check if this segment is an identifier
+    pub fn is_ident(&self) -> bool {
+        matches!(self, PathSegment::Ident(_))
+    }
+
+    /// Get the identifier name if this is an Ident segment
+    pub fn as_ident(&self) -> Option<&str> {
+        if let PathSegment::Ident(name) = self {
+            Some(name)
+        } else {
+            None
+        }
+    }
+}
+
+impl Visibility {
+    /// Check if this is public visibility
+    pub fn is_public(&self) -> bool {
+        matches!(self, Visibility::Public)
+    }
+
+    /// Check if this is private visibility
+    pub fn is_private(&self) -> bool {
+        matches!(self, Visibility::Private)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -257,6 +503,8 @@ mod tests {
     fn test_struct_has_attribute() {
         let struct_def = StructDef {
             name: "User".to_string(),
+            visibility: Visibility::Private,
+            type_params: vec![],
             attributes: vec![
                 Attribute {
                     name: "solana".to_string(),
@@ -270,6 +518,7 @@ mod tests {
                 },
             ],
             fields: vec![],
+            version: None,
             span: None,
         };
 
@@ -308,12 +557,15 @@ mod tests {
     fn test_enum_has_attribute() {
         let enum_def = EnumDef {
             name: "GameState".to_string(),
+            visibility: Visibility::Private,
+            type_params: vec![],
             attributes: vec![Attribute {
                 name: "solana".to_string(),
                 value: None,
                 span: None,
             }],
             variants: vec![],
+            version: None,
             span: None,
         };
 
@@ -325,6 +577,8 @@ mod tests {
     fn test_enum_is_unit_only() {
         let unit_enum = EnumDef {
             name: "GameState".to_string(),
+            visibility: Visibility::Private,
+            type_params: vec![],
             attributes: vec![],
             variants: vec![
                 EnumVariant::Unit {
@@ -336,6 +590,7 @@ mod tests {
                     span: None,
                 },
             ],
+            version: None,
             span: None,
         };
 
@@ -343,6 +598,8 @@ mod tests {
 
         let mixed_enum = EnumDef {
             name: "GameEvent".to_string(),
+            visibility: Visibility::Private,
+            type_params: vec![],
             attributes: vec![],
             variants: vec![
                 EnumVariant::Unit {
@@ -355,6 +612,7 @@ mod tests {
                     span: None,
                 },
             ],
+            version: None,
             span: None,
         };
 
@@ -388,9 +646,12 @@ mod tests {
     fn test_item_enum() {
         let enum_def = EnumDef {
             name: "Status".to_string(),
+            visibility: Visibility::Private,
+            type_params: vec![],
             attributes: vec![],
             variants: vec![],
             span: None,
+            version: None,
         };
 
         let item = Item::Enum(enum_def.clone());

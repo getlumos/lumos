@@ -1,0 +1,17 @@
+# Exclude source files and tests
+src/
+tests/
+tsconfig.json
+vitest.config.ts
+
+# Exclude development files
+*.log
+.DS_Store
+node_modules/
+
+# Exclude wasm package.json (prevents npm from treating wasm/ as nested package)
+wasm/package.json
+wasm/.gitignore
+wasm/README.md
+
+# Include everything else (dist/, wasm/*.wasm, wasm/*.js, wasm/*.d.ts, docs)

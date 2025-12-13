@@ -1,0 +1,19 @@
+// Internal Types
+// Demonstrates: Private visibility with pub(crate)
+
+// Private struct - only accessible within crate
+pub(crate) struct InternalState {
+    secret_key: [u8],
+    nonce: u64,
+}
+
+// Public type alias that can be used by other modules
+type InternalId = u64;
+
+// Private enum for internal use
+pub(crate) enum InternalStatus {
+    Pending,
+    Processing,
+    Complete,
+    Failed,
+}

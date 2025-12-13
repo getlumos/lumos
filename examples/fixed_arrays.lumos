@@ -1,0 +1,45 @@
+// Fixed-size array examples for LUMOS
+// Issue #51: Add const generics support for fixed-size arrays
+
+#[solana]
+#[account]
+struct FixedArrayExample {
+    // Simple fixed array of primitives
+    data: [u8; 32],
+
+    // Fixed array of Solana types
+    authority_list: [PublicKey; 5],
+
+    // Nested fixed arrays (2D grid)
+    grid: [[u8; 10]; 10],
+
+    // Mixed: fixed array with regular field
+    balance: u64,
+    inventory_slots: [PublicKey; 50],
+}
+
+#[solana]
+struct Transaction {
+    // Common Solana pattern: 32-byte hash
+    hash: [u8; 32],
+
+    // Signature data
+    signature: [u8; 64],
+
+    // Fixed number of signers
+    signers: [PublicKey; 3],
+}
+
+enum GameEvent {
+    // Unit variant
+    Start,
+
+    // Tuple variant with fixed array
+    MultiTransfer([PublicKey; 10], u64),
+
+    // Struct variant with fixed array
+    GridUpdate {
+        position: [u16; 2],
+        cells: [u8; 100],
+    },
+}

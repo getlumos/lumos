@@ -6,7 +6,63 @@
 //! The IR is a language-agnostic representation of type definitions
 //! that can be transformed into various target languages.
 
-/// Intermediate representation of a type definition (struct or enum)
+/// A warning generated during transformation
+///
+/// Warnings are non-fatal issues that the user should be aware of,
+/// such as deprecated fields or potential compatibility issues.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Warning {
+    /// The type name where the warning originated
+    pub type_name: String,
+    /// The field name (if applicable)
+    pub field_name: Option<String>,
+    /// The warning message
+    pub message: String,
+    /// Warning category
+    pub kind: WarningKind,
+}
+
+/// Categories of warnings
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WarningKind {
+    /// A field or type is deprecated
+    Deprecated,
+    /// Potential compatibility issue
+    Compatibility,
+}
+
+impl std::fmt::Display for Warning {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.field_name {
+            Some(field) => write!(f, "{}.{}: {}", self.type_name, field, self.message),
+            None => write!(f, "{}: {}", self.type_name, self.message),
+        }
+    }
+}
+
+/// Visibility of a type definition
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Visibility {
+    /// Public visibility (accessible from other modules)
+    #[default]
+    Public,
+    /// Private visibility (only accessible within the same module)
+    Private,
+}
+
+impl Visibility {
+    /// Check if this is public visibility
+    pub fn is_public(&self) -> bool {
+        matches!(self, Visibility::Public)
+    }
+
+    /// Check if this is private visibility
+    pub fn is_private(&self) -> bool {
+        matches!(self, Visibility::Private)
+    }
+}
+
+/// Intermediate representation of a type definition (struct, enum, or type alias)
 #[derive(Debug, Clone)]
 pub enum TypeDefinition {
     /// Struct definition
@@ -14,6 +70,25 @@ pub enum TypeDefinition {
 
     /// Enum definition
     Enum(EnumDefinition),
+
+    /// Type alias definition
+    TypeAlias(TypeAliasDefinition),
+}
+
+/// Type alias definition
+#[derive(Debug, Clone)]
+pub struct TypeAliasDefinition {
+    /// Alias name (e.g., "UserId")
+    pub name: String,
+
+    /// Target type (e.g., PublicKey)
+    pub target: TypeInfo,
+
+    /// Visibility (pub or private)
+    pub visibility: Visibility,
+
+    /// Module path (e.g., ["models", "user"] for crate::models::user)
+    pub module_path: Vec<String>,
 }
 
 /// Struct type definition
@@ -22,11 +97,20 @@ pub struct StructDefinition {
     /// Struct name
     pub name: String,
 
+    /// Generic type parameters (e.g., ["T", "U"])
+    pub generic_params: Vec<String>,
+
     /// Fields in this struct
     pub fields: Vec<FieldDefinition>,
 
     /// Metadata
     pub metadata: Metadata,
+
+    /// Visibility (pub or private)
+    pub visibility: Visibility,
+
+    /// Module path (e.g., ["models", "user"] for crate::models::user)
+    pub module_path: Vec<String>,
 }
 
 /// Enum type definition
@@ -35,11 +119,20 @@ pub struct EnumDefinition {
     /// Enum name
     pub name: String,
 
+    /// Generic type parameters (e.g., ["T", "E"])
+    pub generic_params: Vec<String>,
+
     /// Variants in this enum
     pub variants: Vec<EnumVariantDefinition>,
 
     /// Metadata
     pub metadata: Metadata,
+
+    /// Visibility (pub or private)
+    pub visibility: Visibility,
+
+    /// Module path (e.g., ["models", "state"] for crate::models::state)
+    pub module_path: Vec<String>,
 }
 
 /// Enum variant definition
@@ -69,19 +162,35 @@ pub struct FieldDefinition {
 
     /// Whether this field is optional
     pub optional: bool,
+
+    /// Deprecation message (None if not deprecated)
+    pub deprecated: Option<String>,
+
+    /// Raw anchor attribute strings (e.g., ["init, payer = authority, space = 8 + 32"])
+    /// These are parsed by the anchor module during code generation
+    pub anchor_attrs: Vec<String>,
+
+    /// Source location for error reporting
+    pub span: Option<proc_macro2::Span>,
 }
 
 /// Type information
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum TypeInfo {
     /// Primitive types (u64, string, etc.)
     Primitive(String),
 
+    /// Generic type parameter (T, U, K, V, etc.)
+    Generic(String),
+
     /// User-defined types
     UserDefined(String),
 
-    /// Array types
+    /// Dynamic array types (Vec<T>)
     Array(Box<TypeInfo>),
+
+    /// Fixed-size array types ([T; N])
+    FixedArray { element: Box<TypeInfo>, size: usize },
 
     /// Option types
     Option(Box<TypeInfo>),
@@ -95,6 +204,19 @@ pub struct Metadata {
 
     /// Additional attributes
     pub attributes: Vec<String>,
+
+    /// Optional semantic version (e.g., "1.0.0")
+    pub version: Option<String>,
+
+    /// Custom derive macros specified by user (e.g., PartialEq, Eq, Hash)
+    /// These are added on top of auto-generated derives
+    pub custom_derives: Vec<String>,
+
+    /// Whether this struct is an Anchor instruction context (has #[instruction])
+    pub is_instruction: bool,
+
+    /// Anchor-specific struct attributes (raw strings for later parsing)
+    pub anchor_attrs: Vec<String>,
 }
 
 impl TypeDefinition {
@@ -103,20 +225,66 @@ impl TypeDefinition {
         match self {
             TypeDefinition::Struct(s) => &s.name,
             TypeDefinition::Enum(e) => &e.name,
+            TypeDefinition::TypeAlias(a) => &a.name,
         }
     }
 
-    /// Get the metadata for this type definition
-    pub fn metadata(&self) -> &Metadata {
+    /// Get the metadata for this type definition (not applicable to type aliases)
+    pub fn metadata(&self) -> Option<&Metadata> {
         match self {
-            TypeDefinition::Struct(s) => &s.metadata,
-            TypeDefinition::Enum(e) => &e.metadata,
+            TypeDefinition::Struct(s) => Some(&s.metadata),
+            TypeDefinition::Enum(e) => Some(&e.metadata),
+            TypeDefinition::TypeAlias(_) => None, // Type aliases don't have metadata
         }
     }
 
-    /// Check if this is a Solana type
+    /// Check if this is a Solana type (type aliases inherit from their target)
     pub fn is_solana(&self) -> bool {
-        self.metadata().solana
+        match self {
+            TypeDefinition::Struct(s) => s.metadata.solana,
+            TypeDefinition::Enum(e) => e.metadata.solana,
+            TypeDefinition::TypeAlias(_) => false, // Will be resolved based on target type
+        }
+    }
+
+    /// Check if this is a type alias
+    pub fn is_type_alias(&self) -> bool {
+        matches!(self, TypeDefinition::TypeAlias(_))
+    }
+
+    /// Get the visibility of this type definition
+    pub fn visibility(&self) -> Visibility {
+        match self {
+            TypeDefinition::Struct(s) => s.visibility,
+            TypeDefinition::Enum(e) => e.visibility,
+            TypeDefinition::TypeAlias(a) => a.visibility,
+        }
+    }
+
+    /// Get the module path of this type definition
+    pub fn module_path(&self) -> &[String] {
+        match self {
+            TypeDefinition::Struct(s) => &s.module_path,
+            TypeDefinition::Enum(e) => &e.module_path,
+            TypeDefinition::TypeAlias(a) => &a.module_path,
+        }
+    }
+
+    /// Check if this type is public
+    pub fn is_public(&self) -> bool {
+        self.visibility().is_public()
+    }
+}
+
+impl TypeAliasDefinition {
+    /// Get the alias name
+    pub fn alias_name(&self) -> &str {
+        &self.name
+    }
+
+    /// Get the target type
+    pub fn target_type(&self) -> &TypeInfo {
+        &self.target
     }
 }
 

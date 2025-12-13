@@ -43,8 +43,12 @@ fn test_parse_gaming_schema() {
     assert_eq!(ir.len(), 4);
 
     // Verify PlayerAccount has @solana and @account attributes
-    assert!(ir[0].metadata().solana);
-    assert!(ir[0].metadata().attributes.contains(&"account".to_string()));
+    assert!(ir[0].metadata().unwrap().solana);
+    assert!(ir[0]
+        .metadata()
+        .unwrap()
+        .attributes
+        .contains(&"account".to_string()));
 }
 
 #[test]

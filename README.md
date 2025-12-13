@@ -19,7 +19,15 @@
 
 [![Crates.io](https://img.shields.io/crates/v/lumos-core?label=lumos-core)](https://crates.io/crates/lumos-core)
 [![Crates.io](https://img.shields.io/crates/v/lumos-cli?label=lumos-cli)](https://crates.io/crates/lumos-cli)
-[![CI](https://img.shields.io/github/actions/workflow/status/getlumos/lumos/ci.yml?branch=main&label=CI&logo=github)](https://github.com/getlumos/lumos/actions)
+[![Crates.io](https://img.shields.io/crates/v/lumos-lsp?label=lumos-lsp)](https://crates.io/crates/lumos-lsp)
+[![npm](https://img.shields.io/npm/v/@getlumos/cli?label=npm)](https://www.npmjs.com/package/@getlumos/cli)
+[![Cargo Downloads](https://img.shields.io/crates/d/lumos-cli?label=cargo%20installs)](https://crates.io/crates/lumos-cli)
+[![npm Downloads](https://img.shields.io/npm/dm/@getlumos/cli?label=npm%20installs)](https://www.npmjs.com/package/@getlumos/cli)
+[![Docker](https://img.shields.io/badge/Docker-ghcr.io-blue.svg?logo=docker)](https://github.com/getlumos/lumos/pkgs/container/lumos)
+[![GitHub Action](https://img.shields.io/badge/Marketplace-LUMOS%20Generate-purple.svg?logo=github)](https://github.com/marketplace/actions/lumos-generate)
+[![CI](https://img.shields.io/github/actions/workflow/status/getlumos/lumos/ci.yml?branch=main&label=CI%20(main)&logo=github)](https://github.com/getlumos/lumos/actions)
+[![CI](https://img.shields.io/github/actions/workflow/status/getlumos/lumos/ci.yml?branch=dev&label=CI%20(dev)&logo=github)](https://github.com/getlumos/lumos/actions)
+[![Coverage](https://codecov.io/gh/getlumos/lumos/branch/dev/graph/badge.svg)](https://codecov.io/gh/getlumos/lumos)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE-MIT)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE-APACHE)
 [![Rust](https://img.shields.io/badge/Rust-1.70+-orange.svg)](https://www.rust-lang.org)
@@ -339,6 +347,36 @@ cargo build --release
 ./target/release/lumos --help
 ```
 
+### Install via npm (No Rust Required)
+
+```bash
+# Install globally
+npm install -g @getlumos/cli
+
+# Or use with npx
+npx @getlumos/cli generate schema.lumos
+```
+
+### Use with Docker
+
+```bash
+# Run directly (no installation needed)
+docker run --rm -v $(pwd):/workspace ghcr.io/getlumos/lumos generate schema.lumos
+
+# Or pull first for offline use
+docker pull ghcr.io/getlumos/lumos:latest
+docker run --rm -v $(pwd):/workspace ghcr.io/getlumos/lumos generate schema.lumos -o generated/
+```
+
+**Docker in CI/CD (GitHub Actions):**
+
+```yaml
+- name: Generate code from schema
+  uses: docker://ghcr.io/getlumos/lumos:latest
+  with:
+    args: generate schemas/*.lumos -o src/generated/
+```
+
 ### Run Tests
 
 ```bash
@@ -456,6 +494,49 @@ lumos generate schema.lumos --watch
 ### 6. Iterate with Confidence
 
 Update your `.lumos` schema, run `lumos generate`, and both codebases stay in sync automatically. No manual synchronization needed!
+
+### 7. CI/CD Integration
+
+Automate schema validation and code generation in your CI/CD pipeline with the [official GitHub Action](https://github.com/marketplace/actions/lumos-generate):
+
+```yaml
+- uses: actions/checkout@v4
+- uses: getlumos/lumos-action@v1
+  with:
+    schema: 'schemas/**/*.lumos'
+    fail-on-drift: true  # Ensure generated code is committed
+```
+
+**Features:**
+- ✅ Auto-install LUMOS CLI
+- ✅ Validate schemas on every PR
+- ✅ Detect drift between schemas and generated code
+- ✅ Post PR comments with diff summaries
+
+[View full documentation →](https://github.com/getlumos/lumos-action#readme)
+
+### 8. IDE Support
+
+Get a powerful development experience with the LUMOS Language Server (LSP):
+
+```bash
+cargo install lumos-lsp
+```
+
+**Features:**
+- 🔴 Real-time diagnostics (syntax errors, undefined types)
+- ⚡ Auto-completion (Solana types, primitives, attributes)
+- 📖 Hover information (type definitions, documentation)
+- 🎨 Code formatting (coming soon)
+
+**Supported Editors:**
+- **VS Code**: Install [LUMOS extension](https://github.com/getlumos/vscode-lumos) (auto-configures LSP)
+- **Neovim**: Use `nvim-lspconfig` with `lumos-lsp` binary
+- **Emacs**: Configure `lsp-mode` with `lumos-lsp`
+- **Sublime Text**: Install LSP package + configure `lumos-lsp`
+- **IntelliJ/Rust Rover**: Coming soon
+
+[View LSP documentation →](packages/lsp/README.md)
 
 ---
 
@@ -793,6 +874,7 @@ Core CLI functionality to make LUMOS usable in real projects:
   - `lumos generate <schema>` - Generate Rust + TypeScript code
   - `lumos validate <schema>` - Validate schema syntax
   - `lumos check <schema>` - Verify generated code is up-to-date
+  - `lumos diff <schema1> <schema2>` - Compare schemas and show differences
   - `lumos generate --watch` - Watch mode for auto-regeneration
   - `lumos --version` - Version information
   - `lumos --help` - Comprehensive help
@@ -1239,6 +1321,9 @@ The **Solana developer community** - developers building the future of decentral
 ### Official Documentation
 
 - **LUMOS Docs** - Coming soon
+- **Vision (Vertical)** - [docs/VISION.md](docs/VISION.md) - ENDGAME: Workflow language for Solana
+- **Future (Horizontal)** - [docs/FUTURE.md](docs/FUTURE.md) - Beyond: Multichain, DevOps, automation
+- **Roadmap** - [ROADMAP.md](ROADMAP.md) - Development phases and timeline
 - **Migration Guide** - [docs/MIGRATION.md](docs/MIGRATION.md) - Version upgrade instructions
 - **Execution Plan** - [docs/execution-plan.md](docs/execution-plan.md)
 - **Project Context** - [CLAUDE.md](CLAUDE.md)

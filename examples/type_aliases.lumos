@@ -1,0 +1,181 @@
+// Example: Type Aliases in LUMOS
+//
+// Type aliases allow you to create named shortcuts for existing types,
+// improving code readability and maintainability.
+// Syntax: type NewName = ExistingType;
+
+// ============================================================================
+// BASIC TYPE ALIASES - Common patterns
+// ============================================================================
+
+// Example 1: Semantic naming for Solana types
+type UserId = PublicKey;
+type WalletAddress = PublicKey;
+type TokenMint = PublicKey;
+type ProgramId = PublicKey;
+
+// Example 2: Timestamp aliases for clarity
+type UnixTimestamp = i64;
+type Slot = u64;
+type Epoch = u64;
+
+// Example 3: Financial types
+type Lamports = u64;
+type TokenAmount = u64;
+type BasisPoints = u16;  // For percentage calculations (1 basis point = 0.01%)
+
+// ============================================================================
+// COMPLEX TYPE ALIASES - Collections and optionals
+// ============================================================================
+
+// Example 4: Collection aliases (Note: Vec is a built-in type in LUMOS)
+// Type aliases work with collections too
+type UserList = [PublicKey];      // Vec<PublicKey>
+type ScoreBoard = [u64];          // Vec<u64>
+type TagList = [String];          // Vec<String>
+
+// Example 5: Optional type aliases
+type OptionalOwner = Option<PublicKey>;
+type OptionalAmount = Option<u64>;
+type NullableTimestamp = Option<i64>;
+
+// ============================================================================
+// USING TYPE ALIASES IN STRUCTS
+// ============================================================================
+
+// Example 6: Basic account using type aliases
+#[solana]
+#[account]
+struct UserAccount {
+    owner: UserId,              // Instead of PublicKey
+    wallet: WalletAddress,      // More semantic meaning
+    balance: Lamports,          // Clear it's in lamports
+    created_at: UnixTimestamp,  // Clear it's a timestamp
+}
+
+// Example 7: Token account with financial types
+#[solana]
+#[account]
+struct TokenVault {
+    mint: TokenMint,
+    authority: UserId,
+    amount: TokenAmount,
+    fee_rate: BasisPoints,      // 100 = 1%, 10000 = 100%
+    last_update: Slot,
+}
+
+// Example 8: Complex struct with collection aliases
+#[solana]
+#[account]
+struct GameLobby {
+    lobby_id: u64,
+    players: UserList,          // Vec<PublicKey>
+    scores: ScoreBoard,         // Vec<u64>
+    host: OptionalOwner,        // Option<PublicKey>
+    started_at: NullableTimestamp,  // Option<i64>
+}
+
+// ============================================================================
+// NESTED TYPE ALIASES
+// ============================================================================
+
+// Example 9: Aliases of aliases (resolved recursively)
+type AccountId = UserId;         // UserId -> PublicKey
+type Creator = AccountId;        // Creator -> AccountId -> UserId -> PublicKey
+
+#[solana]
+struct NFTMetadata {
+    creator: Creator,            // Fully resolved to PublicKey
+    mint: TokenMint,
+    name: String,
+    uri: String,
+}
+
+// ============================================================================
+// ENUM WITH TYPE ALIASES
+// ============================================================================
+
+// Example 10: Enum variants using type aliases
+#[solana]
+enum Instruction {
+    Transfer {
+        from: WalletAddress,
+        to: WalletAddress,
+        amount: Lamports,
+    },
+    Stake {
+        user: UserId,
+        amount: TokenAmount,
+        duration: Epoch,
+    },
+    Withdraw {
+        recipient: OptionalOwner,
+        amount: Option<Lamports>,
+    },
+}
+
+// ============================================================================
+// GENERATED CODE
+// ============================================================================
+
+// Rust Output (generated.rs):
+// pub type UserId = solana_program::pubkey::Pubkey;
+// pub type WalletAddress = solana_program::pubkey::Pubkey;
+// pub type Lamports = u64;
+// pub type UnixTimestamp = i64;
+// ... (all aliases)
+//
+// #[account]
+// pub struct UserAccount {
+//     pub owner: UserId,           // Expands to Pubkey
+//     pub wallet: WalletAddress,   // Expands to Pubkey
+//     pub balance: Lamports,       // Expands to u64
+//     pub created_at: UnixTimestamp, // Expands to i64
+// }
+
+// TypeScript Output (generated.ts):
+// export type UserId = PublicKey;
+// export type WalletAddress = PublicKey;
+// export type Lamports = number;
+// export type UnixTimestamp = number;
+// ... (all aliases)
+//
+// export interface UserAccount {
+//   owner: UserId;
+//   wallet: WalletAddress;
+//   balance: Lamports;
+//   created_at: UnixTimestamp;
+// }
+
+// ============================================================================
+// BENEFITS
+// ============================================================================
+
+// ✅ Improved readability: "UserId" is more semantic than "PublicKey"
+// ✅ Type safety: Compiler treats UserId same as PublicKey
+// ✅ Refactoring: Change underlying type in one place
+// ✅ Documentation: Self-documenting code
+// ✅ Consistency: Team uses same type names across codebase
+// ✅ Cross-language: Same aliases in Rust and TypeScript
+
+// ============================================================================
+// BEST PRACTICES
+// ============================================================================
+
+// 1. Use semantic names that describe the PURPOSE, not the TYPE
+//    ✅ type UserId = PublicKey;
+//    ❌ type PubKey = PublicKey;  // Doesn't add meaning
+
+// 2. Be consistent with naming conventions
+//    ✅ type TokenAmount = u64;
+//    ✅ type Lamports = u64;
+//    ❌ type token_amount = u64;  // Inconsistent casing
+
+// 3. Avoid over-aliasing - use for frequently used types
+//    ✅ type UserId = PublicKey;     // Used everywhere
+//    ❌ type MyU64 = u64;            // Doesn't add value
+
+// 4. Document units for numeric types
+//    ✅ type Lamports = u64;         // Clear unit
+//    ✅ type BasisPoints = u16;      // 1 bp = 0.01%
+//    ❌ type Fee = u64;              // What unit?

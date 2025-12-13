@@ -1,0 +1,218 @@
+name: 'LUMOS Generate'
+description: 'Auto-generate Rust and TypeScript code from LUMOS schemas with validation and drift detection'
+author: 'LUMOS Team'
+
+branding:
+  icon: 'code'
+  color: 'purple'
+
+inputs:
+  schema:
+    description: 'Path to LUMOS schema file(s) - supports globs (e.g., "schemas/**/*.lumos")'
+    required: true
+
+  check-only:
+    description: 'Only validate schemas and check for drift, do not generate files'
+    required: false
+    default: 'false'
+
+  version:
+    description: 'LUMOS CLI version to install (e.g., "0.1.1", "latest")'
+    required: false
+    default: 'latest'
+
+  working-directory:
+    description: 'Working directory to run commands in'
+    required: false
+    default: '.'
+
+  fail-on-drift:
+    description: 'Fail the action if generated files differ from committed files'
+    required: false
+    default: 'true'
+
+  comment-on-pr:
+    description: 'Post a comment on PR with generation results and diffs'
+    required: false
+    default: 'true'
+
+outputs:
+  schemas-validated:
+    description: 'Number of schemas successfully validated'
+
+  schemas-generated:
+    description: 'Number of schemas successfully generated'
+
+  drift-detected:
+    description: 'Whether drift was detected between generated and committed files'
+
+  diff-summary:
+    description: 'Summary of differences found'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install Rust toolchain
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        toolchain: stable
+
+    - name: Install LUMOS CLI
+      shell: bash
+      run: |
+        if [ "${{ inputs.version }}" = "latest" ]; then
+          echo "Installing latest LUMOS CLI from crates.io..."
+          cargo install lumos-cli
+        else
+          echo "Installing LUMOS CLI version ${{ inputs.version }}..."
+          cargo install lumos-cli --version ${{ inputs.version }}
+        fi
+
+        # Verify installation
+        lumos --version
+
+    - name: Validate schemas
+      id: validate
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "Validating LUMOS schemas..."
+
+        # Find all schema files
+        SCHEMA_FILES=$(find . -path "${{ inputs.schema }}" -type f)
+        SCHEMA_COUNT=$(echo "$SCHEMA_FILES" | wc -l | tr -d ' ')
+
+        echo "Found $SCHEMA_COUNT schema file(s)"
+        echo "schemas-validated=$SCHEMA_COUNT" >> $GITHUB_OUTPUT
+
+        # Validate each schema
+        VALIDATION_FAILED=0
+        for schema in $SCHEMA_FILES; do
+          echo "Validating $schema..."
+          if ! lumos validate "$schema"; then
+            echo "::error file=$schema::Schema validation failed"
+            VALIDATION_FAILED=1
+          fi
+        done
+
+        if [ $VALIDATION_FAILED -eq 1 ]; then
+          exit 1
+        fi
+
+        echo "✅ All schemas validated successfully"
+
+    - name: Generate code
+      id: generate
+      if: inputs.check-only != 'true'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "Generating code from LUMOS schemas..."
+
+        # Find all schema files
+        SCHEMA_FILES=$(find . -path "${{ inputs.schema }}" -type f)
+        GENERATED_COUNT=0
+
+        # Generate from each schema
+        for schema in $SCHEMA_FILES; do
+          echo "Generating from $schema..."
+          if lumos generate "$schema"; then
+            GENERATED_COUNT=$((GENERATED_COUNT + 1))
+          else
+            echo "::error file=$schema::Code generation failed"
+            exit 1
+          fi
+        done
+
+        echo "schemas-generated=$GENERATED_COUNT" >> $GITHUB_OUTPUT
+        echo "✅ Generated code from $GENERATED_COUNT schema(s)"
+
+    - name: Check for drift
+      id: drift
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "Checking for drift between generated and committed files..."
+
+        # Check git status
+        if [ -n "$(git status --porcelain)" ]; then
+          echo "drift-detected=true" >> $GITHUB_OUTPUT
+
+          # Generate diff summary
+          DIFF_FILES=$(git diff --name-only)
+          DIFF_COUNT=$(echo "$DIFF_FILES" | wc -l | tr -d ' ')
+
+          echo "⚠️  Drift detected in $DIFF_COUNT file(s):"
+          echo "$DIFF_FILES"
+
+          # Save diff for PR comment
+          {
+            echo "## 📊 LUMOS Generation Drift Detected"
+            echo ""
+            echo "The following files differ from their generated versions:"
+            echo ""
+            echo "$DIFF_FILES" | while read -r file; do
+              echo "- \`$file\`"
+            done
+            echo ""
+            echo "<details>"
+            echo "<summary>View full diff</summary>"
+            echo ""
+            echo '```diff'
+            git diff
+            echo '```'
+            echo ""
+            echo "</details>"
+          } > /tmp/lumos-drift-comment.md
+
+          echo "diff-summary<<EOF" >> $GITHUB_OUTPUT
+          cat /tmp/lumos-drift-comment.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          if [ "${{ inputs.fail-on-drift }}" = "true" ]; then
+            echo "::error::Drift detected and fail-on-drift is enabled"
+            exit 1
+          fi
+        else
+          echo "drift-detected=false" >> $GITHUB_OUTPUT
+          echo "✅ No drift detected - generated files match committed files"
+
+          echo "diff-summary=No drift detected" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Comment on PR
+      if: inputs.comment-on-pr == 'true' && github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const driftDetected = '${{ steps.drift.outputs.drift-detected }}' === 'true';
+          const checkOnly = '${{ inputs.check-only }}' === 'true';
+          const schemasValidated = '${{ steps.validate.outputs.schemas-validated }}';
+          const schemasGenerated = '${{ steps.generate.outputs.schemas-generated || '0' }}';
+
+          let comment = '## 🔮 LUMOS Generation Report\n\n';
+
+          if (checkOnly) {
+            comment += `✅ **Validation Only Mode**\n\n`;
+            comment += `- Validated: ${schemasValidated} schema(s)\n`;
+          } else {
+            comment += `- Validated: ${schemasValidated} schema(s)\n`;
+            comment += `- Generated: ${schemasGenerated} schema(s)\n\n`;
+          }
+
+          if (driftDetected) {
+            comment += '${{ steps.drift.outputs.diff-summary }}';
+          } else {
+            comment += '✅ **No drift detected** - all generated files match committed versions\n';
+          }
+
+          comment += '\n\n---\n';
+          comment += `*Generated by [LUMOS](https://lumos-lang.org) v${{ inputs.version }}*`;
+
+          // Post comment
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });

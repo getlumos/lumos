@@ -1,0 +1,37 @@
+# Build artifacts
+target/
+*.rs.bk
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Examples (not needed in image)
+examples/
+
+# Tests
+**/tests/
+**/benches/
+
+# CI/CD
+.github/
+
+# Node.js (npm package)
+packages/npm/node_modules/
+packages/npm/dist/
+
+# Misc
+.DS_Store
+Thumbs.db
+*.log

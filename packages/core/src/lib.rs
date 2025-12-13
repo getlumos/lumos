@@ -74,14 +74,18 @@ pub mod ir;
 /// Transform AST into IR
 pub mod transform;
 
-/// Rust code generator
-pub mod generators {
-    /// Generate Rust code from IR
-    pub mod rust;
-
-    /// Generate TypeScript code from IR
-    pub mod typescript;
-}
+/// Multi-language code generators
+///
+/// Provides a unified interface for generating code in multiple languages:
+/// - Rust (Anchor/Borsh)
+/// - TypeScript (@coral-xyz/borsh)
+/// - Python (planned)
+/// - Go (planned)
+/// - Ruby (planned)
+///
+/// See [`generators::Language`] for supported languages and
+/// [`generators::CodeGenerator`] trait for the generation interface.
+pub mod generators;
 
 /// Error types for LUMOS core
 pub mod error;
@@ -100,6 +104,24 @@ pub mod fuzz_generator;
 
 /// Corpus generator for fuzz testing
 pub mod corpus_generator;
+
+/// Schema migration code generation
+pub mod migration;
+
+/// Schema backward compatibility validation
+pub mod compat;
+
+/// File resolver for multi-file schemas with imports
+pub mod file_resolver;
+
+/// Module resolver for hierarchical module structures
+pub mod module_resolver;
+
+/// Anchor Framework integration (IDL generation, constraints, instructions)
+pub mod anchor;
+
+/// Metaplex Token Metadata integration (NFT schemas, validation, types)
+pub mod metaplex;
 
 /// WASM bindings for browser playground
 #[cfg(feature = "wasm")]

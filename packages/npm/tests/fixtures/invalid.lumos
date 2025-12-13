@@ -1,0 +1,5 @@
+#[solana]
+#[account]
+struct InvalidAccount {
+    wallet: InvalidType,
+}

@@ -81,6 +81,7 @@ impl<'a> SizeCalculator<'a> {
             .filter_map(|type_def| match type_def {
                 TypeDefinition::Struct(s) => Some(self.calculate_struct_size(s)),
                 TypeDefinition::Enum(e) => Some(self.calculate_enum_size(e)),
+                TypeDefinition::TypeAlias(_) => None, // Type aliases don't have sizes (they're resolved)
             })
             .collect()
     }
@@ -94,7 +95,10 @@ impl<'a> SizeCalculator<'a> {
         let mut warnings = Vec::new();
 
         // Add discriminator for Anchor accounts
-        let is_account = struct_def.metadata.attributes.contains(&"account".to_string());
+        let is_account = struct_def
+            .metadata
+            .attributes
+            .contains(&"account".to_string());
         if is_account {
             field_breakdown.push(FieldSize {
                 name: "discriminator".to_string(),
@@ -137,7 +141,7 @@ impl<'a> SizeCalculator<'a> {
 
         // Generate warnings
         const MAX_ACCOUNT_SIZE: usize = 10 * 1024 * 1024; // 10MB Solana limit
-        const WARNING_THRESHOLD: usize = 1 * 1024 * 1024; // Warn at 1MB
+        const WARNING_THRESHOLD: usize = 1024 * 1024; // Warn at 1MB
 
         if total_size > MAX_ACCOUNT_SIZE {
             warnings.push(format!(
@@ -176,8 +180,8 @@ impl<'a> SizeCalculator<'a> {
         let mut max_variant_size = 0;
         let mut warnings = Vec::new();
 
-        // Borsh enum discriminant is always u32 (4 bytes) regardless of variant count
-        let discriminant_size = 4;
+        // Borsh enum discriminant (1 byte for < 256 variants, 4 bytes for >= 256)
+        let discriminant_size = if enum_def.variants.len() < 256 { 1 } else { 4 };
 
         field_breakdown.push(FieldSize {
             name: "discriminant".to_string(),
@@ -259,6 +263,16 @@ impl<'a> SizeCalculator<'a> {
     fn calculate_type_size(&mut self, type_info: &TypeInfo) -> SizeInfo {
         match type_info {
             TypeInfo::Primitive(type_name) => self.calculate_primitive_size(type_name),
+            TypeInfo::Generic(param_name) => {
+                // Generic parameters have unknown size until concrete type is provided
+                SizeInfo::Variable {
+                    min: 0,
+                    reason: format!(
+                        "Generic parameter '{}' (size depends on concrete type)",
+                        param_name
+                    ),
+                }
+            }
             TypeInfo::UserDefined(type_name) => {
                 // Check cache first
                 if let Some(cached) = self.size_cache.get(type_name) {
@@ -276,6 +290,10 @@ impl<'a> SizeCalculator<'a> {
                             let account_size = self.calculate_enum_size(e);
                             account_size.total_bytes
                         }
+                        TypeDefinition::TypeAlias(a) => {
+                            // Type aliases are resolved - calculate the target type size
+                            self.calculate_type_size(&a.target)
+                        }
                     };
                     self.size_cache.insert(type_name.clone(), size.clone());
                     size
@@ -291,7 +309,24 @@ impl<'a> SizeCalculator<'a> {
                 // Vec<T> = 4 bytes (length) + variable data
                 SizeInfo::Variable {
                     min: 4,
-                    reason: format!("Vec length prefix + elements ({})", self.describe_type(inner)),
+                    reason: format!(
+                        "Vec length prefix + elements ({})",
+                        self.describe_type(inner)
+                    ),
+                }
+            }
+            TypeInfo::FixedArray { element, size } => {
+                // Fixed array [T; N] = element_size * N (no length prefix!)
+                let element_size = self.calculate_type_size(element);
+                match element_size {
+                    SizeInfo::Fixed(bytes) => SizeInfo::Fixed(bytes * size),
+                    SizeInfo::Variable { min, reason } => SizeInfo::Variable {
+                        min: min * size,
+                        reason: format!(
+                            "Fixed array[{}] with variable-sized elements ({})",
+                            size, reason
+                        ),
+                    },
                 }
             }
             TypeInfo::Option(inner) => {
@@ -337,6 +372,7 @@ impl<'a> SizeCalculator<'a> {
     }
 
     /// Describe a type for display
+    #[allow(clippy::only_used_in_recursion)]
     fn describe_type(&self, type_info: &TypeInfo) -> String {
         match type_info {
             TypeInfo::Primitive(name) => match name.as_str() {
@@ -345,8 +381,12 @@ impl<'a> SizeCalculator<'a> {
                 "String" => "String (variable)".to_string(),
                 _ => name.clone(),
             },
+            TypeInfo::Generic(param_name) => param_name.clone(),
             TypeInfo::UserDefined(name) => name.clone(),
             TypeInfo::Array(inner) => format!("Vec<{}>", self.describe_type(inner)),
+            TypeInfo::FixedArray { element, size } => {
+                format!("[{}; {}]", self.describe_type(element), size)
+            }
             TypeInfo::Option(inner) => format!("Option<{}>", self.describe_type(inner)),
         }
     }
@@ -370,7 +410,7 @@ impl SizeInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ir::{FieldDefinition, Metadata, StructDefinition};
+    use crate::ir::{FieldDefinition, Metadata, StructDefinition, Visibility};
 
     #[test]
     fn test_primitive_sizes() {
@@ -390,19 +430,28 @@ mod tests {
     fn test_simple_struct_size() {
         let type_defs = vec![TypeDefinition::Struct(StructDefinition {
             name: "Player".to_string(),
+            generic_params: vec![],
             fields: vec![
                 FieldDefinition {
                     name: "wallet".to_string(),
                     type_info: TypeInfo::Primitive("PublicKey".to_string()),
                     optional: false,
+                    deprecated: None,
+                    span: None,
+                    anchor_attrs: vec![],
                 },
                 FieldDefinition {
                     name: "score".to_string(),
                     type_info: TypeInfo::Primitive("u64".to_string()),
                     optional: false,
+                    deprecated: None,
+                    span: None,
+                    anchor_attrs: vec![],
                 },
             ],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         })];
 
         let mut calc = SizeCalculator::new(&type_defs);
@@ -417,15 +466,25 @@ mod tests {
     fn test_account_with_discriminator() {
         let type_defs = vec![TypeDefinition::Struct(StructDefinition {
             name: "GameAccount".to_string(),
+            generic_params: vec![],
             fields: vec![FieldDefinition {
                 name: "score".to_string(),
                 type_info: TypeInfo::Primitive("u64".to_string()),
                 optional: false,
+                deprecated: None,
+                span: None,
+                anchor_attrs: vec![],
             }],
             metadata: Metadata {
                 solana: true,
                 attributes: vec!["account".to_string()],
+                version: None,
+                custom_derives: vec![],
+                is_instruction: false,
+                anchor_attrs: vec![],
             },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         })];
 
         let mut calc = SizeCalculator::new(&type_defs);
@@ -440,12 +499,18 @@ mod tests {
     fn test_option_size() {
         let type_defs = vec![TypeDefinition::Struct(StructDefinition {
             name: "Optional".to_string(),
+            generic_params: vec![],
             fields: vec![FieldDefinition {
                 name: "maybe_value".to_string(),
                 type_info: TypeInfo::Option(Box::new(TypeInfo::Primitive("u64".to_string()))),
                 optional: true,
+                deprecated: None,
+                span: None,
+                anchor_attrs: vec![],
             }],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         })];
 
         let mut calc = SizeCalculator::new(&type_defs);

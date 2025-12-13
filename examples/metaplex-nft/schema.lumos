@@ -1,0 +1,160 @@
+// Metaplex NFT Collection Schema
+// Demonstrates LUMOS integration with Metaplex Token Metadata standard
+//
+// Features showcased:
+// - #[metaplex(metadata)] for token metadata
+// - #[metaplex(creator)] for creator information
+// - #[metaplex(collection)] for NFT collection references
+// - Validation constraints enforced by LUMOS
+
+// =============================================================================
+// Core Metaplex Types
+// =============================================================================
+
+/// NFT Creator with royalty share
+/// Constraints: Max 5 creators, shares must sum to 100
+#[solana]
+#[metaplex(creator)]
+struct Creator {
+    /// Creator's wallet address
+    address: PublicKey,
+    /// Whether the creator has verified this NFT
+    verified: bool,
+    /// Royalty share (0-100), all creators must sum to 100
+    share: u8,
+}
+
+/// Collection reference for NFT grouping
+#[solana]
+#[metaplex(collection)]
+struct Collection {
+    /// Whether collection assignment is verified
+    verified: bool,
+    /// Collection NFT's mint address
+    key: PublicKey,
+}
+
+/// NFT use tracking (for consumable NFTs)
+#[solana]
+#[metaplex(uses)]
+struct Uses {
+    /// Use method: 0 = Burn, 1 = Multiple, 2 = Single
+    use_method: u8,
+    /// Remaining uses
+    remaining: u64,
+    /// Total uses allowed
+    total: u64,
+}
+
+// =============================================================================
+// Token Metadata
+// =============================================================================
+
+/// Main NFT Metadata struct
+/// Follows Metaplex Token Metadata standard constraints:
+/// - name: max 32 characters
+/// - symbol: max 10 characters
+/// - uri: max 200 characters
+/// - seller_fee_basis_points: 0-10000 (100% = 10000)
+/// - creators: max 5 creators
+#[solana]
+#[metaplex(metadata)]
+struct NftMetadata {
+    /// NFT name (max 32 chars)
+    name: String,
+    /// Collection symbol (max 10 chars)
+    symbol: String,
+    /// Metadata JSON URI (max 200 chars)
+    uri: String,
+    /// Royalty fee in basis points (e.g., 500 = 5%)
+    seller_fee_basis_points: u16,
+    /// NFT creators with royalty splits
+    creators: Option<[Creator]>,
+    /// Collection this NFT belongs to
+    collection: Option<Collection>,
+    /// Use information for consumable NFTs
+    uses: Option<Uses>,
+}
+
+// =============================================================================
+// Program Accounts
+// =============================================================================
+
+/// NFT mint account for on-chain storage
+#[solana]
+#[account]
+struct NftAccount {
+    /// Mint authority
+    mint_authority: PublicKey,
+    /// NFT owner
+    owner: PublicKey,
+    /// Metadata reference
+    metadata: NftMetadata,
+    /// Creation timestamp
+    created_at: i64,
+    /// Whether the NFT is frozen
+    frozen: bool,
+}
+
+/// Collection configuration account
+#[solana]
+#[account]
+struct CollectionConfig {
+    /// Collection authority
+    authority: PublicKey,
+    /// Collection name
+    name: String,
+    /// Collection symbol
+    symbol: String,
+    /// Base URI for metadata
+    base_uri: String,
+    /// Default royalty basis points
+    royalty_basis_points: u16,
+    /// Total NFTs in collection
+    total_supply: u64,
+    /// Current minted count
+    minted_count: u64,
+    /// Maximum supply (0 = unlimited)
+    max_supply: u64,
+    /// Whether minting is active
+    is_active: bool,
+}
+
+// =============================================================================
+// Token Standards Enum
+// =============================================================================
+
+/// Metaplex Token Standard types
+#[solana]
+enum TokenStandard {
+    /// Standard 1/1 NFT
+    NonFungible,
+    /// Fungible asset with metadata
+    FungibleAsset,
+    /// Standard fungible token
+    Fungible,
+    /// Edition of a Master NFT
+    NonFungibleEdition,
+    /// Programmable NFT with rules
+    ProgrammableNonFungible,
+    /// Programmable edition
+    ProgrammableNonFungibleEdition,
+}
+
+/// Master Edition for creating editions
+#[solana]
+struct MasterEdition {
+    /// Current supply of editions
+    supply: u64,
+    /// Maximum supply (None = unlimited)
+    max_supply: Option<u64>,
+}
+
+/// Edition marker for large collections
+#[solana]
+struct Edition {
+    /// Parent Master Edition
+    parent: PublicKey,
+    /// Edition number
+    edition: u64,
+}

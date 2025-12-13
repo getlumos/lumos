@@ -20,6 +20,15 @@ impl SourceLocation {
         Self { line, column }
     }
 
+    /// Create from proc_macro2::Span
+    pub fn from_span(span: proc_macro2::Span) -> Self {
+        let start = span.start();
+        Self {
+            line: start.line,
+            column: start.column + 1, // proc_macro2 uses 0-indexed columns
+        }
+    }
+
     /// Format location as "line:column"
     pub fn format(&self) -> String {
         format!("{}:{}", self.line, self.column)
@@ -40,6 +49,10 @@ pub enum LumosError {
     /// Type validation error with optional source location
     #[error("{}{}", .0, .1.as_ref().map(|loc| format!(" (at {})", loc.format())).unwrap_or_default())]
     TypeValidation(String, Option<SourceLocation>),
+
+    /// Transformation error (AST to IR) with optional source location
+    #[error("{}{}", .0, .1.as_ref().map(|loc| format!(" (at {})", loc.format())).unwrap_or_default())]
+    Transform(String, Option<SourceLocation>),
 
     /// IO error
     #[error("IO error: {0}")]

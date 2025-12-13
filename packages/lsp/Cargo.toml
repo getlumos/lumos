@@ -1,0 +1,45 @@
+[package]
+name = "lumos-lsp"
+version = "0.3.0"
+edition = "2021"
+authors = ["LUMOS Core Team"]
+description = "Language Server Protocol implementation for LUMOS schema language"
+repository = "https://github.com/getlumos/lumos"
+license = "MIT OR Apache-2.0"
+keywords = ["lumos", "solana", "lsp", "language-server", "ide"]
+categories = ["development-tools", "parser-implementations"]
+readme = "README.md"
+
+[lib]
+name = "lumos_lsp"
+path = "src/lib.rs"
+
+[[bin]]
+name = "lumos-lsp"
+path = "src/main.rs"
+
+[dependencies]
+# LSP framework
+tower-lsp = "0.20"
+tokio = { version = "1.35", features = ["full"] }
+
+# LUMOS core (parser, AST, errors)
+lumos-core = { version = "0.3.0", path = "../core" }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Error monitoring (optional, enabled via SENTRY_DSN env var)
+sentry = { version = "0.34", default-features = false, features = ["backtrace", "contexts", "panic", "tracing"] }
+
+# Async utilities
+dashmap = "5.5"
+
+[dev-dependencies]
+# Testing
+tokio-test = "0.4"

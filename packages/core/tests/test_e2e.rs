@@ -489,3 +489,232 @@ fn test_e2e_enum_schema_compiles() {
 
     println!("✓ E2E enum test passed (parse → IR → Rust + TypeScript → compile)");
 }
+
+#[test]
+fn test_e2e_generic_types_compile() {
+    let lumos_code = r#"
+        struct Wrapper<T> {
+            value: T,
+        }
+
+        struct Pair<K, V> {
+            key: K,
+            value: V,
+        }
+
+        enum Result<T, E> {
+            Ok(T),
+            Err(E),
+        }
+
+        enum Maybe<T> {
+            Some(T),
+            None,
+        }
+
+        struct Container<T> {
+            items: Vec<T>,
+            count: u32,
+        }
+    "#;
+
+    // Parse
+    let ast = parse_lumos_file(lumos_code).expect("Failed to parse generic schema");
+    assert_eq!(ast.items.len(), 5);
+
+    // Transform to IR
+    let ir = transform_to_ir(ast).expect("Failed to transform generic schema");
+
+    // Generate Rust code
+    let rust_code = rust::generate_module(&ir);
+    println!("Generated Rust code:\n{}", rust_code);
+
+    // Verify generic syntax in Rust
+    assert!(rust_code.contains("pub struct Wrapper<T>"));
+    assert!(rust_code.contains("pub struct Pair<K, V>"));
+    assert!(rust_code.contains("pub enum Result<T, E>"));
+    assert!(rust_code.contains("pub enum Maybe<T>"));
+    assert!(rust_code.contains("pub struct Container<T>"));
+    assert!(rust_code.contains("pub value: T,"));
+    assert!(rust_code.contains("pub key: K,"));
+    assert!(rust_code.contains("pub value: V,"));
+    assert!(rust_code.contains("Ok(T)"));
+    assert!(rust_code.contains("Err(E)"));
+    assert!(rust_code.contains("Some(T)"));
+    assert!(rust_code.contains("pub items: Vec<T>,"));
+
+    // Test Rust compilation
+    let (temp_dir, project_dir) = create_temp_rust_project("test_generics", &rust_code);
+
+    println!("Compiling Rust project at: {:?}", project_dir);
+    let output = Command::new("cargo")
+        .arg("check")
+        .current_dir(&project_dir)
+        .output()
+        .expect("Failed to run cargo check");
+
+    if !output.status.success() {
+        eprintln!("STDOUT: {}", String::from_utf8_lossy(&output.stdout));
+        eprintln!("STDERR: {}", String::from_utf8_lossy(&output.stderr));
+        panic!("Rust compilation failed for generic types");
+    }
+
+    println!("✓ Rust generic types compile successfully");
+
+    // Generate TypeScript code
+    let ts_code = typescript::generate_module(&ir);
+    println!("Generated TypeScript code:\n{}", ts_code);
+
+    // Verify generic syntax in TypeScript
+    assert!(ts_code.contains("export interface Wrapper<T>"));
+    assert!(ts_code.contains("export interface Pair<K, V>"));
+    assert!(ts_code.contains("export type Result<T, E> ="));
+    assert!(ts_code.contains("export type Maybe<T> ="));
+    assert!(ts_code.contains("export interface Container<T>"));
+    assert!(ts_code.contains("value: T;"));
+    assert!(ts_code.contains("key: K;"));
+    assert!(ts_code.contains("value: V;"));
+    assert!(ts_code.contains("items: T[];"));
+
+    // Validate TypeScript syntax
+    assert!(
+        validate_typescript_syntax(&ts_code),
+        "Generated TypeScript generic code has syntax errors"
+    );
+
+    // Keep temp dir alive until test completes
+    drop(temp_dir);
+
+    println!("✓ E2E generic types test passed (parse → IR → Rust compile + TypeScript syntax)");
+}
+
+#[test]
+fn test_e2e_instruction_context_generation() {
+    // Test the complete pipeline for Anchor instruction context generation
+    use lumos_core::anchor::{
+        generate_accounts_context, parse_anchor_attrs, AnchorAccountType, InstructionAccount,
+        InstructionContext,
+    };
+
+    let lumos_code = r#"
+        #[solana]
+        #[instruction]
+        struct InitializeVault {
+            #[anchor(init, payer = authority, space = 8 + 64)]
+            vault: VaultAccount,
+
+            #[anchor(mut)]
+            authority: Signer,
+
+            system_program: SystemProgram,
+        }
+
+        #[solana]
+        #[account]
+        struct VaultAccount {
+            owner: PublicKey,
+            balance: u64,
+        }
+
+        // Anchor built-in types
+        #[solana]
+        struct Signer {}
+
+        #[solana]
+        struct SystemProgram {}
+    "#;
+
+    // Parse
+    let ast = parse_lumos_file(lumos_code).expect("Failed to parse");
+
+    // Transform to IR
+    let ir = transform_to_ir(ast).expect("Failed to transform");
+
+    // Find the InitializeVault instruction struct
+    let init_vault = ir
+        .iter()
+        .find(|t| t.name() == "InitializeVault")
+        .expect("InitializeVault not found");
+
+    if let lumos_core::ir::TypeDefinition::Struct(s) = init_vault {
+        // Verify it's marked as instruction
+        assert!(s.metadata.is_instruction, "Should be marked as instruction");
+
+        // Build InstructionContext from IR
+        let mut accounts = Vec::new();
+
+        for field in &s.fields {
+            let mut attrs = Vec::new();
+            for attr_str in &field.anchor_attrs {
+                attrs.extend(parse_anchor_attrs(attr_str));
+            }
+
+            // Infer account type
+            let account_type = match field.type_info {
+                lumos_core::ir::TypeInfo::UserDefined(ref name) => match name.as_str() {
+                    "Signer" => AnchorAccountType::Signer,
+                    "SystemProgram" => AnchorAccountType::Program("System".to_string()),
+                    _ => AnchorAccountType::Account(name.clone()),
+                },
+                _ => AnchorAccountType::AccountInfo,
+            };
+
+            accounts.push(InstructionAccount {
+                name: field.name.clone(),
+                account_type,
+                attrs,
+                optional: field.optional,
+                docs: vec![],
+            });
+        }
+
+        let ctx = InstructionContext {
+            name: s.name.clone(),
+            accounts,
+            args: vec![],
+        };
+
+        // Generate Accounts context
+        let generated = generate_accounts_context(&ctx);
+
+        // Verify generated Anchor Accounts struct
+        assert!(
+            generated.contains("#[derive(Accounts)]"),
+            "Should have Accounts derive"
+        );
+        assert!(
+            generated.contains("pub struct InitializeVault<'info>"),
+            "Should have struct with lifetime"
+        );
+        assert!(
+            generated.contains("pub vault: Account<'info, VaultAccount>"),
+            "Should have vault field"
+        );
+        assert!(
+            generated.contains("pub authority: Signer<'info>"),
+            "Should have authority as Signer"
+        );
+        assert!(
+            generated.contains("pub system_program: Program<'info, System>"),
+            "Should have system_program"
+        );
+        assert!(
+            generated.contains("#[account(init"),
+            "Should have init attribute"
+        );
+        assert!(
+            generated.contains("payer = authority"),
+            "Should have payer attribute"
+        );
+        assert!(
+            generated.contains("space = 8 + 64"),
+            "Should have space attribute"
+        );
+
+        println!("Generated Accounts context:\n{}", generated);
+    } else {
+        panic!("Expected struct");
+    }
+
+    println!("✓ E2E instruction context generation test passed");
+}

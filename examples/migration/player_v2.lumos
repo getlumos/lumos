@@ -1,0 +1,26 @@
+// Licensed under either of Apache License, Version 2.0 or MIT license at your option.
+// Copyright 2025 RECTOR-LABS
+
+//! Example: Schema Migration v1 → v2
+//!
+//! This is the v2 schema (with changes from v1)
+//!
+//! Changes from v1:
+//! - Added: experience (u64) - new field for XP tracking
+//! - Added: inventory (Vec<u64>) - player items
+//! - Added: email (Option<String>) - optional contact field
+//!
+//! Migration strategy: All new fields use default values
+
+#[solana]
+#[version = "2.0.0"]
+#[account]
+struct PlayerAccount {
+    wallet: PublicKey,
+    username: String,
+    level: u16,
+    score: u64,
+    experience: u64,        // NEW: added in v2.0.0
+    inventory: [u64],       // NEW: added in v2.0.0
+    email: Option<String>,  // NEW: added in v2.0.0 (optional, so safe)
+}

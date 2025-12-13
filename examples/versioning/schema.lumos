@@ -1,0 +1,71 @@
+// Licensed under either of Apache License, Version 2.0 or MIT license at your option.
+// Copyright 2025 RECTOR-LABS
+
+//! Example: Schema Versioning with LUMOS
+//!
+//! This example demonstrates how to version your schemas for better
+//! change tracking, migration planning, and compatibility management.
+//!
+//! Use semantic versioning (MAJOR.MINOR.PATCH):
+//! - MAJOR: Incompatible changes (e.g., removing fields)
+//! - MINOR: Backwards-compatible additions (e.g., new optional fields)
+//! - PATCH: Bug fixes or documentation updates
+
+// V1 - Initial version of user account
+#[solana]
+#[version = "1.0.0"]
+#[account]
+struct UserAccountV1 {
+    wallet: PublicKey,
+    username: String,
+    created_at: i64,
+}
+
+// V2 - Added optional email field (backwards compatible)
+#[solana]
+#[version = "2.0.0"]
+#[account]
+struct UserAccountV2 {
+    wallet: PublicKey,
+    username: String,
+    created_at: i64,
+    email: Option<String>,
+}
+
+// Game state enum with version tracking
+#[solana]
+#[version = "1.0.0"]
+enum GameState {
+    Idle,
+    Playing,
+    Paused,
+    Completed,
+}
+
+// NFT with version for marketplace compatibility
+#[solana]
+#[version = "2.1.0"]
+#[account]
+struct NftListing {
+    mint: PublicKey,
+    owner: PublicKey,
+    price: u64,
+    listed_at: i64,
+    expires_at: Option<i64>,
+}
+
+// Pre-release version for beta features
+#[solana]
+#[version = "3.0.0-beta.1"]
+struct BetaFeature {
+    feature_id: u64,
+    enabled: bool,
+}
+
+// Version with build metadata
+#[solana]
+#[version = "1.0.0+build.20250123"]
+struct BuildTracked {
+    data: String,
+    timestamp: i64,
+}

@@ -1,0 +1,186 @@
+// Account Definitions - Using imported types from types.lumos
+//
+// This demonstrates how to import and use type aliases from another file.
+
+// Import common types from types.lumos
+import {
+    UserId,
+    WalletAddress,
+    AccountId,
+    UnixTimestamp,
+    Lamports,
+    TokenAmount,
+    ShareAmount,
+    BasisPoints,
+    TokenMint,
+    TokenAccount,
+    OptionalOwner,
+    NullableTimestamp,
+    UserList,
+    AccountStatus,
+    PermissionLevel
+} from "./types.lumos";
+
+// ============================================================================
+// USER ACCOUNTS
+// ============================================================================
+
+// Basic user account using imported type aliases
+#[solana]
+#[account]
+struct UserAccount {
+    // Identity
+    user_id: UserId,                    // Imported: PublicKey
+    wallet: WalletAddress,              // Imported: PublicKey
+
+    // Balances
+    balance: Lamports,                  // Imported: u64
+    token_balance: TokenAmount,         // Imported: u64
+
+    // Metadata
+    status: AccountStatus,              // Imported: enum
+    permission: PermissionLevel,        // Imported: enum
+    created_at: UnixTimestamp,          // Imported: i64
+    last_login: NullableTimestamp,      // Imported: Option<i64>
+
+    // Stats
+    total_deposits: Lamports,
+    total_withdrawals: Lamports,
+    transaction_count: u64,
+}
+
+// ============================================================================
+// STAKING ACCOUNTS
+// ============================================================================
+
+// Staking account with imported types
+#[solana]
+#[account]
+struct StakeAccount {
+    // Owner
+    owner: UserId,                      // Imported: PublicKey
+    delegate: OptionalOwner,            // Imported: Option<PublicKey>
+
+    // Staking details
+    staked_amount: TokenAmount,         // Imported: u64
+    shares: ShareAmount,                // Imported: u64
+
+    // Timing
+    staked_at: UnixTimestamp,           // Imported: i64
+    unlock_at: UnixTimestamp,           // Imported: i64
+
+    // Rewards
+    rewards_earned: TokenAmount,        // Imported: u64
+    last_claim: NullableTimestamp,      // Imported: Option<i64>
+
+    // Status
+    status: AccountStatus,              // Imported: enum
+}
+
+// ============================================================================
+// VAULT ACCOUNTS
+// ============================================================================
+
+// Vault account for managing pooled funds
+#[solana]
+#[account]
+struct VaultAccount {
+    // Authority
+    authority: UserId,                  // Imported: PublicKey
+
+    // Token info
+    token_mint: TokenMint,              // Imported: PublicKey
+    token_account: TokenAccount,        // Imported: PublicKey
+
+    // Amounts
+    total_deposits: TokenAmount,        // Imported: u64
+    total_shares: ShareAmount,          // Imported: u64
+
+    // Fees
+    management_fee: BasisPoints,        // Imported: u16 (1 = 0.01%)
+    performance_fee: BasisPoints,       // Imported: u16
+
+    // Participants
+    depositors: UserList,               // Imported: [PublicKey]
+
+    // Metadata
+    created_at: UnixTimestamp,          // Imported: i64
+    status: AccountStatus,              // Imported: enum
+}
+
+// ============================================================================
+// DAO ACCOUNTS
+// ============================================================================
+
+// DAO governance account
+#[solana]
+#[account]
+struct DAOAccount {
+    // Identity
+    dao_id: AccountId,                  // Imported: PublicKey
+
+    // Governance
+    council: UserList,                  // Imported: [PublicKey]
+    proposal_threshold: TokenAmount,    // Imported: u64
+    quorum: BasisPoints,                // Imported: u16 (e.g., 5000 = 50%)
+
+    // Treasury
+    treasury: WalletAddress,            // Imported: PublicKey
+    treasury_balance: Lamports,         // Imported: u64
+
+    // Stats
+    total_proposals: u64,
+    executed_proposals: u64,
+
+    // Metadata
+    created_at: UnixTimestamp,          // Imported: i64
+    status: AccountStatus,              // Imported: enum
+}
+
+// ============================================================================
+// MULTI-SIG ACCOUNT
+// ============================================================================
+
+// Multi-signature wallet account
+#[solana]
+#[account]
+struct MultiSigAccount {
+    // Signers
+    owners: UserList,                   // Imported: [PublicKey]
+    threshold: u8,                      // Required signatures
+
+    // Balances
+    balance: Lamports,                  // Imported: u64
+    token_balances: [TokenAmount],      // Imported: [u64]
+
+    // Metadata
+    created_at: UnixTimestamp,          // Imported: i64
+    nonce: u64,                         // For replay protection
+    status: AccountStatus,              // Imported: enum
+}
+
+// ============================================================================
+// NOTES
+// ============================================================================
+
+// Benefits of using imports:
+// 1. ✅ Consistent types across all account definitions
+// 2. ✅ Single source of truth in types.lumos
+// 3. ✅ Easy refactoring - change once, updates everywhere
+// 4. ✅ Better organization - separation of concerns
+// 5. ✅ Type safety maintained across files
+// 6. ✅ Generated code uses same type aliases
+
+// Generated Rust will have:
+// use solana_program::pubkey::Pubkey;
+// pub type UserId = Pubkey;
+// pub type WalletAddress = Pubkey;
+// ...
+//
+// #[account]
+// pub struct UserAccount {
+//     pub user_id: UserId,        // = Pubkey
+//     pub wallet: WalletAddress,  // = Pubkey
+//     pub balance: Lamports,      // = u64
+//     ...
+// }

@@ -1,0 +1,15 @@
+// Models Module - Parent for User and Account
+// Demonstrates: Module re-exports and organization
+
+mod user;
+mod account;
+
+// Common types shared across sub-modules
+type Timestamp = i64;
+
+// Base model for all entities
+#[solana]
+struct BaseModel {
+    created_at: i64,
+    updated_at: i64,
+}

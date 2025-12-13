@@ -1,0 +1,8 @@
+import { UserId, Lamports } from "./types.lumos";
+
+#[solana]
+#[account]
+struct SimpleAccount {
+    user: UserId,
+    balance: Lamports,
+}

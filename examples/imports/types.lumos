@@ -1,0 +1,92 @@
+// Common Types - Shared across all files
+//
+// This file defines reusable type aliases that are imported
+// by other schemas in this project.
+
+// ============================================================================
+// IDENTITY TYPES
+// ============================================================================
+
+// User and account identification
+type UserId = PublicKey;
+type WalletAddress = PublicKey;
+type AccountId = PublicKey;
+
+// ============================================================================
+// TEMPORAL TYPES
+// ============================================================================
+
+// Time-related types
+type UnixTimestamp = i64;
+type Slot = u64;
+type Epoch = u64;
+
+// ============================================================================
+// FINANCIAL TYPES
+// ============================================================================
+
+// Currency and token amounts
+type Lamports = u64;
+type TokenAmount = u64;
+type ShareAmount = u64;
+
+// Percentage representation (basis points: 1 = 0.01%, 10000 = 100%)
+type BasisPoints = u16;
+
+// ============================================================================
+// PROGRAM TYPES
+// ============================================================================
+
+// Program and authority references
+type ProgramId = PublicKey;
+type AuthorityId = PublicKey;
+type SignerAddress = PublicKey;
+
+// ============================================================================
+// TOKEN TYPES
+// ============================================================================
+
+// Token-specific identifiers
+type TokenMint = PublicKey;
+type TokenAccount = PublicKey;
+type VaultAddress = PublicKey;
+
+// ============================================================================
+// OPTIONAL TYPES
+// ============================================================================
+
+// Nullable versions of common types
+type OptionalOwner = Option<PublicKey>;
+type OptionalAmount = Option<u64>;
+type NullableTimestamp = Option<i64>;
+
+// ============================================================================
+// COLLECTION TYPES
+// ============================================================================
+
+// Common collection patterns
+type UserList = [PublicKey];
+type AmountList = [u64];
+type TimestampList = [i64];
+
+// ============================================================================
+// ENUMS - Shared across modules
+// ============================================================================
+
+// Account status states
+#[solana]
+enum AccountStatus {
+    Uninitialized,
+    Active,
+    Frozen,
+    Closed,
+}
+
+// Permission levels
+#[solana]
+enum PermissionLevel {
+    None,
+    Read,
+    Write,
+    Admin,
+}

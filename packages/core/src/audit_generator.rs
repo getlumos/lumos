@@ -73,6 +73,9 @@ impl<'a> AuditGenerator<'a> {
                 TypeDefinition::Enum(_) => {
                     // Enums have fewer security concerns
                 }
+                TypeDefinition::TypeAlias(_) => {
+                    // Type aliases don't need auditing (they're resolved)
+                }
             }
         }
 
@@ -86,7 +89,10 @@ impl<'a> AuditGenerator<'a> {
     fn generate_struct_checks(&self, struct_def: &StructDefinition) -> Vec<ChecklistItem> {
         let mut items = Vec::new();
 
-        let is_account = struct_def.metadata.attributes.contains(&"account".to_string());
+        let is_account = struct_def
+            .metadata
+            .attributes
+            .contains(&"account".to_string());
 
         // Account validation checks
         if is_account {
@@ -175,7 +181,8 @@ impl<'a> AuditGenerator<'a> {
             }
 
             // PublicKey validation
-            if matches!(field.type_info, TypeInfo::Primitive(ref t) if t == "PublicKey" || t == "Pubkey") {
+            if matches!(field.type_info, TypeInfo::Primitive(ref t) if t == "PublicKey" || t == "Pubkey")
+            {
                 items.push(ChecklistItem {
                     category: CheckCategory::DataValidation,
                     priority: Priority::Medium,
@@ -252,51 +259,22 @@ impl<'a> AuditGenerator<'a> {
         ];
 
         let lower = field_name.to_lowercase();
-
-        // Check for exact matches or as complete words (prefix/suffix with underscore)
-        authority_keywords.iter().any(|keyword| {
-            // Exact match
-            if lower == *keyword {
-                return true;
-            }
-
-            // Match as prefix (e.g., "owner_id", "admin_key")
-            if lower.starts_with(&format!("{}_", keyword)) {
-                return true;
-            }
-
-            // Match as suffix (e.g., "pool_owner", "vault_authority")
-            if lower.ends_with(&format!("_{}", keyword)) {
-                return true;
-            }
-
-            // Match in middle (e.g., "multi_owner_account")
-            if lower.contains(&format!("_{}_", keyword)) {
-                return true;
-            }
-
-            false
-        })
+        authority_keywords
+            .iter()
+            .any(|keyword| lower.contains(keyword))
     }
 
     /// Check if a field is used for arithmetic operations
     fn is_arithmetic_field(&self, field_name: &str, type_info: &TypeInfo) -> bool {
         let arithmetic_keywords = [
-            "balance",
-            "amount",
-            "supply",
-            "total",
-            "count",
-            "price",
-            "value",
-            "reward",
-            "stake",
-            "fee",
-            "lamport",
+            "balance", "amount", "supply", "total", "count", "price", "value", "reward", "stake",
+            "fee", "lamport",
         ];
 
         let lower = field_name.to_lowercase();
-        let is_arithmetic_name = arithmetic_keywords.iter().any(|keyword| lower.contains(keyword));
+        let is_arithmetic_name = arithmetic_keywords
+            .iter()
+            .any(|keyword| lower.contains(keyword));
 
         let is_numeric = matches!(type_info, TypeInfo::Primitive(ref t) if
             t == "u64" || t == "u128" || t == "i64" || t == "i128" ||
@@ -352,93 +330,129 @@ impl Priority {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ir::{FieldDefinition, Metadata};
+    use crate::ir::{FieldDefinition, Metadata, Visibility};
 
     #[test]
     fn test_generates_account_validation_checks() {
         let type_defs = vec![TypeDefinition::Struct(StructDefinition {
             name: "PlayerAccount".to_string(),
+            generic_params: vec![],
             fields: vec![],
             metadata: Metadata {
                 solana: true,
                 attributes: vec!["account".to_string()],
+                version: None,
+                custom_derives: vec![],
+                is_instruction: false,
+                anchor_attrs: vec![],
             },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         })];
 
         let generator = AuditGenerator::new(&type_defs);
         let checklist = generator.generate();
 
-        assert!(checklist.iter().any(|item|
-            matches!(item.category, CheckCategory::AccountValidation) &&
-            item.item.contains("ownership")
-        ));
+        assert!(checklist.iter().any(|item| matches!(
+            item.category,
+            CheckCategory::AccountValidation
+        ) && item.item.contains("ownership")));
     }
 
     #[test]
     fn test_generates_signer_checks_for_authority() {
         let type_defs = vec![TypeDefinition::Struct(StructDefinition {
             name: "Config".to_string(),
+            generic_params: vec![],
             fields: vec![FieldDefinition {
                 name: "authority".to_string(),
                 type_info: TypeInfo::Primitive("PublicKey".to_string()),
                 optional: false,
+                deprecated: None,
+                span: None,
+                anchor_attrs: vec![],
             }],
             metadata: Metadata {
                 solana: true,
                 attributes: vec!["account".to_string()],
+                version: None,
+                custom_derives: vec![],
+                is_instruction: false,
+                anchor_attrs: vec![],
             },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         })];
 
         let generator = AuditGenerator::new(&type_defs);
         let checklist = generator.generate();
 
-        assert!(checklist.iter().any(|item|
-            matches!(item.category, CheckCategory::SignerChecks) &&
-            matches!(item.priority, Priority::Critical)
-        ));
+        assert!(checklist
+            .iter()
+            .any(|item| matches!(item.category, CheckCategory::SignerChecks)
+                && matches!(item.priority, Priority::Critical)));
     }
 
     #[test]
     fn test_generates_arithmetic_checks() {
         let type_defs = vec![TypeDefinition::Struct(StructDefinition {
             name: "Vault".to_string(),
+            generic_params: vec![],
             fields: vec![FieldDefinition {
                 name: "balance".to_string(),
                 type_info: TypeInfo::Primitive("u64".to_string()),
                 optional: false,
+                deprecated: None,
+                span: None,
+                anchor_attrs: vec![],
             }],
             metadata: Metadata::default(),
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         })];
 
         let generator = AuditGenerator::new(&type_defs);
         let checklist = generator.generate();
 
-        assert!(checklist.iter().any(|item|
-            matches!(item.category, CheckCategory::ArithmeticSafety) &&
-            item.item.contains("checked arithmetic")
-        ));
+        assert!(checklist.iter().any(|item| matches!(
+            item.category,
+            CheckCategory::ArithmeticSafety
+        ) && item.item.contains("checked arithmetic")));
     }
 
     #[test]
     fn test_sorted_by_priority() {
         let type_defs = vec![TypeDefinition::Struct(StructDefinition {
             name: "TokenAccount".to_string(),
+            generic_params: vec![],
             fields: vec![
                 FieldDefinition {
                     name: "authority".to_string(),
                     type_info: TypeInfo::Primitive("PublicKey".to_string()),
                     optional: false,
+                    deprecated: None,
+                    span: None,
+                    anchor_attrs: vec![],
                 },
                 FieldDefinition {
                     name: "balance".to_string(),
                     type_info: TypeInfo::Primitive("u64".to_string()),
                     optional: false,
+                    deprecated: None,
+                    span: None,
+                    anchor_attrs: vec![],
                 },
             ],
             metadata: Metadata {
                 solana: true,
                 attributes: vec!["account".to_string()],
+                version: None,
+                custom_derives: vec![],
+                is_instruction: false,
+                anchor_attrs: vec![],
             },
+            visibility: Visibility::Public,
+            module_path: Vec::new(),
         })];
 
         let generator = AuditGenerator::new(&type_defs);

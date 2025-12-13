@@ -1,0 +1,70 @@
+// Example: Custom Derive Macros in LUMOS
+//
+// This example demonstrates how to use custom derive macros
+// to add additional traits beyond the auto-generated ones.
+
+// Example 1: Basic custom derives for equality comparison
+#[solana]
+#[derive(PartialEq, Eq, Hash)]
+struct PlayerStats {
+    wins: u32,
+    losses: u32,
+    draws: u32,
+}
+
+// Example 2: Custom derives with Anchor account
+// Note: #[account] structs get no auto-derives from Anchor,
+// but you can still add custom derives
+#[solana]
+#[account]
+#[derive(PartialEq, Eq)]
+struct UserAccount {
+    wallet: PublicKey,
+    balance: u64,
+    verified: bool,
+}
+
+// Example 3: Enum with custom derives
+#[solana]
+#[derive(PartialEq, Eq, Hash, Copy)]
+enum GameState {
+    Lobby,
+    InProgress,
+    Paused,
+    Finished,
+}
+
+// Example 4: Complex enum with custom derives
+#[solana]
+#[derive(PartialEq, Eq)]
+enum GameEvent {
+    PlayerJoined(PublicKey),
+    ScoreUpdated {
+        player: PublicKey,
+        new_score: u64,
+    },
+    GameEnded,
+}
+
+// Example 5: Deduplication - if you specify a derive that LUMOS
+// auto-generates (like Debug or Clone), it won't be duplicated
+#[solana]
+#[derive(Debug, Clone, PartialEq)]  // Debug and Clone won't be duplicated
+struct Item {
+    id: u64,
+    name: String,
+}
+
+// Generated Rust code will have:
+// #[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
+// for PlayerStats (auto-generated + custom, deduplicated)
+//
+// #[derive(PartialEq, Eq)]
+// #[account]
+// for UserAccount (only custom derives, Anchor provides serialization)
+//
+// Benefits of custom derives:
+// - PartialEq, Eq: Enable equality comparisons (==, !=)
+// - Hash: Enable use in HashSet and HashMap
+// - Copy: Enable bitwise copying for small types
+// - Ord, PartialOrd: Enable ordering comparisons (<, >, <=, >=)

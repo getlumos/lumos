@@ -224,6 +224,77 @@ pub struct UserAccount {
 }
 ```
 
+#### `#[version = "X.Y.Z"]` - Schema Versioning
+
+Track schema versions using semantic versioning:
+
+```rust
+#[solana]
+#[version = "1.0.0"]
+#[account]
+struct PlayerAccount {
+    wallet: PublicKey,
+    level: u16,
+    experience: u64,
+}
+
+#[solana]
+#[version = "2.1.3"]
+enum GameState {
+    Active,
+    Paused,
+    Finished,
+}
+```
+
+**Generates:**
+
+**Rust:**
+```rust
+pub const PLAYERACCOUNT_VERSION: &str = "1.0.0";
+
+#[account]
+pub struct PlayerAccount {
+    pub wallet: Pubkey,
+    pub level: u16,
+    pub experience: u64,
+}
+
+pub const GAMESTATE_VERSION: &str = "2.1.3";
+
+#[derive(AnchorSerialize, AnchorDeserialize, Debug, Clone)]
+pub enum GameState {
+    Active,
+    Paused,
+    Finished,
+}
+```
+
+**TypeScript:**
+```typescript
+export const PLAYERACCOUNT_VERSION = "1.0.0";
+
+export interface PlayerAccount {
+  wallet: PublicKey;
+  level: number;
+  experience: number;
+}
+
+export const GAMESTATE_VERSION = "2.1.3";
+
+export type GameState =
+  | { kind: 'Active' }
+  | { kind: 'Paused' }
+  | { kind: 'Finished' };
+```
+
+**Effect:**
+- Generates version constants for tracking schema changes
+- Supports semantic versioning (MAJOR.MINOR.PATCH)
+- Accepts pre-release versions (e.g., `"1.0.0-beta.1"`)
+- Accepts build metadata (e.g., `"1.0.0+build.123"`)
+- Useful for migration planning and compatibility checking
+
 ### Field Attributes
 
 #### `#[key]` - Primary Key Field

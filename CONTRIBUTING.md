@@ -33,6 +33,29 @@ Thank you for your interest in contributing to LUMOS! This document provides gui
    cargo run --package lumos-cli -- --help
    ```
 
+5. **Install git hooks (recommended)**
+   ```bash
+   bash .github/scripts/install-hooks.sh
+   ```
+   This installs a pre-commit hook that automatically validates `.lumos` schema files before each commit.
+
+### Environment Variables
+
+Create a `.env` file based on `.env.example` at the repo root. Useful variables:
+
+- `LUMOS_WATCH_DEBOUNCE`: Debounce delay in ms for `--watch`
+- `RUST_LOG`: Set logging level (e.g., `info`)
+
+### Anchor Program Generation
+
+The `anchor generate` command now requires an explicit program address via `--address` and validates it as a base58-encoded 32-byte Solana program ID.
+
+Example:
+
+```
+lumos anchor generate examples/basic/schema.lumos --address Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS --typescript
+```
+
 ## 📋 How to Contribute
 
 ### Reporting Bugs
@@ -74,6 +97,7 @@ Feature requests are welcome! Please create an issue describing:
 4. **Commit your changes**
    - Write clear, concise commit messages
    - Reference any related issues
+   - If you've installed git hooks, `.lumos` files are automatically validated
 
 5. **Push and create a pull request**
    ```bash

@@ -1,0 +1,29 @@
+[package]
+name = "cargo-lumos"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Cargo subcommand for LUMOS schema generation"
+readme = "../../README.md"
+keywords = ["cargo", "subcommand", "solana", "codegen", "lumos"]
+categories = ["development-tools::cargo-plugins", "command-line-utilities"]
+
+[[bin]]
+name = "cargo-lumos"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
+colored = "2.1"
+anyhow = "1.0"
+toml = "0.8"
+serde = { version = "1.0", features = ["derive"] }
+which = "6.0"
+
+[dev-dependencies]
+assert_cmd = "2.0"
+predicates = "3.0"
+tempfile = "3.10"
