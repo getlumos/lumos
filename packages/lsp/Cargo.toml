@@ -35,7 +35,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Error monitoring (optional, enabled via SENTRY_DSN env var)
-sentry = { version = "0.34", default-features = false, features = ["backtrace", "contexts", "panic", "tracing"] }
+sentry = { version = "0.46", default-features = false, features = ["backtrace", "contexts", "panic", "tracing"] }
 
 # Async utilities
 dashmap = "6.1"
