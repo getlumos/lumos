@@ -113,7 +113,7 @@ jobs:
       - name: Check lumos-core
         run: |
           echo "Checking lumos-core on crates.io..."
-          HTTP_CODE=$(curl -o /dev/null -s -w "%{http_code}" https://crates.io/api/v1/crates/lumos-core)
+          HTTP_CODE=$(curl -o /dev/null -s -w "%{http_code}" -H "User-Agent: lumos-uptime-monitor (https://github.com/getlumos/lumos)" https://crates.io/api/v1/crates/lumos-core)
           echo "HTTP Code: $HTTP_CODE"
           if [ "$HTTP_CODE" -ne 200 ]; then
             echo "❌ lumos-core not accessible (HTTP $HTTP_CODE)"
@@ -124,7 +124,7 @@ jobs:
       - name: Check lumos-cli
         run: |
           echo "Checking lumos-cli on crates.io..."
-          HTTP_CODE=$(curl -o /dev/null -s -w "%{http_code}" https://crates.io/api/v1/crates/lumos-cli)
+          HTTP_CODE=$(curl -o /dev/null -s -w "%{http_code}" -H "User-Agent: lumos-uptime-monitor (https://github.com/getlumos/lumos)" https://crates.io/api/v1/crates/lumos-cli)
           echo "HTTP Code: $HTTP_CODE"
           if [ "$HTTP_CODE" -ne 200 ]; then
             echo "❌ lumos-cli not accessible (HTTP $HTTP_CODE)"
@@ -135,7 +135,7 @@ jobs:
       - name: Check lumos-lsp
         run: |
           echo "Checking lumos-lsp on crates.io..."
-          HTTP_CODE=$(curl -o /dev/null -s -w "%{http_code}" https://crates.io/api/v1/crates/lumos-lsp)
+          HTTP_CODE=$(curl -o /dev/null -s -w "%{http_code}" -H "User-Agent: lumos-uptime-monitor (https://github.com/getlumos/lumos)" https://crates.io/api/v1/crates/lumos-lsp)
           echo "HTTP Code: $HTTP_CODE"
           if [ "$HTTP_CODE" -ne 200 ]; then
             echo "❌ lumos-lsp not accessible (HTTP $HTTP_CODE)"
