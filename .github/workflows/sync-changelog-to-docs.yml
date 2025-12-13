@@ -52,7 +52,7 @@ jobs:
           echo "Release: $TAG - $TITLE ($DATE)"
 
       - name: Checkout docs-lumos
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: getlumos/docs-lumos
           token: ${{ secrets.DOCS_SYNC_TOKEN }}
