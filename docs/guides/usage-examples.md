@@ -1853,6 +1853,7 @@ After mastering usage patterns, explore these guides:
 - [NFT Marketplaces](/guides/use-cases/nft) - NFT and metadata patterns
 
 **Advanced Guides:**
+- [Error Handling & Validation Patterns](/guides/error-handling-validation) - Comprehensive error handling
 - [LUMOS + Solv/Jito Integration](/guides/solv-jito-integration) - Liquid staking and MEV
 - [Migration: TypeScript → LUMOS](/guides/migration-typescript) - Migrate existing types
 - [Migration: Anchor → LUMOS](/guides/migration-anchor) - Add LUMOS to existing programs
