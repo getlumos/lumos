@@ -19,6 +19,20 @@ This guide walks you through migrating from hand-written TypeScript type definit
 
 ---
 
+## Prerequisites
+
+Before starting this migration, you should have:
+
+- **Existing TypeScript codebase** with manual Borsh schemas
+- **Familiarity with `@coral-xyz/borsh`** or similar serialization library
+- **LUMOS CLI installed** - `cargo install lumos-cli`
+
+**Recommended reading:**
+- [LUMOS + web3.js Integration](/guides/web3js-integration) - Understanding generated TypeScript output
+- [Migration: Anchor → LUMOS](/guides/migration-anchor) - If you also have Anchor Rust code to migrate
+
+---
+
 ## Introduction & Value Proposition
 
 ### The Problem with Manual TypeScript

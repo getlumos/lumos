@@ -1737,12 +1737,22 @@ await program.methods
 
 ---
 
-## Next Steps
+## Related Guides
 
-- Read the [Solana CLI Integration Guide](./solana-cli-integration.md) for backend deployment
-- Explore [examples/](../../examples/) for more schema patterns
-- Check [Anchor documentation](https://www.anchor-lang.com/) for program development
-- See [Solana Cookbook](https://solanacookbook.com/) for more frontend patterns
+Continue your LUMOS journey with these related guides:
+
+**Integration Guides:**
+- [LUMOS + Solana CLI Integration](/guides/solana-cli-integration) - Backend deployment workflow
+- [LUMOS + Anchor Integration](/guides/anchor-integration) - Schema-first Anchor development
+
+**Migration Guides:**
+- [Migration: TypeScript → LUMOS](/guides/migration-typescript) - Migrate existing TypeScript types
+- [Migration: Anchor → LUMOS](/guides/migration-anchor) - Add LUMOS to existing Anchor projects
+
+**Use Case Guides:**
+- [Gaming Projects](/guides/use-cases/gaming) - Complete gaming dApp with React frontend
+- [NFT Marketplaces](/guides/use-cases/nft) - Metaplex-compatible marketplace
+- [DeFi Protocols](/guides/use-cases/defi) - Staking dashboard implementation
 
 ---
 

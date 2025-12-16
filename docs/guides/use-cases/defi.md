@@ -1840,10 +1840,18 @@ export function VestingTimeline({ schedule }: VestingTimelineProps) {
 
 ### Related Guides
 
-- [Solana CLI Integration](../solana-cli-integration.md) - Deploy your protocols
-- [web3.js Integration](../web3js-integration.md) - Frontend patterns
-- [Gaming Use Case](./gaming.md) - Game economy patterns
-- [NFT Use Case](./nft.md) - NFT marketplace patterns
+**Integration Guides:**
+- [LUMOS + Anchor Integration](/guides/anchor-integration) - Build new DeFi programs
+- [Solana CLI Integration](/guides/solana-cli-integration) - Deploy your protocols
+- [web3.js Integration](/guides/web3js-integration) - Frontend patterns
+
+**Other Use Cases:**
+- [Gaming Projects](/guides/use-cases/gaming) - Game economy patterns
+- [NFT Marketplaces](/guides/use-cases/nft) - NFT staking rewards
+
+**Migration Guides:**
+- [Migration: TypeScript → LUMOS](/guides/migration-typescript) - Migrate existing types
+- [Migration: Anchor → LUMOS](/guides/migration-anchor) - Add LUMOS to existing protocols
 
 ### External Resources
 

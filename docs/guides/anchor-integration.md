@@ -21,6 +21,21 @@ This guide covers building NEW Anchor programs with LUMOS from the ground up. Le
 
 ---
 
+## Prerequisites
+
+Before starting this guide, you should have:
+
+- **Anchor fundamentals** - Familiarity with the [Anchor framework](https://www.anchor-lang.com/)
+- **Basic Rust knowledge** - Understanding of structs, enums, and traits
+- **Solana account model** - How accounts, PDAs, and programs work
+- **LUMOS CLI installed** - `cargo install lumos-cli`
+
+**Recommended reading:**
+- [LUMOS + Solana CLI Integration](/guides/solana-cli-integration) - Deployment workflows
+- [Migration: Anchor → LUMOS](/guides/migration-anchor) - If adding to existing project
+
+---
+
 ## Introduction & Schema-First Philosophy
 
 ### Traditional Anchor Development

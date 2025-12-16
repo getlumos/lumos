@@ -1150,12 +1150,22 @@ solana program show <PROGRAM_ID>
 
 ---
 
-## Next Steps
+## Related Guides
 
-- Read the [CLI Reference](../cli-reference.md) for all LUMOS commands
-- See [Integration Guide](../integration-guide.md) for migrating existing projects
-- Explore [examples/](../../examples/) for more schema patterns
-- Check [Anchor documentation](https://www.anchor-lang.com/) for program development
+After mastering the Solana CLI workflow, explore these related guides:
+
+**Integration Guides:**
+- [LUMOS + Anchor Integration](/guides/anchor-integration) - Schema-first Anchor program development
+- [LUMOS + web3.js Integration](/guides/web3js-integration) - Frontend TypeScript integration
+
+**Migration Guides:**
+- [Migration: TypeScript → LUMOS](/guides/migration-typescript) - Migrate existing TypeScript types
+- [Migration: Anchor → LUMOS](/guides/migration-anchor) - Add LUMOS to existing Anchor projects
+
+**Use Case Guides:**
+- [Gaming Projects](/guides/use-cases/gaming) - Complete gaming implementation
+- [NFT Marketplaces](/guides/use-cases/nft) - Metaplex-compatible NFTs
+- [DeFi Protocols](/guides/use-cases/defi) - Staking and vesting patterns
 
 ---
 

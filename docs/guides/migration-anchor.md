@@ -20,6 +20,20 @@ This guide walks you through adding LUMOS to an existing Anchor project. Whether
 
 ---
 
+## Prerequisites
+
+Before starting this migration, you should have:
+
+- **Existing Anchor program** with `#[account]` structs
+- **Familiarity with Anchor's `#[derive(Accounts)]`** macro
+- **LUMOS CLI installed** - `cargo install lumos-cli`
+
+**Recommended reading:**
+- [LUMOS + Anchor Integration](/guides/anchor-integration) - Understanding LUMOS + Anchor workflow
+- [Migration: TypeScript → LUMOS](/guides/migration-typescript) - For frontend TypeScript migration
+
+---
+
 ## Introduction & Benefits
 
 ### Why Add LUMOS to Existing Anchor?

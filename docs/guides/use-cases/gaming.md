@@ -1769,8 +1769,18 @@ export function SeasonLeaderboard({ season }: LeaderboardProps) {
 
 ### Related Guides
 
-- [Solana CLI Integration](../solana-cli-integration.md) - Deploy your game
-- [web3.js Integration](../web3js-integration.md) - Frontend patterns
+**Integration Guides:**
+- [LUMOS + Anchor Integration](/guides/anchor-integration) - Build new game programs
+- [Solana CLI Integration](/guides/solana-cli-integration) - Deploy your game
+- [web3.js Integration](/guides/web3js-integration) - Frontend patterns
+
+**Other Use Cases:**
+- [NFT Marketplaces](/guides/use-cases/nft) - In-game item trading
+- [DeFi Protocols](/guides/use-cases/defi) - Token economics
+
+**Migration Guides:**
+- [Migration: TypeScript → LUMOS](/guides/migration-typescript) - Migrate existing types
+- [Migration: Anchor → LUMOS](/guides/migration-anchor) - Add LUMOS to existing games
 
 ### External Resources
 
