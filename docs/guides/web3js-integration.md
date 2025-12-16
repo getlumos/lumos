@@ -1744,6 +1744,7 @@ Continue your LUMOS journey with these related guides:
 **Integration Guides:**
 - [LUMOS + Solana CLI Integration](/guides/solana-cli-integration) - Backend deployment workflow
 - [LUMOS + Anchor Integration](/guides/anchor-integration) - Schema-first Anchor development
+- [Usage Examples for Generated Code](/guides/usage-examples) - Practical patterns for using generated types
 
 **Migration Guides:**
 - [Migration: TypeScript → LUMOS](/guides/migration-typescript) - Migrate existing TypeScript types

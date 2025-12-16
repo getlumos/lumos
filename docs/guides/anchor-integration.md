@@ -1854,6 +1854,7 @@ anchor build && anchor test
 ---
 
 **Related Guides:**
+- [Usage Examples for Generated Code](/guides/usage-examples) - Practical patterns for handlers & clients
 - [Migration: TypeScript → LUMOS](/guides/migration-typescript)
 - [Migration: Anchor → LUMOS](/guides/migration-anchor)
 - [LUMOS + Solana CLI Integration](/guides/solana-cli-integration)
