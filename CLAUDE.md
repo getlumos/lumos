@@ -310,15 +310,17 @@ examples/[project-name]/
 ### 9. docs-lumos
 
 **Purpose:** Official documentation website
-**Tech Stack:** VitePress, Markdown, Vue
-**Deployment:** Cloudflare Pages → lumos-lang.org
+**Tech Stack:** Astro Starlight, MDX, TypeScript
+**Deployment:** VPS (Docker) → docs.lumos-lang.org
+**SSH Host:** `lumos` (port 4000)
 **Key Commands:**
 ```bash
-npm run docs:dev     # Dev server (localhost:5173)
-npm run docs:build   # Build for production
+npm run dev          # Dev server (localhost:4321)
+npm run build        # Build for production (includes OG image generation)
+npm run build:og     # Regenerate OG images only
 ```
-**Content Sections:** guide/, reference/, examples/, api/
-**Auto-deploy:** Push to `main` → live
+**Content Sections:** getting-started/, api/, guides/, frameworks/, editors/
+**Auto-deploy:** GitHub Actions → Docker → VPS
 **CLAUDE.md:** [docs-lumos/CLAUDE.md](https://github.com/getlumos/docs-lumos/blob/main/CLAUDE.md)
 
 ---
