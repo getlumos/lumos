@@ -1858,6 +1858,7 @@ anchor build && anchor test
 - [Migration: Anchor → LUMOS](/guides/migration-anchor)
 - [LUMOS + Solana CLI Integration](/guides/solana-cli-integration)
 - [LUMOS + web3.js Integration](/guides/web3js-integration)
+- [LUMOS + Solv/Jito Integration](/guides/solv-jito-integration) - Liquid staking & MEV
 - [Gaming Use Case](/guides/use-cases/gaming)
 - [NFT Use Case](/guides/use-cases/nft)
 - [DeFi Use Case](/guides/use-cases/defi)

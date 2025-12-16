@@ -1842,6 +1842,7 @@ export function VestingTimeline({ schedule }: VestingTimelineProps) {
 
 **Integration Guides:**
 - [LUMOS + Anchor Integration](/guides/anchor-integration) - Build new DeFi programs
+- [LUMOS + Solv/Jito Integration](/guides/solv-jito-integration) - Liquid staking & MEV patterns
 - [Solana CLI Integration](/guides/solana-cli-integration) - Deploy your protocols
 - [web3.js Integration](/guides/web3js-integration) - Frontend patterns
 
