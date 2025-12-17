@@ -4,6 +4,10 @@
 
 Find answers to the most frequently asked questions about LUMOS, the type-safe schema language for Solana development.
 
+> **📦 Version Compatibility**
+>
+> This FAQ covers **LUMOS CLI v0.1.1+**. Install via `cargo install lumos-cli` or `npm install -g @getlumos/cli@0.1.0` (WASM version, no Rust required).
+
 ---
 
 ## Table of Contents

@@ -4,6 +4,13 @@
 
 This guide covers building NEW Anchor programs with LUMOS from the ground up. Learn the schema-first workflow, generate complete Anchor programs, and leverage instruction contexts for maximum type safety.
 
+> **📦 Version Compatibility**
+>
+> This guide requires **LUMOS CLI v0.1.1+** with Anchor plugin support.
+> Install: `cargo install lumos-cli` or `npm install -g @getlumos/cli@0.1.0`
+>
+> Key commands: `lumos anchor generate`, `lumos anchor idl`, `lumos anchor space`
+
 ---
 
 ## Table of Contents
@@ -1854,6 +1861,7 @@ anchor build && anchor test
 ---
 
 **Related Guides:**
+- [Client-Side Interaction](/guides/client-side-interaction) - React hooks, state management, and frontend patterns
 - [Usage Examples for Generated Code](/guides/usage-examples) - Practical patterns for handlers & clients
 - [Migration: TypeScript → LUMOS](/guides/migration-typescript)
 - [Migration: Anchor → LUMOS](/guides/migration-anchor)

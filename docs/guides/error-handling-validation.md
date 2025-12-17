@@ -1752,6 +1752,11 @@ After mastering error handling, explore these guides:
 - [LUMOS + Solv/Jito Integration](/guides/solv-jito-integration) - Precision handling
 - [Migration: Anchor → LUMOS](/guides/migration-anchor) - Error migration
 
+**Security Guides:**
+- [Security Static Analysis](/security/static-analysis) - Vulnerability detection
+- [Security Audit Checklist](/security/audit-checklist) - Pre-deployment security
+- [Fuzzing Guide](/security/fuzzing) - Fuzz testing harness generation
+
 ---
 
 ## Summary
