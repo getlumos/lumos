@@ -222,7 +222,7 @@
 
 **Priority 1 - Quick Wins:**
 1. **Double down on "Solana schema" keyword cluster** - Q5 success validates this positioning
-2. **Create LUMOS vs Codama comparison page** - Codama appeared in ALL 4 LLMs as the "modern standard"
+2. **Improve discoverability of existing LUMOS vs Codama page** - Page exists at `/guides/lumos-vs-codama` (374 lines, comprehensive) but LLMs aren't finding it
 3. **Add "Solana schema generation" to homepage H1/meta** - SEO optimization for winning query
 
 **Priority 2 - Content Strategy:**
