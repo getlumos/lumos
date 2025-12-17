@@ -101,7 +101,7 @@ Full Language Server Protocol (LSP) implementation:
 
 | Metric | Value |
 |--------|-------|
-| Test Count | 322 |
+| Test Count | 300+ |
 | Test Pass Rate | 100% |
 | Languages Supported | 5 |
 | IDE Integrations | 6 |
