@@ -26,7 +26,7 @@ But LUMOS isn't just a code generator. It's a complete development toolkit:
 ✅ Complete Anchor program generation
 ✅ CI/CD integration via GitHub Action
 
-We've shipped with 322 tests passing, published to crates.io and npm, and zero known vulnerabilities.
+We've shipped with 300+ tests passing, published to crates.io and npm, and zero known vulnerabilities.
 
 **For blockchain development teams:** LUMOS eliminates an entire class of bugs—type mismatches between on-chain programs and off-chain clients. If you've ever debugged a Borsh deserialization error, you know how valuable this is.
 

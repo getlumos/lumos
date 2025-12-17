@@ -74,7 +74,7 @@ npm install -g @getlumos/cli
 
 - GitHub: https://github.com/getlumos/lumos
 - Docs: https://lumos-lang.org
-- 322 tests passing, published to crates.io
+- 300+ tests passing, published to crates.io
 
 ### Feedback Welcome
 

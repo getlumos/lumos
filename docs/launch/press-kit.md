@@ -185,8 +185,8 @@ Available in `assets/logo/`:
 
 - **GitHub Issues**: [github.com/getlumos/lumos/issues](https://github.com/getlumos/lumos/issues)
 - **Twitter/X**: [@getlumos](https://twitter.com/getlumos)
-- **Discord**: [Join server]
-- **Email**: [contact email]
+- **Discord**: [discord.gg/lumos](https://discord.gg/lumos)
+- **Email**: hello@lumos-lang.org
 
 ---
 
@@ -215,7 +215,7 @@ A: LUMOS is designed for Solana but the generated Borsh code works anywhere Bors
 A: Anchor IDL is generated from Rust code. LUMOS works in the opposite direction—you write schemas first, then generate Rust (and other languages). They're complementary tools.
 
 **Q: Can I use LUMOS in production?**
-A: Yes. LUMOS has 322 tests, zero known vulnerabilities, and is published to crates.io.
+A: Yes. LUMOS has 300+ tests, zero known vulnerabilities, and is published to crates.io.
 
 ---
 

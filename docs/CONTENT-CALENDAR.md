@@ -1,9 +1,11 @@
 # LUMOS Phase 2: Content Calendar & Strategy
 
-**Phase**: Phase 2 - Public Launch & Category Leadership
-**Duration**: 12 weeks (Q1 2026)
+**Phase**: Marketing Phase 2 - Public Launch & Category Leadership
+**Duration**: 12 weeks (January 6 - March 31, 2026)
 **Goal**: Aggressive category positioning, SEO dominance, community building, thought leadership
 **Cadence**: 3-5 pieces per week across all platforms
+
+> **Note**: This is Marketing Phase 2, separate from the technical development roadmap phases in ROADMAP.md.
 
 **Last Updated**: December 2025
 **Issue**: #105

@@ -146,7 +146,7 @@ Ship updates with confidence.
 
 ## Tweet 10 (The Numbers)
 
-📊 322 tests passing
+📊 300+ tests passing
 📊 5 languages supported
 📊 6 IDE integrations
 📊 0 vulnerabilities
@@ -184,7 +184,7 @@ lumos generate schema.lumos
 
 ⭐ Star us: github.com/getlumos/lumos
 📖 Docs: lumos-lang.org
-💬 Discord: [link]
+💬 Discord: discord.gg/lumos
 
 Type-safe Solana development starts now.
 

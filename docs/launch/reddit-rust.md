@@ -75,7 +75,7 @@ The LSP reuses the core parsing logic, so diagnostics are always accurate.
 
 ### Numbers
 
-- 322 tests (unit + integration + E2E compilation tests)
+- 300+ tests (unit + integration + E2E compilation tests)
 - ~15,000 lines of Rust
 - Generates valid, compilable code for all target languages
 - Published to crates.io

@@ -352,7 +352,7 @@ This validates schemas on every PR and ensures generated code is always committe
 
 ## The Numbers
 
-- **322 tests** passing (100% success rate)
+- **300+ tests** passing (100% success rate)
 - **5 languages** supported
 - **6 IDE integrations** via LSP
 - **0 vulnerabilities** (cargo audit clean)
