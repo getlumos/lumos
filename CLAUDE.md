@@ -410,7 +410,7 @@ Write data structures once in `.lumos` syntax → Generate production-ready Rust
 ## Development Commands
 
 ```bash
-# Run tests (322 tests, ~180s with E2E)
+# Run tests (300+ tests, ~180s with E2E)
 cargo test --all-features --workspace
 
 # Check formatting
@@ -437,7 +437,7 @@ cargo test --package lumos-lsp
 
 ---
 
-## Test Suite (322 tests)
+## Test Suite (300+ tests)
 
 | Suite | Count | Location |
 |-------|-------|----------|
@@ -532,6 +532,42 @@ warning: Account.email: Use new_email instead
 ## Strategic Direction
 
 **For long-term vision**: See `docs/VISION.md` - LUMOS evolution from schema DSL to programming language
+
+---
+
+## Documentation & Guides
+
+Comprehensive documentation is available in `docs/`:
+
+### Integration Guides
+| Guide | Purpose |
+|-------|---------|
+| `docs/guides/anchor-integration.md` | Schema-first Anchor development |
+| `docs/guides/web3js-integration.md` | TypeScript frontend patterns |
+| `docs/guides/solana-cli-integration.md` | Deployment workflows |
+| `docs/guides/client-side-interaction.md` | React hooks, state management |
+| `docs/guides/error-handling-validation.md` | Production error patterns |
+| `docs/guides/usage-examples.md` | Practical patterns for generated code |
+| `docs/guides/solv-jito-integration.md` | Liquid staking & MEV |
+
+### Migration Guides
+| Guide | Purpose |
+|-------|---------|
+| `docs/guides/migration-anchor.md` | Migrating existing Anchor projects |
+| `docs/guides/migration-typescript.md` | Migrating TypeScript codebases |
+
+### Use Case Examples
+| Guide | Purpose |
+|-------|---------|
+| `docs/guides/use-cases/gaming.md` | On-chain game logic patterns |
+| `docs/guides/use-cases/nft.md` | NFT marketplace patterns |
+| `docs/guides/use-cases/defi.md` | DeFi staking & vesting |
+
+### Reference
+- `docs/faq.md` - Frequently asked questions
+- `docs/cli-reference.md` - CLI command reference
+- `docs/syntax-reference.md` - Language syntax
+- `docs/meta/documentation-audit.md` - Documentation gap analysis
 
 ---
 
