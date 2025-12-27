@@ -42,3 +42,4 @@ packages/core/pkg/
 packages/npm/src/wasm/
 packages/npm/tests/wasm/
 .playwright-mcp/
+.image-gen-mcp/
