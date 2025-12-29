@@ -26,4 +26,4 @@ which = "8.0"
 [dev-dependencies]
 assert_cmd = "2.0"
 predicates = "3.0"
-tempfile = "3.10"
+tempfile = "3.24"
