@@ -876,9 +876,9 @@ send_bundle([tx], { tip: lamports(10_000) })
 
 ### 10.4 AI Agent Infrastructure
 
-**Context**: As AI agents become first-class participants in crypto ecosystems ([a16z Big Ideas 2026](https://a16zcrypto.com/posts/article/big-ideas-things-excited-about-crypto-2026/)), LUMOS is uniquely positioned to provide type-safe schemas for agent interactions.
+**Context**: As AI agents become first-class participants in crypto ecosystems ([a16z Big Ideas 2026](https://a16zcrypto.com/posts/article/big-ideas-things-excited-about-crypto-2026/)), LUMOS is uniquely positioned to provide type-safe schemas for agent interactions. Our "Spec is Law" philosophy—catching errors at schema definition time, not runtime—prevents exploits before they happen.
 
-**Philosophy**: "Spec is Law" - LUMOS already embodies this principle. Catch errors at schema definition time, not runtime. This approach prevents exploits before they happen.
+**See Also**: [VISION.md](docs/VISION.md) (long-term strategy) | [Phase 6.3](#63-security--validation) (related constraint work)
 
 **Status**: 0/19 complete (0%)
 
@@ -919,7 +919,7 @@ send_bundle([tx], { tip: lamports(10_000) })
 struct AgentCredential {
     principal: PublicKey,           // Human/org that owns this agent
     #[assert(permissions != 0)]
-    permissions: u64,               // Capability bitmap
+    permissions: u64,               // Capability bitmap (0 = no permissions, invalid)
     liability_cap: u64,             // Max transaction value
     #[assert(expires_at > now())]
     expires_at: i64,
