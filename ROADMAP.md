@@ -874,6 +874,76 @@ send_bundle([tx], { tip: lamports(10_000) })
 - [ ] Create database migration tools
 - [ ] Add web scraping utilities
 
+### 10.4 AI Agent Infrastructure
+
+**Context**: As AI agents become first-class participants in crypto ecosystems ([a16z Big Ideas 2026](https://a16zcrypto.com/posts/article/big-ideas-things-excited-about-crypto-2026/)), LUMOS is uniquely positioned to provide type-safe schemas for agent interactions.
+
+**Philosophy**: "Spec is Law" - LUMOS already embodies this principle. Catch errors at schema definition time, not runtime. This approach prevents exploits before they happen.
+
+**Potential issues:**
+
+**Agent Identity (KYA - Know Your Agent):**
+- [ ] Add `#[agent]` attribute for agent-callable account types
+- [ ] Create `AgentCredential` built-in type (principal, permissions, liability_cap, expiry)
+- [ ] Add `#[requires_principal]` constraint for human-in-the-loop operations
+- [ ] Implement agent permission bitmap types with compile-time validation
+- [ ] Generate agent-safe TypeScript SDKs with permission checks
+
+**Constraint Validation ("Spec is Law"):**
+- [ ] Add schema-level assertions: `#[assert(balance > 0)]`
+- [ ] Compile assertions to runtime checks in generated Rust
+- [ ] Generate TypeScript validation functions from assertions
+- [ ] Create `lumos audit` command for constraint coverage analysis
+- [ ] Add invariant checking for cross-field constraints
+
+**Privacy-Aware Types:**
+- [ ] Add `#[encrypted]` field attribute for sensitive data markers
+- [ ] Create `Secret<T>` wrapper type with access control semantics
+- [ ] Generate encryption/decryption helpers in TypeScript
+- [ ] Add `#[redacted]` for logging-safe field serialization
+- [ ] Implement onchain key management schema patterns
+
+**Agent Payment Infrastructure:**
+- [ ] Add `Micropayment` type for nanopayment schemas
+- [ ] Create `PaymentStream` type for usage-based billing
+- [ ] Generate Solana Pay compatible payment request schemas
+- [ ] Add `#[billable]` attribute for metered API calls
+
+**Example LUMOS code (future):**
+
+```lumos
+#[solana]
+#[agent]
+struct AgentCredential {
+    principal: PublicKey,           // Human/org that owns this agent
+    #[assert(permissions != 0)]
+    permissions: u64,               // Capability bitmap
+    liability_cap: u64,             // Max transaction value
+    #[assert(expires_at > now())]
+    expires_at: i64,
+}
+
+#[solana]
+#[account]
+struct UserVault {
+    owner: PublicKey,
+    #[encrypted]
+    secret_seed: [u8; 32],          // Only owner can decrypt
+    #[assert(balance >= 0)]
+    balance: u64,
+    #[requires_principal]           // Agent can't withdraw without human approval
+    withdrawal_limit: u64,
+}
+```
+
+**Success Metric**: LUMOS schemas power AI agent interactions on Solana
+
+**Why This Matters:**
+- AI agents need **guaranteed** type compatibility with on-chain programs
+- "Spec is Law" prevents the exploits that plague DeFi
+- Privacy-aware types enable "Secrets-as-a-Service" patterns
+- First-mover advantage in agent infrastructure creates ecosystem lock-in
+
 **Success Metric**: LUMOS used beyond Solana ecosystem
 
 ---
@@ -1071,9 +1141,10 @@ See an opportunity to help? Check our [Contributing Guide](CONTRIBUTING.md) or:
 
 **This roadmap is a living document** - priorities may shift based on community feedback and ecosystem needs.
 
-**Last Updated**: December 8, 2025
+**Last Updated**: December 31, 2025
 
 **Recent Updates**:
+- Dec 31, 2025: **Added Phase 10.4 AI Agent Infrastructure** - KYA schemas, constraint validation ("Spec is Law"), privacy-aware types, agent payment infra (inspired by [a16z Big Ideas 2026](https://a16zcrypto.com/posts/article/big-ideas-things-excited-about-crypto-2026/))
 - Dec 8, 2025: **PHASE 6.1 FRAMEWORK INTEGRATION COMPLETE** 🎉🎉🎉 - All 4 issues closed (#55-#58)!
 - Dec 8, 2025: **Metaplex standard compatibility COMPLETE** (#58) - NFT schemas with validation, generation, CLI commands
 - Dec 8, 2025: **Seahorse integration COMPLETE** (#56) - Python-based Solana development with `--lang seahorse`
