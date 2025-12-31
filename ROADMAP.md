@@ -880,34 +880,36 @@ send_bundle([tx], { tip: lamports(10_000) })
 
 **Philosophy**: "Spec is Law" - LUMOS already embodies this principle. Catch errors at schema definition time, not runtime. This approach prevents exploits before they happen.
 
-**Potential issues:**
+**Status**: 0/19 complete (0%)
+
+**Issues:**
 
 **Agent Identity (KYA - Know Your Agent):**
-- [ ] Add `#[agent]` attribute for agent-callable account types
-- [ ] Create `AgentCredential` built-in type (principal, permissions, liability_cap, expiry)
-- [ ] Add `#[requires_principal]` constraint for human-in-the-loop operations
-- [ ] Implement agent permission bitmap types with compile-time validation
-- [ ] Generate agent-safe TypeScript SDKs with permission checks
+- [ ] Add `#[agent]` attribute for agent-callable account types [#263]
+- [ ] Create `AgentCredential` built-in type (principal, permissions, liability_cap, expiry) [#264]
+- [ ] Add `#[requires_principal]` constraint for human-in-the-loop operations [#265]
+- [ ] Implement agent permission bitmap types with compile-time validation [#266]
+- [ ] Generate agent-safe TypeScript SDKs with permission checks [#267]
 
 **Constraint Validation ("Spec is Law"):**
-- [ ] Add schema-level assertions: `#[assert(balance > 0)]`
-- [ ] Compile assertions to runtime checks in generated Rust
-- [ ] Generate TypeScript validation functions from assertions
-- [ ] Create `lumos audit` command for constraint coverage analysis
-- [ ] Add invariant checking for cross-field constraints
+- [ ] Add schema-level assertions: `#[assert(balance > 0)]` [#268]
+- [ ] Compile assertions to runtime checks in generated Rust [#269]
+- [ ] Generate TypeScript validation functions from assertions [#270]
+- [ ] Create `lumos audit` command for constraint coverage analysis [#271]
+- [ ] Add invariant checking for cross-field constraints [#272]
 
 **Privacy-Aware Types:**
-- [ ] Add `#[encrypted]` field attribute for sensitive data markers
-- [ ] Create `Secret<T>` wrapper type with access control semantics
-- [ ] Generate encryption/decryption helpers in TypeScript
-- [ ] Add `#[redacted]` for logging-safe field serialization
-- [ ] Implement onchain key management schema patterns
+- [ ] Add `#[encrypted]` field attribute for sensitive data markers [#273]
+- [ ] Create `Secret<T>` wrapper type with access control semantics [#274]
+- [ ] Generate encryption/decryption helpers in TypeScript [#275]
+- [ ] Add `#[redacted]` for logging-safe field serialization [#276]
+- [ ] Implement onchain key management schema patterns [#277]
 
 **Agent Payment Infrastructure:**
-- [ ] Add `Micropayment` type for nanopayment schemas
-- [ ] Create `PaymentStream` type for usage-based billing
-- [ ] Generate Solana Pay compatible payment request schemas
-- [ ] Add `#[billable]` attribute for metered API calls
+- [ ] Add `Micropayment` type for nanopayment schemas [#278]
+- [ ] Create `PaymentStream` type for usage-based billing [#279]
+- [ ] Generate Solana Pay compatible payment request schemas [#280]
+- [ ] Add `#[billable]` attribute for metered API calls [#281]
 
 **Example LUMOS code (future):**
 
