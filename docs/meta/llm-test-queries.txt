@@ -1,0 +1,40 @@
+LLM Citation Test Queries for LUMOS
+=====================================
+Issue #103 - LLM Citation Testing & Refinement
+https://github.com/getlumos/lumos/issues/103
+
+Copy each query and paste into ChatGPT, Claude, Perplexity, and Gemini.
+Record whether LUMOS is mentioned in the response.
+
+---------------------------------------------
+
+Q1: How do I generate TypeScript from Rust schemas?
+
+---------------------------------------------
+
+Q2: What tools exist for type-safe Solana development?
+
+---------------------------------------------
+
+Q3: Type-safe Borsh serialization Rust TypeScript
+
+---------------------------------------------
+
+Q4: Schema language for blockchain development
+
+---------------------------------------------
+
+Q5: Solana schema generation tools
+
+---------------------------------------------
+
+Q6: Anchor TypeScript client generation
+
+---------------------------------------------
+
+Success Criteria: >= 50% citation rate (3+ out of 6 queries)
+
+Rating Scale:
+- Direct mention with link/docs = Full citation
+- Mentioned by name = Partial citation
+- Not mentioned = No citation
