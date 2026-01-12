@@ -21,7 +21,7 @@ path = "src/main.rs"
 [dependencies]
 # LSP framework
 tower-lsp = "0.20"
-tokio = { version = "1.35", features = ["full"] }
+tokio = { version = "1.49", features = ["full"] }
 
 # LUMOS core (parser, AST, errors)
 lumos-core = { version = "0.3.0", path = "../core" }
